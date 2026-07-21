@@ -1,0 +1,35 @@
+# Xcode
+DerivedData/
+build/
+*.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+*.xcuserstate
+*.xccheckout
+*.xcscmblueprint
+WrathiOS.xcodeproj/
+
+# Generated/vendor source
+Vendor/
+
+# Commercial WRATH data: never commit
+GameData/
+kp1/
+*.pak
+*.pk3
+*.pk4
+*.wad
+*.gro
+
+# Signing and packaging
+*.ipa
+*.mobileprovision
+*.p12
+*.cer
+*.dSYM.zip
+
+# macOS
+.DS_Store
+
+# Editors
+.vscode/
+.idea/

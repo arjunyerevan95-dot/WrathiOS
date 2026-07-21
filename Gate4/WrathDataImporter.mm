@@ -176,39 +176,49 @@ static void WrathProgress(WrathImportProgress progress, NSString *message) {
             }
 
             NSString *identifier = NSUUID.UUID.UUIDString;
-            NSURL *staging = [gameDataRoot URLByAppendingPathComponent:
-                              [@".incoming-" stringByAppendingString:identifier] isDirectory:YES];
+            NSURL *stagingRoot = [gameDataRoot URLByAppendingPathComponent:
+                                  [@".incoming-" stringByAppendingString:identifier] isDirectory:YES];
+            NSURL *stagingKP1 = [stagingRoot URLByAppendingPathComponent:@"kp1" isDirectory:YES];
             NSURL *backup = [gameDataRoot URLByAppendingPathComponent:
                              [@".backup-" stringByAppendingString:identifier] isDirectory:YES];
-            [manager removeItemAtURL:staging error:nil];
+            [manager removeItemAtURL:stagingRoot error:nil];
             [manager removeItemAtURL:backup error:nil];
+            if (![manager createDirectoryAtURL:stagingRoot
+                   withIntermediateDirectories:YES
+                                    attributes:nil
+                                         error:&fileError]) {
+                WrathComplete(completion, nil,
+                              WrathNSError(22, @"Could not create the import staging directory.",
+                                           fileError.localizedDescription));
+                return;
+            }
 
             WrathProgress(progress, @"Copying licensed files into the app sandbox…");
             __block NSError *copyError = nil;
+            NSError *coordinationError = nil;
             NSFileCoordinator *coordinator = [[NSFileCoordinator alloc] initWithFilePresenter:nil];
             [coordinator coordinateReadingItemAtURL:sourceKP1
                                             options:NSFileCoordinatorReadingWithoutChanges
-                                              error:&copyError
+                                              error:&coordinationError
                                          byAccessor:^(NSURL *newURL) {
-                if (![manager copyItemAtURL:newURL toURL:staging error:&copyError]) {
-                    return;
-                }
+                [manager copyItemAtURL:newURL toURL:stagingKP1 error:&copyError];
             }];
-            if (copyError != nil || ![manager fileExistsAtPath:staging.path]) {
-                [manager removeItemAtURL:staging error:nil];
+            NSError *effectiveCopyError = copyError ?: coordinationError;
+            if (effectiveCopyError != nil || ![manager fileExistsAtPath:stagingKP1.path]) {
+                [manager removeItemAtURL:stagingRoot error:nil];
                 WrathComplete(completion, nil,
-                              WrathNSError(22, @"WRATH files could not be copied.",
-                                           copyError.localizedDescription));
+                              WrathNSError(23, @"WRATH files could not be copied.",
+                                           effectiveCopyError.localizedDescription));
                 return;
             }
 
             WrathProgress(progress, @"Validating the sandboxed copy…");
-            const auto stagedValidation = wrath::importer::ValidateInstallation(WrathPathFromURL(staging));
+            const auto stagedValidation = wrath::importer::ValidateInstallation(WrathPathFromURL(stagingKP1));
             WrathImportReport *stagedReport = WrathReport(stagedValidation);
             if (!stagedValidation.compatible) {
-                [manager removeItemAtURL:staging error:nil];
+                [manager removeItemAtURL:stagingRoot error:nil];
                 WrathComplete(completion, stagedReport,
-                              WrathNSError(23, @"The copied WRATH data failed post-copy validation.",
+                              WrathNSError(24, @"The copied WRATH data failed post-copy validation.",
                                            stagedReport.details));
                 return;
             }
@@ -216,18 +226,19 @@ static void WrathProgress(WrathImportProgress progress, NSString *message) {
             NSURL *destination = WrathDataImporter.installedKP1URL;
             BOOL hadExisting = [manager fileExistsAtPath:destination.path];
             if (hadExisting && ![manager moveItemAtURL:destination toURL:backup error:&fileError]) {
-                [manager removeItemAtURL:staging error:nil];
+                [manager removeItemAtURL:stagingRoot error:nil];
                 WrathComplete(completion, nil,
-                              WrathNSError(24, @"Existing WRATH data could not be prepared for replacement.",
+                              WrathNSError(25, @"Existing WRATH data could not be prepared for replacement.",
                                            fileError.localizedDescription));
                 return;
             }
-            if (![manager moveItemAtURL:staging toURL:destination error:&fileError]) {
+            if (![manager moveItemAtURL:stagingKP1 toURL:destination error:&fileError]) {
                 if (hadExisting) {
                     [manager moveItemAtURL:backup toURL:destination error:nil];
                 }
+                [manager removeItemAtURL:stagingRoot error:nil];
                 WrathComplete(completion, nil,
-                              WrathNSError(25, @"Validated WRATH data could not be installed.",
+                              WrathNSError(26, @"Validated WRATH data could not be installed.",
                                            fileError.localizedDescription));
                 return;
             }
@@ -236,12 +247,13 @@ static void WrathProgress(WrathImportProgress progress, NSString *message) {
             for (const auto &package : stagedValidation.packageNames) {
                 [packages addObject:WrathString(package)];
             }
+            NSString *importedAt = [[NSISO8601DateFormatter new] stringFromDate:NSDate.date] ?: @"";
             NSDictionary *manifest = @{
                 @"schemaVersion": @1,
                 @"compatibilityProfile": @(wrath::importer::kCompatibilityProfile),
                 @"engineRevision": @(wrath::importer::kEngineRevision),
                 @"qcRevision": @(wrath::importer::kQCRevision),
-                @"importedAt": NSISO8601DateFormatter.new.stringFromDate ?: @"",
+                @"importedAt": importedAt,
                 @"fileCount": @(stagedValidation.regularFileCount),
                 @"packageCount": @(stagedValidation.packageCount),
                 @"totalBytes": @(stagedValidation.totalBytes),
@@ -258,12 +270,14 @@ static void WrathProgress(WrathImportProgress progress, NSString *message) {
                 if (hadExisting) {
                     [manager moveItemAtURL:backup toURL:destination error:nil];
                 }
+                [manager removeItemAtURL:stagingRoot error:nil];
                 WrathComplete(completion, nil,
-                              WrathNSError(26, @"The import manifest could not be written.",
+                              WrathNSError(27, @"The import manifest could not be written.",
                                            fileError.localizedDescription));
                 return;
             }
 
+            [manager removeItemAtURL:stagingRoot error:nil];
             [manager removeItemAtURL:backup error:nil];
             WrathProgress(progress, @"Licensed WRATH data is ready for the next milestone.");
             WrathComplete(completion, stagedReport, nil);

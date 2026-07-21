@@ -1,0 +1,38 @@
+name: WrathiOS
+options:
+  bundleIdPrefix: com.arjukstudios
+  createIntermediateGroups: true
+  deploymentTarget:
+    iOS: "16.3"
+settings:
+  base:
+    CLANG_C_LANGUAGE_STANDARD: gnu17
+    CLANG_CXX_LANGUAGE_STANDARD: gnu++17
+    ENABLE_BITCODE: NO
+    IPHONEOS_DEPLOYMENT_TARGET: "16.3"
+    TARGETED_DEVICE_FAMILY: "1,2"
+targets:
+  WrathiOS:
+    type: application
+    platform: iOS
+    deploymentTarget: "16.3"
+    sources:
+      - path: App
+      - path: Platform
+    info:
+      path: App/Info.plist
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.arjukstudios.wrathios
+        PRODUCT_NAME: WrathiOS
+        GENERATE_INFOPLIST_FILE: NO
+        CODE_SIGN_STYLE: Automatic
+        GCC_PREPROCESSOR_DEFINITIONS:
+          - "$(inherited)"
+          - WRATH_IOS=1
+          - __IPHONEOS__=1
+        OTHER_LDFLAGS:
+          - "$(inherited)"
+          - -lz
+    scheme:
+      gatherCoverageData: false

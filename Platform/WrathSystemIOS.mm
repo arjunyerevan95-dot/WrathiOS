@@ -45,10 +45,6 @@ char *Sys_ConsoleInput(void) {
     return nullptr;
 }
 
-void Sys_SendKeyEvents(void) {
-    SDL_PumpEvents();
-}
-
 char *Sys_GetClipboardData(void) {
     // The engine expects zone-allocated ownership. Clipboard integration belongs
     // in the input milestone, not the static-link diagnostic.
@@ -61,15 +57,6 @@ unsigned int Sys_SDL_GetTicks(void) {
 
 void Sys_SDL_Delay(unsigned int milliseconds) {
     SDL_Delay(milliseconds);
-}
-
-void Sys_InitProcessNice(void) {
-}
-
-void Sys_MakeProcessNice(void) {
-}
-
-void Sys_MakeProcessMean(void) {
 }
 
 } // extern "C"

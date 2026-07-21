@@ -19,6 +19,9 @@ targets:
     sources:
       - path: App
       - path: Platform
+    dependencies:
+      - sdk: UIKit.framework
+      - sdk: Foundation.framework
     info:
       path: App/Info.plist
     settings:

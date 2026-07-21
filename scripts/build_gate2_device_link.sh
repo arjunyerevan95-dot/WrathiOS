@@ -14,6 +14,7 @@ rm -rf "$DERIVED_DATA" "$PROJECT"
 required_files=(
     "$ROOT_DIR/Derived/gate2-engine-archive/libwrath-engine.a"
     "$ROOT_DIR/Derived/deps/iphoneos/lib/libSDL2.a"
+    "$ROOT_DIR/Derived/deps/iphoneos/lib/libfreetype.a"
     "$ROOT_DIR/Derived/deps/iphoneos/lib/libogg.a"
     "$ROOT_DIR/Derived/deps/iphoneos/lib/libvorbis.a"
     "$ROOT_DIR/Derived/deps/iphoneos/lib/libvorbisfile.a"
@@ -90,6 +91,7 @@ cat > "$ARTIFACT_DIR/summary.md" <<EOF
 - Target: arm64-apple-ios16.3
 - WRATH engine archive: force-loaded
 - SDL2 archive: force-loaded
+- FreeType: statically linked
 - Ogg/Vorbis: statically linked
 - Engine build diagnostic symbol: present
 - Non-system dynamic dependencies: none

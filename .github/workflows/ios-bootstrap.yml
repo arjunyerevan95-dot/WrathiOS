@@ -20,6 +20,19 @@ jobs:
       - name: Validate repository policy and metadata
         run: ./scripts/check_repository.sh
 
+      - name: Test Gate 4 data contract
+        id: gate4-contract
+        continue-on-error: true
+        run: bash scripts/test_gate4_data_contract.sh
+
+      - name: Upload Gate 4 data-contract evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate4-data-contract
+          path: Derived/gate4-contract-tests
+          if-no-files-found: warn
+
       - name: Fetch and verify pinned upstream sources
         run: ./scripts/fetch_upstream.sh
 
@@ -135,10 +148,28 @@ jobs:
           path: Artifacts/gate3-device-diagnostic
           if-no-files-found: warn
 
-      - name: Enforce Gate 3 diagnostic prerequisites
+      - name: Build Gate 4 licensed-data importer
+        id: gate4-device-importer
+        if: always()
+        continue-on-error: true
+        run: bash scripts/build_gate4_device_importer.sh
+
+      - name: Upload Gate 4 importer evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate4-device-importer
+          path: Artifacts/gate4-device-importer
+          if-no-files-found: warn
+
+      - name: Enforce Gate 4 prerequisites
         if: always()
         shell: bash
         run: |
+          [[ "${{ steps.gate4-contract.outcome }}" == "success" ]] || {
+            echo "Gate 4 data-contract tests failed" >&2
+            exit 1
+          }
           [[ "${{ steps.gate2-probe.outcome }}" == "success" ]] || {
             echo "Gate 2 engine compile probe failed" >&2
             exit 1
@@ -161,5 +192,9 @@ jobs:
           }
           [[ "${{ steps.gate3-device-diagnostic.outcome }}" == "success" ]] || {
             echo "Gate 3 device graphics diagnostic build failed" >&2
+            exit 1
+          }
+          [[ "${{ steps.gate4-device-importer.outcome }}" == "success" ]] || {
+            echo "Gate 4 licensed-data importer build failed" >&2
             exit 1
           }

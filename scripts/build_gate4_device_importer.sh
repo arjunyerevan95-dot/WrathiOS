@@ -51,8 +51,16 @@ architecture="$(cat "$ARTIFACT_DIR/architecture.txt")"
   exit 1
 }
 
-grep -q 'GATE 4' "$ARTIFACT_DIR/strings.txt" || {
-  echo "error: Gate 4 importer marker is missing" >&2
+grep -q '_OBJC_CLASS_$_WrathImportViewController' "$ARTIFACT_DIR/global-symbols.txt" || {
+  echo "error: Gate 4 importer view-controller class is missing" >&2
+  exit 1
+}
+grep -q '_OBJC_CLASS_$_WrathDataImporter' "$ARTIFACT_DIR/global-symbols.txt" || {
+  echo "error: Gate 4 importer service class is missing" >&2
+  exit 1
+}
+grep -q 'Choose WRATH Folder' "$ARTIFACT_DIR/strings.txt" || {
+  echo "error: Gate 4 folder-picker marker is missing" >&2
   exit 1
 }
 grep -q 'progs.dat' "$ARTIFACT_DIR/strings.txt"

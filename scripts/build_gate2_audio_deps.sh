@@ -23,6 +23,7 @@ for source in "$OGG_SOURCE" "$VORBIS_SOURCE"; do
 done
 
 common_cmake=(
+    -DCMAKE_POLICY_VERSION_MINIMUM=3.5
     -DCMAKE_SYSTEM_NAME=iOS
     -DCMAKE_OSX_SYSROOT=iphoneos
     -DCMAKE_OSX_ARCHITECTURES=arm64

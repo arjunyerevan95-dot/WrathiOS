@@ -162,39 +162,43 @@ jobs:
           path: Artifacts/gate4-device-importer
           if-no-files-found: warn
 
-      - name: Enforce Gate 4 prerequisites
+      - name: Enforce Gate 4 generated evidence
         if: always()
         shell: bash
         run: |
-          [[ "${{ steps.gate4-contract.outcome }}" == "success" ]] || {
-            echo "Gate 4 data-contract tests failed" >&2
-            exit 1
-          }
-          [[ "${{ steps.gate2-probe.outcome }}" == "success" ]] || {
-            echo "Gate 2 engine compile probe failed" >&2
-            exit 1
-          }
-          [[ "${{ steps.gate2-audio.outcome }}" == "success" ]] || {
-            echo "Gate 2 audio dependency build failed" >&2
-            exit 1
-          }
-          [[ "${{ steps.gate2-sdl.outcome }}" == "success" ]] || {
-            echo "Gate 2 SDL2 build failed" >&2
-            exit 1
-          }
-          [[ "${{ steps.gate2-freetype.outcome }}" == "success" ]] || {
-            echo "Gate 2 FreeType build failed" >&2
-            exit 1
-          }
-          [[ "${{ steps.gate2-engine-archive.outcome }}" == "success" ]] || {
-            echo "Gate 2 engine archive build failed" >&2
-            exit 1
-          }
-          [[ "${{ steps.gate3-device-diagnostic.outcome }}" == "success" ]] || {
-            echo "Gate 3 device graphics diagnostic build failed" >&2
-            exit 1
-          }
-          [[ "${{ steps.gate4-device-importer.outcome }}" == "success" ]] || {
-            echo "Gate 4 licensed-data importer build failed" >&2
-            exit 1
-          }
+          set -euo pipefail
+
+          required_files=(
+            Derived/gate4-contract-tests/valid.txt
+            Derived/gate4-contract-tests/loose.txt
+            Derived/gate4-contract-tests/missing.txt
+            Derived/gate4-contract-tests/unsafe.txt
+            Derived/gate4-contract-tests/symlinked.txt
+            Derived/deps/iphoneos/lib/libogg.a
+            Derived/deps/iphoneos/lib/libvorbis.a
+            Derived/deps/iphoneos/lib/libvorbisfile.a
+            Derived/deps/iphoneos/lib/libSDL2.a
+            Derived/deps/iphoneos/lib/libfreetype.a
+            Derived/gate2-engine-archive/libwrath-engine.a
+            Artifacts/gate3-device-diagnostic/WrathiOSGate3-unsigned.ipa
+            Artifacts/gate3-device-diagnostic/SHA256SUMS.txt
+            Artifacts/gate4-device-importer/WrathiOSGate4-unsigned.ipa
+            Artifacts/gate4-device-importer/SHA256SUMS.txt
+            Artifacts/gate4-device-importer/summary.md
+          )
+
+          for file in "${required_files[@]}"; do
+            [[ -s "$file" ]] || {
+              echo "Missing or empty gate evidence: $file" >&2
+              exit 1
+            }
+          done
+
+          grep -q '^compatible=1$' Derived/gate4-contract-tests/valid.txt
+          grep -q '^compatible=1$' Derived/gate4-contract-tests/loose.txt
+          grep -q 'menu.dat' Derived/gate4-contract-tests/missing.txt
+          grep -q 'unsafe path' Derived/gate4-contract-tests/unsafe.txt
+          grep -q 'Symbolic links' Derived/gate4-contract-tests/symlinked.txt
+          grep -q 'Runtime engine startup: absent' Artifacts/gate4-device-importer/summary.md
+
+          echo "Gate 1–4 generated evidence is complete"

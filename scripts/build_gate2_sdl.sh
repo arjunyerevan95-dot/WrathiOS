@@ -2,7 +2,8 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SDL_SOURCE="$ROOT_DIR/Vendor/SDL2"
+SDL_VENDOR="$ROOT_DIR/Vendor/SDL2"
+SDL_SOURCE="$ROOT_DIR/Derived/SDL2-ios"
 BUILD_DIR="$ROOT_DIR/Derived/deps-build/iphoneos/SDL2"
 PREFIX="$ROOT_DIR/Derived/deps/iphoneos"
 ARTIFACT_DIR="$ROOT_DIR/Artifacts/gate2-sdl"
@@ -14,8 +15,14 @@ mkdir -p "$BUILD_DIR"
 
 exec > >(tee "$LOG") 2>&1
 
-[[ -d "$SDL_SOURCE/.git" ]] || {
+[[ -d "$SDL_VENDOR/.git" ]] || {
     echo "error: missing pinned SDL2 checkout" >&2
+    exit 2
+}
+
+python3 "$ROOT_DIR/scripts/materialize_sdl_ios_patches.py"
+[[ -f "$SDL_SOURCE/src/video/uikit/SDL_uikitwindow.m" ]] || {
+    echo "error: SDL2 iOS derived source was not materialized" >&2
     exit 2
 }
 
@@ -53,6 +60,14 @@ echo "$info"
 
 member_count="$(xcrun ar -t "$archive" | wc -l | tr -d ' ')"
 cp "$archive" "$ARTIFACT_DIR/"
+shasum -a 256 \
+    "$SDL_SOURCE/src/video/uikit/SDL_uikitwindow.m" \
+    > "$ARTIFACT_DIR/patched-source-SHA256.txt"
+
+git -C "$SDL_VENDOR" diff --quiet --exit-code || {
+    echo "error: pinned SDL2 vendor checkout was modified" >&2
+    exit 1
+}
 
 cat > "$ARTIFACT_DIR/inventory.md" <<EOF
 # Gate 2 SDL inventory
@@ -62,6 +77,9 @@ cat > "$ARTIFACT_DIR/inventory.md" <<EOF
 - Members: $member_count
 - Architecture: \`$info\`
 - SDL2main: disabled; UIKit owns the application entry point
+- Source: pinned SDL2 2.32.10 materialized under \`Derived/SDL2-ios\`
+- iOS adaptation: attach the SDL UIWindow to the active UIWindowScene and derive initial geometry from that scene-backed window
+- Vendor checkout: verified clean after patch materialization
 EOF
 
 echo "Gate 2 SDL built and verified"

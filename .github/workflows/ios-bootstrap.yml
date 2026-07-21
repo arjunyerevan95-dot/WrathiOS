@@ -121,21 +121,21 @@ jobs:
           path: xcodebuild-smoke.log
           if-no-files-found: warn
 
-      - name: Build Gate 2 device static-link target
-        id: gate2-device-link
+      - name: Build Gate 3 device graphics diagnostic
+        id: gate3-device-diagnostic
         if: always()
         continue-on-error: true
-        run: bash scripts/build_gate2_device_link.sh
+        run: bash scripts/build_gate3_device_diagnostic.sh
 
-      - name: Upload Gate 2 device static-link evidence
+      - name: Upload Gate 3 device graphics evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: gate2-device-link
-          path: Artifacts/gate2-device-link
+          name: gate3-device-diagnostic
+          path: Artifacts/gate3-device-diagnostic
           if-no-files-found: warn
 
-      - name: Enforce Gate 2 diagnostic results
+      - name: Enforce Gate 3 diagnostic prerequisites
         if: always()
         shell: bash
         run: |
@@ -159,7 +159,7 @@ jobs:
             echo "Gate 2 engine archive build failed" >&2
             exit 1
           }
-          [[ "${{ steps.gate2-device-link.outcome }}" == "success" ]] || {
-            echo "Gate 2 device static-link target failed" >&2
+          [[ "${{ steps.gate3-device-diagnostic.outcome }}" == "success" ]] || {
+            echo "Gate 3 device graphics diagnostic build failed" >&2
             exit 1
           }

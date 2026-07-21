@@ -3,6 +3,7 @@
 #import "AppDelegate.h"
 #import "BootstrapViewController.h"
 #import "WrathEngineBridge.h"
+#import "WrathGraphicsDiagnostic.h"
 
 @implementation AppDelegate
 
@@ -18,27 +19,47 @@
 
 - (void)applicationWillResignActive:(UIApplication *)application {
     (void)application;
+#if WRATH_GATE3_DIAGNOSTIC
+    WrathGraphicsDiagnosticWillResignActive();
+#else
     WrathEngineWillResignActive();
+#endif
 }
 
 - (void)applicationDidEnterBackground:(UIApplication *)application {
     (void)application;
+#if WRATH_GATE3_DIAGNOSTIC
+    WrathGraphicsDiagnosticDidEnterBackground();
+#else
     WrathEngineDidEnterBackground();
+#endif
 }
 
 - (void)applicationWillEnterForeground:(UIApplication *)application {
     (void)application;
+#if WRATH_GATE3_DIAGNOSTIC
+    WrathGraphicsDiagnosticWillEnterForeground();
+#else
     WrathEngineWillEnterForeground();
+#endif
 }
 
 - (void)applicationDidBecomeActive:(UIApplication *)application {
     (void)application;
+#if WRATH_GATE3_DIAGNOSTIC
+    WrathGraphicsDiagnosticDidBecomeActive();
+#else
     WrathEngineDidBecomeActive();
+#endif
 }
 
 - (void)applicationWillTerminate:(UIApplication *)application {
     (void)application;
+#if WRATH_GATE3_DIAGNOSTIC
+    WrathGraphicsDiagnosticWillTerminate();
+#else
     WrathEngineWillTerminate();
+#endif
 }
 
 @end

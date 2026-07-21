@@ -1,4 +1,4 @@
-name: WrathiOSGate2
+name: WrathiOSGate3
 options:
   bundleIdPrefix: com.arjukstudios
   createIntermediateGroups: true
@@ -12,7 +12,7 @@ settings:
     IPHONEOS_DEPLOYMENT_TARGET: "16.3"
     TARGETED_DEVICE_FAMILY: "1,2"
 targets:
-  WrathiOSGate2:
+  WrathiOSGate3:
     type: application
     platform: iOS
     deploymentTarget: "16.3"
@@ -20,7 +20,7 @@ targets:
       - path: App
         excludes:
           - Info.plist
-      - path: Platform
+      - path: Derived/gate3-platform
     dependencies:
       - sdk: UIKit.framework
       - sdk: Foundation.framework
@@ -39,8 +39,8 @@ targets:
       - sdk: SystemConfiguration.framework
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.arjukstudios.wrathios.gate2
-        PRODUCT_NAME: WrathiOSGate2
+        PRODUCT_BUNDLE_IDENTIFIER: com.arjukstudios.wrathios.gate3
+        PRODUCT_NAME: WrathiOSGate3
         INFOPLIST_FILE: App/Info.plist
         GENERATE_INFOPLIST_FILE: NO
         MARKETING_VERSION: 0.0.2
@@ -64,6 +64,7 @@ targets:
           - "$(inherited)"
           - WRATH_IOS=1
           - WRATH_ENGINE_LINKED=1
+          - WRATH_GATE3_DIAGNOSTIC=1
           - __IPHONEOS__=1
         OTHER_LDFLAGS:
           - "$(inherited)"

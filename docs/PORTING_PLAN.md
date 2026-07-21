@@ -36,6 +36,17 @@ The first renderer experiment will preserve the upstream OpenGL/OpenGL ES archit
 
 The old `DPiOS.xcodeproj` is evidence and reference material, not the build system. It targets obsolete iOS, armv7, old SDL archives, and Steel Storm configuration.
 
+## Current execution status
+
+- Gate 0: passed
+- Gate 1: passed and merged
+- Gate 2: passed and merged at repository commit `fed2c72d0fb7497869f5c547d3e4d13b456c719d`
+- Gate 2 device evidence: unsigned diagnostic IPA launched on a physical iPhone, displayed the pinned WRATH engine revision, and remained stable with runtime startup intentionally disabled
+- Active work: Gate 3 graphics-context diagnostic only
+- Blocked: Gates 4 through 8 until Gate 3 physical-device acceptance is complete
+
+The active Gate 3 work must not call `Host_Main`, access commercial files, initialize the WRATH filesystem, or begin menu/runtime debugging.
+
 ## Milestone gates
 
 ### Gate 0: repository bootstrap
@@ -74,6 +85,8 @@ Pass conditions:
 - startup reaches a controlled engine diagnostic or expected missing-data state
 - device log identifies the pinned upstream revision
 
+Status: passed in CI and on a physical device. The device diagnostic displayed the pinned engine build string without starting the runtime.
+
 Stop condition: no renderer debugging until the static-link inventory is clean.
 
 ### Gate 3: graphics-context diagnostic
@@ -86,6 +99,16 @@ Pass conditions:
 - foreground/background recovery works
 - drawable size and safe-area handling are correct
 - no game data is needed
+
+Current implementation scope:
+
+- project-authored RGB triangle and diagnostic overlay only
+- SDL2 fullscreen high-DPI iOS window
+- OpenGL ES 2 context and shader validation
+- persisted launch counter and foreground-recovery counter
+- unsigned IPA for physical-device acceptance
+
+Stop condition: do not begin Gate 4, WRATH filesystem startup, engine renderer debugging, menu work, controls, or gameplay until all Gate 3 physical-device criteria pass.
 
 ### Gate 4: licensed-data importer
 

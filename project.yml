@@ -18,17 +18,20 @@ targets:
     deploymentTarget: "16.3"
     sources:
       - path: App
+        excludes:
+          - Info.plist
       - path: Platform
     dependencies:
       - sdk: UIKit.framework
       - sdk: Foundation.framework
-    info:
-      path: App/Info.plist
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.arjukstudios.wrathios
         PRODUCT_NAME: WrathiOS
+        INFOPLIST_FILE: App/Info.plist
         GENERATE_INFOPLIST_FILE: NO
+        MARKETING_VERSION: 0.0.2
+        CURRENT_PROJECT_VERSION: 2
         CODE_SIGN_STYLE: Automatic
         GCC_PREPROCESSOR_DEFINITIONS:
           - "$(inherited)"

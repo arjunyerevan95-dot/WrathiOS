@@ -20,6 +20,19 @@ jobs:
       - name: Validate Gate 1 source manifest
         run: python3 scripts/validate_engine_manifest.py --require-upstream
 
+      - name: Probe Gate 2 arm64 engine compilation
+        id: gate2-probe
+        continue-on-error: true
+        run: python3 scripts/gate2_compile_probe.py
+
+      - name: Upload Gate 2 compile report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate2-compile-probe
+          path: Artifacts/gate2-compile-probe
+          if-no-files-found: error
+
       - name: Install XcodeGen
         run: brew install xcodegen
 

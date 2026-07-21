@@ -52,6 +52,19 @@ jobs:
           path: Artifacts/gate2-audio-deps
           if-no-files-found: warn
 
+      - name: Build Gate 2 engine archive
+        id: gate2-engine-archive
+        continue-on-error: true
+        run: python3 scripts/build_gate2_engine_archive.py
+
+      - name: Upload Gate 2 engine archive
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate2-engine-archive
+          path: Artifacts/gate2-engine-archive
+          if-no-files-found: warn
+
       - name: Install XcodeGen
         if: always()
         run: brew install xcodegen
@@ -92,5 +105,9 @@ jobs:
           }
           [[ "${{ steps.gate2-audio.outcome }}" == "success" ]] || {
             echo "Gate 2 audio dependency build failed" >&2
+            exit 1
+          }
+          [[ "${{ steps.gate2-engine-archive.outcome }}" == "success" ]] || {
+            echo "Gate 2 engine archive build failed" >&2
             exit 1
           }

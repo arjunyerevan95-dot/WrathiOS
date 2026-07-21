@@ -180,7 +180,7 @@ jobs:
             Derived/deps/iphoneos/lib/libSDL2.a
             Derived/deps/iphoneos/lib/libfreetype.a
             Derived/gate2-engine-archive/libwrath-engine.a
-            Artifacts/gate3-device-diagnostic/WrathiOSGate3-unsigned.ipa
+            Artifacts/gate3-device-diagnostic/WrathiOSGate3-v2-unsigned.ipa
             Artifacts/gate3-device-diagnostic/SHA256SUMS.txt
             Artifacts/gate4-device-importer/WrathiOSGate4-unsigned.ipa
             Artifacts/gate4-device-importer/SHA256SUMS.txt

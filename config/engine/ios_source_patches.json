@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "upstream_commit": "f6862f628d6ddc133a9ef67bc4631b6137809772",
+  "patches": [
+    {
+      "path": "menu.c",
+      "reason": "Match the hardcoded menu input stub to the shared menu-router callback signature.",
+      "replacements": [
+        {
+          "old": "static int M_InputEvent (int type, int key, int ascii)",
+          "new": "static int M_InputEvent (int type, float key, float ascii)"
+        }
+      ]
+    },
+    {
+      "path": "mvm_cmds.c",
+      "reason": "Expose the existing Steam and controller stub declarations to menu builtins when Steamworks is absent.",
+      "replacements": [
+        {
+          "old": "#include \"csprogs.h\"\n",
+          "new": "#include \"csprogs.h\"\n#include \"cl_steam.h\"\n"
+        }
+      ]
+    },
+    {
+      "path": "vid_sdl.c",
+      "reason": "Keep SDL_Joystick and SDL_GameController handles type-correct under SDL2.",
+      "replacements": [
+        {
+          "old": "\t\tif (vid_sdljoystick)\n\t\t{\n\t\t\tif (SDL_IsGameController(vid_sdljoystick))\n\t\t\t\tSDL_GameControllerClose(vid_sdljoystick);\n\t\t\telse\n\t\t\t\tSDL_JoystickClose(vid_sdljoystick);\n\t\t}\n\t\tvid_sdlcontroller = NULL;\n\t\tvid_sdljoystick = NULL;",
+          "new": "\t\tif (vid_sdlcontroller)\n\t\t\tSDL_GameControllerClose(vid_sdlcontroller);\n\t\telse if (vid_sdljoystick)\n\t\t\tSDL_JoystickClose(vid_sdljoystick);\n\t\tvid_sdlcontroller = NULL;\n\t\tvid_sdljoystick = NULL;"
+        },
+        {
+          "old": "\t\t\t\tvid_sdljoystick = SDL_GameControllerOpen(sdlindex);\n\t\t\t\tvid_sdlcontroller = vid_sdljoystick;\n\t\t\t\tif (vid_sdljoystick)\n\t\t\t\t{\n\t\t\t\t\tconst char *joystickname = SDL_GameControllerName(vid_sdljoystick);",
+          "new": "\t\t\t\tvid_sdlcontroller = SDL_GameControllerOpen(sdlindex);\n\t\t\t\tvid_sdljoystick = vid_sdlcontroller ? SDL_GameControllerGetJoystick(vid_sdlcontroller) : NULL;\n\t\t\t\tif (vid_sdlcontroller)\n\t\t\t\t{\n\t\t\t\t\tconst char *joystickname = SDL_GameControllerName(vid_sdlcontroller);"
+        }
+      ]
+    }
+  ]
+}

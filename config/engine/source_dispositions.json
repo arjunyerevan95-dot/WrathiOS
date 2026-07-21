@@ -1,0 +1,805 @@
+{
+  "schema_version": 1,
+  "upstream": {
+    "repository": "Official3DRealms/wrath-darkplaces",
+    "commit": "f6862f628d6ddc133a9ef67bc4631b6137809772",
+    "release": "RELEASE_1.1.2",
+    "authoritative_manifests": [
+      "makefile",
+      "makefile.inc"
+    ]
+  },
+  "target": {
+    "platform": "iOS",
+    "minimum_version": "16.3",
+    "architecture": "arm64",
+    "client_backend": "SDL2 + OpenGL ES 2",
+    "build_gate": 2,
+    "feature_definitions": {
+      "CONFIG_MENU": true,
+      "CONFIG_CD": false,
+      "CONFIG_VIDEO_CAPTURE": false,
+      "USE_GLES2": true,
+      "WRATH_IOS_NO_DLOPEN": true
+    }
+  },
+  "counts": {
+    "upstream_translation_units": 117,
+    "selected_upstream_translation_units": 93,
+    "ios_replacements_planned": 1
+  },
+  "sources": [
+    {
+      "path": "bih.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "builddate.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "cap_avi.c",
+      "disposition": "exclude_optional_feature",
+      "selected_for_gate2": false,
+      "reason": "Video capture is disabled for first boot (DP_VIDEO_CAPTURE=disabled)."
+    },
+    {
+      "path": "cap_ogg.c",
+      "disposition": "exclude_optional_feature",
+      "selected_for_gate2": false,
+      "reason": "Video capture is disabled for first boot (DP_VIDEO_CAPTURE=disabled)."
+    },
+    {
+      "path": "cd_bsd.c",
+      "disposition": "exclude_desktop_backend",
+      "selected_for_gate2": false,
+      "reason": "Desktop, server, or non-iOS platform backend is outside the iOS SDL client graph."
+    },
+    {
+      "path": "cd_linux.c",
+      "disposition": "exclude_desktop_backend",
+      "selected_for_gate2": false,
+      "reason": "Desktop, server, or non-iOS platform backend is outside the iOS SDL client graph."
+    },
+    {
+      "path": "cd_null.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "cd_sdl.c",
+      "disposition": "exclude_desktop_backend",
+      "selected_for_gate2": false,
+      "reason": "Desktop, server, or non-iOS platform backend is outside the iOS SDL client graph."
+    },
+    {
+      "path": "cd_shared.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "cd_win.c",
+      "disposition": "exclude_desktop_backend",
+      "selected_for_gate2": false,
+      "reason": "Desktop, server, or non-iOS platform backend is outside the iOS SDL client graph."
+    },
+    {
+      "path": "cl_collision.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "cl_demo.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "cl_dyntexture.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "cl_input.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "cl_main.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "cl_parse.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "cl_particles.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "cl_screen.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "cl_steam.c",
+      "disposition": "include_builtin_stub",
+      "selected_for_gate2": true,
+      "reason": "With steamlauncher/wrath_common.h absent, upstream compiles its built-in no-Steam stub branch."
+    },
+    {
+      "path": "cl_video.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "clvm_cmds.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "cmd.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "collision.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "common.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "console.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "crypto.c",
+      "disposition": "include_deferred_static_binding",
+      "selected_for_gate2": true,
+      "reason": "Core code compiles, but optional crypto providers must not be dynamically loaded on iOS."
+    },
+    {
+      "path": "csprogs.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "curves.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "cvar.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "dpsoftrast.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "dpvsimpledecode.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "filematch.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "fractalnoise.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "fs.c",
+      "disposition": "include_ios_adaptation",
+      "selected_for_gate2": true,
+      "reason": "Requires sandbox-aware base, user, and save paths; no desktop current-directory assumptions."
+    },
+    {
+      "path": "ft2.c",
+      "disposition": "include_deferred_static_binding",
+      "selected_for_gate2": true,
+      "reason": "FreeType runtime loading is disabled for Gate 2; static binding is deferred until required by menu rendering."
+    },
+    {
+      "path": "gl_backend.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "gl_draw.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "gl_rmain.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "gl_rsurf.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "gl_textures.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "hmac.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "host.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "host_cmd.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "image.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "image_png.c",
+      "disposition": "include_deferred_static_binding",
+      "selected_for_gate2": true,
+      "reason": "PNG runtime loading is disabled for Gate 2; later gates must bind a pinned static libpng."
+    },
+    {
+      "path": "jpeg.c",
+      "disposition": "include_deferred_static_binding",
+      "selected_for_gate2": true,
+      "reason": "JPEG runtime loading is disabled for Gate 2; later gates must bind a pinned static libjpeg-turbo or compatible library."
+    },
+    {
+      "path": "keys.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "keysym2ucs.c",
+      "disposition": "exclude_desktop_backend",
+      "selected_for_gate2": false,
+      "reason": "Desktop, server, or non-iOS platform backend is outside the iOS SDL client graph."
+    },
+    {
+      "path": "lhnet.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "libcurl.c",
+      "disposition": "include_deferred_static_binding",
+      "selected_for_gate2": true,
+      "reason": "HTTP runtime loading is disabled for Gate 2; network transfer support is not required for first boot."
+    },
+    {
+      "path": "mathlib.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "matrixlib.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "mdfour.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "menu.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "meshqueue.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "mod_skeletal_animatevertices_generic.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "mod_skeletal_animatevertices_sse.c",
+      "disposition": "exclude_architecture",
+      "selected_for_gate2": false,
+      "reason": "x86 SSE implementation; arm64 uses the generic implementation."
+    },
+    {
+      "path": "model_alias.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "model_brush.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "model_shared.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "model_sprite.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "mvm_cmds.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "netconn.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "nodegraph.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "palette.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "polygon.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "portals.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "protocol.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "prvm_cmds.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "prvm_edict.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "prvm_exec.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "r_explosion.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "r_lerpanim.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "r_lightning.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "r_modules.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "r_shadow.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "r_sky.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "r_sprites.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "sbar.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "snd_3dras.c",
+      "disposition": "exclude_desktop_backend",
+      "selected_for_gate2": false,
+      "reason": "Desktop, server, or non-iOS platform backend is outside the iOS SDL client graph."
+    },
+    {
+      "path": "snd_alsa.c",
+      "disposition": "exclude_desktop_backend",
+      "selected_for_gate2": false,
+      "reason": "Desktop, server, or non-iOS platform backend is outside the iOS SDL client graph."
+    },
+    {
+      "path": "snd_bsd.c",
+      "disposition": "exclude_desktop_backend",
+      "selected_for_gate2": false,
+      "reason": "Desktop, server, or non-iOS platform backend is outside the iOS SDL client graph."
+    },
+    {
+      "path": "snd_coreaudio.c",
+      "disposition": "exclude_desktop_backend",
+      "selected_for_gate2": false,
+      "reason": "Desktop, server, or non-iOS platform backend is outside the iOS SDL client graph."
+    },
+    {
+      "path": "snd_main.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "snd_mem.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "snd_mix.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "snd_null.c",
+      "disposition": "exclude_desktop_backend",
+      "selected_for_gate2": false,
+      "reason": "Desktop, server, or non-iOS platform backend is outside the iOS SDL client graph."
+    },
+    {
+      "path": "snd_ogg.c",
+      "disposition": "include_deferred_static_binding",
+      "selected_for_gate2": true,
+      "reason": "Ogg/Vorbis runtime loading is disabled for Gate 2; audio codec libraries will be pinned before menu/audio acceptance."
+    },
+    {
+      "path": "snd_oss.c",
+      "disposition": "exclude_desktop_backend",
+      "selected_for_gate2": false,
+      "reason": "Desktop, server, or non-iOS platform backend is outside the iOS SDL client graph."
+    },
+    {
+      "path": "snd_sdl.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "snd_wav.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "snd_win.c",
+      "disposition": "exclude_desktop_backend",
+      "selected_for_gate2": false,
+      "reason": "Desktop, server, or non-iOS platform backend is outside the iOS SDL client graph."
+    },
+    {
+      "path": "sv_demo.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "sv_main.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "sv_move.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "sv_phys.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "sv_user.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "svbsp.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "svvm_cmds.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "sys_linux.c",
+      "disposition": "exclude_desktop_backend",
+      "selected_for_gate2": false,
+      "reason": "Desktop, server, or non-iOS platform backend is outside the iOS SDL client graph."
+    },
+    {
+      "path": "sys_sdl.c",
+      "disposition": "replace_ios",
+      "selected_for_gate2": false,
+      "reason": "Defines the desktop SDL main() and terminal lifecycle. Gate 2 must provide a UIKit-owned iOS system backend.",
+      "replacement": "Platform/Engine/sys_ios.mm"
+    },
+    {
+      "path": "sys_shared.c",
+      "disposition": "include_ios_adaptation",
+      "selected_for_gate2": true,
+      "reason": "Requires iOS quit semantics and a deterministic no-dlopen policy for non-system libraries."
+    },
+    {
+      "path": "sys_win.c",
+      "disposition": "exclude_desktop_backend",
+      "selected_for_gate2": false,
+      "reason": "Desktop, server, or non-iOS platform backend is outside the iOS SDL client graph."
+    },
+    {
+      "path": "thread_null.c",
+      "disposition": "exclude_desktop_backend",
+      "selected_for_gate2": false,
+      "reason": "Desktop, server, or non-iOS platform backend is outside the iOS SDL client graph."
+    },
+    {
+      "path": "thread_pthread.c",
+      "disposition": "exclude_desktop_backend",
+      "selected_for_gate2": false,
+      "reason": "Desktop, server, or non-iOS platform backend is outside the iOS SDL client graph."
+    },
+    {
+      "path": "thread_sdl.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "utf8lib.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "vid_agl.c",
+      "disposition": "exclude_desktop_backend",
+      "selected_for_gate2": false,
+      "reason": "Desktop, server, or non-iOS platform backend is outside the iOS SDL client graph."
+    },
+    {
+      "path": "vid_glx.c",
+      "disposition": "exclude_desktop_backend",
+      "selected_for_gate2": false,
+      "reason": "Desktop, server, or non-iOS platform backend is outside the iOS SDL client graph."
+    },
+    {
+      "path": "vid_null.c",
+      "disposition": "exclude_desktop_backend",
+      "selected_for_gate2": false,
+      "reason": "Desktop, server, or non-iOS platform backend is outside the iOS SDL client graph."
+    },
+    {
+      "path": "vid_sdl.c",
+      "disposition": "include_ios_adaptation",
+      "selected_for_gate2": true,
+      "reason": "Retains upstream SDL/GLES and touchscreen code but requires UIKit lifecycle, drawable-size, and context recovery work."
+    },
+    {
+      "path": "vid_shared.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "vid_wgl.c",
+      "disposition": "exclude_desktop_backend",
+      "selected_for_gate2": false,
+      "reason": "Desktop, server, or non-iOS platform backend is outside the iOS SDL client graph."
+    },
+    {
+      "path": "view.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "wad.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "world.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    },
+    {
+      "path": "zone.c",
+      "disposition": "include_portable",
+      "selected_for_gate2": true,
+      "reason": "Selected from the SDL client graph and has no known architecture-specific exclusion at Gate 1."
+    }
+  ],
+  "dependencies": [
+    {
+      "name": "SDL2",
+      "provenance": "libsdl-org/SDL",
+      "version": "2.32.10",
+      "commit": "5d249570393f7a37e037abf22cd6012a4cc56a71",
+      "linkage": "static source build or static XCFramework",
+      "gate2_status": "approved"
+    },
+    {
+      "name": "zlib",
+      "provenance": "Apple iOS SDK libz.tbd",
+      "version": "SDK-provided",
+      "linkage": "system",
+      "gate2_status": "approved"
+    },
+    {
+      "name": "Apple system frameworks",
+      "provenance": "Selected iOS SDK",
+      "version": "SDK-provided",
+      "linkage": "system",
+      "gate2_status": "approved",
+      "frameworks": [
+        "Foundation.framework",
+        "UIKit.framework",
+        "CoreGraphics.framework",
+        "QuartzCore.framework",
+        "OpenGLES.framework",
+        "CoreAudio.framework",
+        "AudioToolbox.framework",
+        "AVFoundation.framework",
+        "CoreMotion.framework",
+        "GameController.framework"
+      ]
+    },
+    {
+      "name": "Runtime-loaded desktop libraries",
+      "provenance": "Not linked at Gate 2",
+      "version": "N/A",
+      "linkage": "disabled",
+      "gate2_status": "forbidden",
+      "libraries": [
+        "libpng",
+        "libjpeg",
+        "libfreetype",
+        "libcurl",
+        "libogg",
+        "libvorbis",
+        "libtheora",
+        "OpenSSL/crypto providers",
+        "ODE",
+        "Steamworks"
+      ]
+    }
+  ],
+  "replacement_units": [
+    {
+      "upstream": "sys_sdl.c",
+      "replacement": "Platform/Engine/sys_ios.mm",
+      "status": "planned_for_gate2",
+      "required_responsibilities": [
+        "UIKit-owned engine start and stop",
+        "nonblocking log forwarding without stdin",
+        "sandbox path handoff",
+        "fatal-error reporting without process-owned desktop UI",
+        "SDL timing hooks"
+      ]
+    }
+  ]
+}

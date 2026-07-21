@@ -14,6 +14,12 @@ jobs:
       - name: Validate repository policy and metadata
         run: ./scripts/check_repository.sh
 
+      - name: Fetch and verify pinned upstream sources
+        run: ./scripts/fetch_upstream.sh
+
+      - name: Validate Gate 1 source manifest
+        run: python3 scripts/validate_engine_manifest.py --require-upstream
+
       - name: Install XcodeGen
         run: brew install xcodegen
 
@@ -21,12 +27,22 @@ jobs:
         run: ./scripts/generate_project.sh
 
       - name: Build simulator smoke target
-        run: >-
-          xcodebuild
-          -project WrathiOS.xcodeproj
-          -scheme WrathiOS
-          -configuration Debug
-          -sdk iphonesimulator
-          -destination 'generic/platform=iOS Simulator'
-          CODE_SIGNING_ALLOWED=NO
-          build
+        shell: bash
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project WrathiOS.xcodeproj \
+            -scheme WrathiOS \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO \
+            build 2>&1 | tee xcodebuild-smoke.log
+
+      - name: Upload Xcode smoke-build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcodebuild-smoke-log
+          path: xcodebuild-smoke.log
+          if-no-files-found: error

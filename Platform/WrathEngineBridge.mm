@@ -2,7 +2,12 @@
 
 #import "WrathEngineBridge.h"
 
+#if WRATH_ENGINE_LINKED
+extern "C" const char *buildstring;
+static WrathEngineBridgeState gWrathEngineState = WrathEngineBridgeStateLinkedDiagnostic;
+#else
 static WrathEngineBridgeState gWrathEngineState = WrathEngineBridgeStateNotLinked;
+#endif
 
 WrathEngineBridgeState WrathEngineCurrentState(void) {
     return gWrathEngineState;
@@ -10,6 +15,18 @@ WrathEngineBridgeState WrathEngineCurrentState(void) {
 
 NSString *WrathEngineStatusText(void) {
     switch (gWrathEngineState) {
+        case WrathEngineBridgeStateLinkedDiagnostic: {
+#if WRATH_ENGINE_LINKED
+            NSString *revision = buildstring != nullptr
+                ? [NSString stringWithUTF8String:buildstring]
+                : @"unknown revision";
+            return [NSString stringWithFormat:
+                @"Gate 2 static-link diagnostic passed. WRATH engine build: %@. Runtime startup is intentionally disabled.",
+                revision];
+#else
+            return @"Engine diagnostic state is unavailable in this build.";
+#endif
+        }
         case WrathEngineBridgeStateStarting:
             return @"Engine bootstrap is starting.";
         case WrathEngineBridgeStateRunning:

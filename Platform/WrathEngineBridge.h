@@ -6,6 +6,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 typedef NS_ENUM(NSInteger, WrathEngineBridgeState) {
     WrathEngineBridgeStateNotLinked = 0,
+    WrathEngineBridgeStateLinkedDiagnostic,
     WrathEngineBridgeStateStarting,
     WrathEngineBridgeStateRunning,
     WrathEngineBridgeStateSuspended,

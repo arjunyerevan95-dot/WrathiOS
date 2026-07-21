@@ -2,11 +2,17 @@ name: iOS bootstrap
 
 on:
   push:
+    branches:
+      - main
   pull_request:
+
+concurrency:
+  group: ios-bootstrap-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   validate-and-build:
-    runs-on: macos-latest
+    runs-on: macos-15-intel
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -20,13 +26,81 @@ jobs:
       - name: Validate Gate 1 source manifest
         run: python3 scripts/validate_engine_manifest.py --require-upstream
 
+      - name: Probe Gate 2 arm64 engine compilation
+        id: gate2-probe
+        continue-on-error: true
+        run: python3 scripts/gate2_compile_probe.py
+
+      - name: Upload Gate 2 compile report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate2-compile-probe
+          path: Artifacts/gate2-compile-probe
+          if-no-files-found: warn
+
+      - name: Build Gate 2 audio dependencies
+        id: gate2-audio
+        continue-on-error: true
+        run: bash scripts/build_gate2_audio_deps.sh
+
+      - name: Upload Gate 2 audio dependencies
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate2-audio-deps
+          path: Artifacts/gate2-audio-deps
+          if-no-files-found: warn
+
+      - name: Build Gate 2 SDL2
+        id: gate2-sdl
+        continue-on-error: true
+        run: bash scripts/build_gate2_sdl.sh
+
+      - name: Upload Gate 2 SDL2
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate2-sdl
+          path: Artifacts/gate2-sdl
+          if-no-files-found: warn
+
+      - name: Build Gate 2 FreeType
+        id: gate2-freetype
+        continue-on-error: true
+        run: bash scripts/build_gate2_freetype.sh
+
+      - name: Upload Gate 2 FreeType
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate2-freetype
+          path: Artifacts/gate2-freetype
+          if-no-files-found: warn
+
+      - name: Build Gate 2 engine archive
+        id: gate2-engine-archive
+        continue-on-error: true
+        run: python3 scripts/build_gate2_engine_archive.py
+
+      - name: Upload Gate 2 engine archive
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate2-engine-archive
+          path: Artifacts/gate2-engine-archive
+          if-no-files-found: warn
+
       - name: Install XcodeGen
+        if: always()
         run: brew install xcodegen
 
       - name: Generate Xcode project
+        if: always()
         run: ./scripts/generate_project.sh
 
       - name: Build simulator smoke target
+        if: always()
         shell: bash
         run: |
           set -o pipefail
@@ -45,4 +119,47 @@ jobs:
         with:
           name: xcodebuild-smoke-log
           path: xcodebuild-smoke.log
-          if-no-files-found: error
+          if-no-files-found: warn
+
+      - name: Build Gate 2 device static-link target
+        id: gate2-device-link
+        if: always()
+        continue-on-error: true
+        run: bash scripts/build_gate2_device_link.sh
+
+      - name: Upload Gate 2 device static-link evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate2-device-link
+          path: Artifacts/gate2-device-link
+          if-no-files-found: warn
+
+      - name: Enforce Gate 2 diagnostic results
+        if: always()
+        shell: bash
+        run: |
+          [[ "${{ steps.gate2-probe.outcome }}" == "success" ]] || {
+            echo "Gate 2 engine compile probe failed" >&2
+            exit 1
+          }
+          [[ "${{ steps.gate2-audio.outcome }}" == "success" ]] || {
+            echo "Gate 2 audio dependency build failed" >&2
+            exit 1
+          }
+          [[ "${{ steps.gate2-sdl.outcome }}" == "success" ]] || {
+            echo "Gate 2 SDL2 build failed" >&2
+            exit 1
+          }
+          [[ "${{ steps.gate2-freetype.outcome }}" == "success" ]] || {
+            echo "Gate 2 FreeType build failed" >&2
+            exit 1
+          }
+          [[ "${{ steps.gate2-engine-archive.outcome }}" == "success" ]] || {
+            echo "Gate 2 engine archive build failed" >&2
+            exit 1
+          }
+          [[ "${{ steps.gate2-device-link.outcome }}" == "success" ]] || {
+            echo "Gate 2 device static-link target failed" >&2
+            exit 1
+          }

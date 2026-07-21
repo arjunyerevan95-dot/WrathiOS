@@ -43,7 +43,9 @@ cmake --build "$BUILD_ROOT/ogg" --config Release --target install --parallel 3
 
 cmake -S "$VORBIS_SOURCE" -B "$BUILD_ROOT/vorbis" \
     "${common_cmake[@]}" \
-    -DOgg_DIR="$PREFIX/lib/cmake/Ogg" \
+    -DCMAKE_PREFIX_PATH="$PREFIX" \
+    -DOGG_LIBRARY="$PREFIX/lib/libogg.a" \
+    -DOGG_INCLUDE_DIR="$PREFIX/include" \
     -DINSTALL_CMAKE_PACKAGE_MODULE=OFF
 cmake --build "$BUILD_ROOT/vorbis" --config Release --target install --parallel 3
 

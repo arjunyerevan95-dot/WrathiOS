@@ -16,6 +16,8 @@ required_files=(
     Platform/WrathGraphicsDiagnostic.mm
     scripts/upstream.env
     scripts/validate_engine_manifest.py
+    scripts/materialize_sdl_ios_patches.py
+    scripts/build_gate2_sdl.sh
     scripts/build_gate3_device_diagnostic.sh
     config/engine/source_dispositions.json
     config/engine/ios_upstream_sources.txt
@@ -46,7 +48,9 @@ with Path("App/Info.plist").open("rb") as handle:
 print("validated App/Info.plist")
 PY
 
+bash -n scripts/build_gate2_sdl.sh
 bash -n scripts/build_gate3_device_diagnostic.sh
+python3 -m py_compile scripts/materialize_sdl_ios_patches.py
 python3 scripts/validate_engine_manifest.py
 
 echo "repository checks passed"

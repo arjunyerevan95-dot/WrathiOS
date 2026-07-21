@@ -10,6 +10,8 @@ WrathiOS.xcodeproj/
 
 # Generated/vendor source
 Vendor/
+Derived/
+Artifacts/
 
 # Commercial WRATH data: never commit
 GameData/

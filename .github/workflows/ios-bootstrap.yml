@@ -52,6 +52,19 @@ jobs:
           path: Artifacts/gate2-audio-deps
           if-no-files-found: warn
 
+      - name: Build Gate 2 SDL2
+        id: gate2-sdl
+        continue-on-error: true
+        run: ./scripts/build_gate2_sdl.sh
+
+      - name: Upload Gate 2 SDL2
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate2-sdl
+          path: Artifacts/gate2-sdl
+          if-no-files-found: warn
+
       - name: Build Gate 2 engine archive
         id: gate2-engine-archive
         continue-on-error: true
@@ -105,6 +118,10 @@ jobs:
           }
           [[ "${{ steps.gate2-audio.outcome }}" == "success" ]] || {
             echo "Gate 2 audio dependency build failed" >&2
+            exit 1
+          }
+          [[ "${{ steps.gate2-sdl.outcome }}" == "success" ]] || {
+            echo "Gate 2 SDL2 build failed" >&2
             exit 1
           }
           [[ "${{ steps.gate2-engine-archive.outcome }}" == "success" ]] || {

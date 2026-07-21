@@ -12,8 +12,12 @@ required_files=(
     App/main.mm
     Platform/WrathEngineBridge.mm
     scripts/upstream.env
+    scripts/validate_engine_manifest.py
+    config/engine/source_dispositions.json
+    config/engine/ios_upstream_sources.txt
     docs/PORTING_PLAN.md
     docs/ASSET_POLICY.md
+    docs/GATE1_SOURCE_INVENTORY.md
 )
 
 for file in "${required_files[@]}"; do
@@ -36,5 +40,7 @@ with Path("App/Info.plist").open("rb") as handle:
     plistlib.load(handle)
 print("validated App/Info.plist")
 PY
+
+python3 scripts/validate_engine_manifest.py
 
 echo "repository checks passed"

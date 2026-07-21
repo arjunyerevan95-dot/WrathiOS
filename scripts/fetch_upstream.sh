@@ -46,5 +46,7 @@ fetch_exact_revision() {
 mkdir -p "$VENDOR_DIR"
 fetch_exact_revision wrath-darkplaces "$WRATH_ENGINE_URL" "$WRATH_ENGINE_COMMIT"
 fetch_exact_revision wrath-qc "$WRATH_QC_URL" "$WRATH_QC_COMMIT"
+fetch_exact_revision SDL2 "$SDL2_URL" "$SDL2_COMMIT"
 
 "$ROOT_DIR/scripts/verify_upstream.sh"
+python3 "$ROOT_DIR/scripts/validate_engine_manifest.py" --require-upstream

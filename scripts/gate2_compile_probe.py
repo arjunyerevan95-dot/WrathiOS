@@ -8,7 +8,6 @@ all translation-unit failures rather than stopping at the first compiler error.
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
 import shlex
 import subprocess
@@ -19,6 +18,7 @@ ENGINE = ROOT / "Vendor" / "wrath-darkplaces"
 SDL = ROOT / "Vendor" / "SDL"
 MANIFEST = ROOT / "config" / "engine" / "ios_upstream_sources.txt"
 OUTPUT_DIR = ROOT / "Artifacts" / "gate2-compile-probe"
+ENGINE_PREFIX = "Vendor/wrath-darkplaces/"
 
 
 def run(command: list[str]) -> subprocess.CompletedProcess[str]:
@@ -26,25 +26,37 @@ def run(command: list[str]) -> subprocess.CompletedProcess[str]:
 
 
 def main() -> int:
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
     if not ENGINE.is_dir() or not SDL.is_dir():
-        print("error: pinned upstream checkouts are missing; run scripts/fetch_upstream.sh", file=sys.stderr)
+        message = "error: pinned upstream checkouts are missing; run scripts/fetch_upstream.sh"
+        (OUTPUT_DIR / "probe.log").write_text(message + "\n", encoding="utf-8")
+        print(message, file=sys.stderr)
         return 2
 
     sdk = run(["xcrun", "--sdk", "iphoneos", "--show-sdk-path"])
     clang = run(["xcrun", "--sdk", "iphoneos", "--find", "clang"])
     if sdk.returncode or clang.returncode:
-        print(sdk.stderr or clang.stderr, file=sys.stderr)
+        message = sdk.stderr or clang.stderr
+        (OUTPUT_DIR / "probe.log").write_text(message, encoding="utf-8")
+        print(message, file=sys.stderr)
         return 2
 
     sdk_path = sdk.stdout.strip()
     clang_path = clang.stdout.strip()
-    sources = [
+    manifest_paths = [
         line.strip()
         for line in MANIFEST.read_text(encoding="utf-8").splitlines()
         if line.strip() and not line.lstrip().startswith("#")
     ]
 
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    sources: list[tuple[str, Path]] = []
+    for manifest_path in manifest_paths:
+        if not manifest_path.startswith(ENGINE_PREFIX):
+            raise ValueError(f"unexpected engine manifest path: {manifest_path}")
+        engine_relative = manifest_path.removeprefix(ENGINE_PREFIX)
+        sources.append((manifest_path, ENGINE / engine_relative))
+
     common = [
         clang_path,
         "-arch", "arm64",
@@ -64,19 +76,22 @@ def main() -> int:
     ]
 
     results: list[dict[str, object]] = []
-    for relative in sources:
-        source = ENGINE / relative
+    transcript: list[str] = []
+    for manifest_path, source in sources:
         command = [*common, str(source)]
         completed = run(command)
+        status = "pass" if completed.returncode == 0 else "fail"
         results.append({
-            "source": relative,
-            "status": "pass" if completed.returncode == 0 else "fail",
+            "source": manifest_path,
+            "status": status,
             "returncode": completed.returncode,
             "command": shlex.join(command),
             "stdout": completed.stdout,
             "stderr": completed.stderr,
         })
-        print(f"[{results[-1]['status']}] {relative}")
+        line = f"[{status}] {manifest_path}"
+        transcript.append(line)
+        print(line)
 
     passed = sum(item["status"] == "pass" for item in results)
     failed = len(results) - passed
@@ -109,8 +124,10 @@ def main() -> int:
             )
             lines.append(f"- `{item['source']}`: {first_error}")
     (OUTPUT_DIR / "summary.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    transcript.append(f"Gate 2 probe complete: {passed}/{len(results)} units passed")
+    (OUTPUT_DIR / "probe.log").write_text("\n".join(transcript) + "\n", encoding="utf-8")
 
-    print(f"Gate 2 probe complete: {passed}/{len(results)} units passed")
+    print(transcript[-1])
     return 0 if failed == 0 else 1
 
 

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-WORK_DIR="$ROOT_DIR/Derived/gate4-contract-tests"
+WORK_DIR="$ROOT_DIR/Artifacts/gate4-data-contract"
 CLI="$WORK_DIR/wrath-data-contract"
 
 rm -rf "$WORK_DIR"
@@ -82,5 +82,15 @@ if "$CLI" "$WORK_DIR/symlinked" > "$WORK_DIR/symlinked.txt"; then
   exit 1
 fi
 grep -q 'Symbolic links' "$WORK_DIR/symlinked.txt"
+
+cat > "$WORK_DIR/summary.md" <<'EOF'
+# Gate 4 data-contract test evidence
+
+- Valid PK3 layout: passed
+- Valid loose layout: passed
+- Missing menu.dat: rejected
+- Traversal-bearing PK3: rejected
+- Symbolic link: rejected
+EOF
 
 echo "Gate 4 data-contract tests passed"

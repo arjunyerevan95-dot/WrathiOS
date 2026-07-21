@@ -9,7 +9,7 @@ PROJECT="$ROOT_DIR/WrathiOSGate3.xcodeproj"
 APP_BUNDLE="$DERIVED_DATA/Build/Products/Debug-iphoneos/WrathiOSGate3.app"
 BINARY="$APP_BUNDLE/WrathiOSGate3"
 PACKAGE_ROOT="$ROOT_DIR/Derived/gate3-package"
-IPA="$ARTIFACT_DIR/WrathiOSGate3-unsigned.ipa"
+IPA="$ARTIFACT_DIR/WrathiOSGate3-v2-unsigned.ipa"
 
 mkdir -p "$ARTIFACT_DIR"
 rm -rf "$DERIVED_DATA" "$PROJECT" "$PACKAGE_ROOT"
@@ -36,6 +36,7 @@ command -v xcodegen >/dev/null 2>&1 || {
 }
 
 cd "$ROOT_DIR"
+python3 scripts/materialize_gate3_platform.py
 xcodegen generate --spec project-gate3.yml
 
 set -o pipefail
@@ -79,9 +80,30 @@ grep -q 'Gate 3 graphics diagnostic' "$ARTIFACT_DIR/strings.txt" || {
     exit 1
 }
 
+grep -q 'WrathGate3LaunchCountV2' "$ARTIFACT_DIR/strings.txt" || {
+    echo "error: fresh Gate 3 launch-counter namespace was not embedded" >&2
+    exit 1
+}
+
 bundle_id="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP_BUNDLE/Info.plist")"
+short_version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP_BUNDLE/Info.plist")"
+build_version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$APP_BUNDLE/Info.plist")"
+display_name="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleDisplayName' "$APP_BUNDLE/Info.plist")"
+
 [[ "$bundle_id" == "com.arjukstudios.wrathios.gate3" ]] || {
     echo "error: unexpected Gate 3 bundle identifier: $bundle_id" >&2
+    exit 1
+}
+[[ "$short_version" == "0.0.2" && "$build_version" == "2" ]] || {
+    echo "error: unexpected Gate 3 version: $short_version ($build_version)" >&2
+    exit 1
+}
+[[ "$display_name" == "WrathiOS G3 v2" ]] || {
+    echo "error: unexpected Gate 3 display name: $display_name" >&2
+    exit 1
+}
+[[ -d "$APP_BUNDLE/LaunchScreen.storyboardc" ]] || {
+    echo "error: compiled adaptive launch storyboard is missing" >&2
     exit 1
 }
 
@@ -132,33 +154,34 @@ shasum -a 256 "$BINARY" "$IPA" > "$ARTIFACT_DIR/SHA256SUMS.txt"
 cp "$BINARY" "$ARTIFACT_DIR/WrathiOSGate3-arm64"
 
 cat > "$ARTIFACT_DIR/device-test-checklist.md" <<'EOF'
-# Gate 3 physical-device checklist
+# Gate 3 same-App-ID cache diagnostic
 
-1. Sign and install `WrathiOSGate3-unsigned.ipa` through the tester's own sideloading workflow.
-2. Launch in landscape and verify a large RGB triangle renders behind the diagnostic panel.
-3. Confirm the panel reports an active SDL2/OpenGL ES context and non-zero drawable dimensions.
-4. Confirm the safe-area values are visible and the panel is not clipped by the Dynamic Island or home indicator.
-5. Background the app, wait at least three seconds, and return.
-6. Confirm rendering resumes and `Foreground recoveries` increases to at least 1.
-7. Force-quit and relaunch twice. Confirm `Launch count` increases and context creation succeeds each time.
-8. Capture a screenshot after the foreground-recovery test.
+1. Install `WrathiOSGate3-v2-unsigned.ipa` through the tester's existing sideloading workflow.
+2. Confirm the home-screen name is `WrathiOS G3 v2`; the bundle ID remains unchanged.
+3. Launch in landscape and verify the telemetry begins with version `0.0.2 (2)` and launch count `1`.
+4. Record the Host window, Host scene, Screen/native, SDL window, Drawable, and Safe area lines.
+5. Background the app for at least three seconds and return.
+6. Confirm rendering resumes and Recoveries increases to at least 1.
+7. Capture a screenshot after the foreground-recovery test.
 
-Do not add or import WRATH game data for this gate. Runtime engine startup remains disabled.
+Do not create or register a second App ID. Do not add or import WRATH game data for this gate.
 EOF
 
 cat > "$ARTIFACT_DIR/summary.md" <<EOF
-# Gate 3 device graphics diagnostic build
+# Gate 3 same-App-ID cache diagnostic build
 
+- Bundle identifier: \`$bundle_id\` (unchanged)
+- Version: \`$short_version ($build_version)\`
+- Display name: \`$display_name\`
+- Counter namespace: \`WrathGate3LaunchCountV2\`
 - Target: arm64-apple-ios16.3
 - WRATH engine archive: force-loaded, runtime startup disabled
-- SDL2: statically linked
-- OpenGL ES framework: system-linked
-- Diagnostic entry point: present
+- SDL2: statically linked with derived iOS scene patch
+- Adaptive launch storyboard: compiled and packaged
+- UIKit and SDL geometry telemetry: embedded
 - Non-system dynamic dependencies: none
 - Commercial game data: absent
 - Packaging: complete unsigned IPA for external signing
-
-CI proves compilation, linkage, bundle integrity, and the presence of the diagnostic path. Physical-device evidence is still required for context creation, rendering, drawable sizing, safe-area layout, repeated launch, and foreground recovery.
 EOF
 
-echo "Gate 3 device diagnostic build and unsigned packaging validation passed"
+echo "Gate 3 same-App-ID cache diagnostic build and packaging validation passed"

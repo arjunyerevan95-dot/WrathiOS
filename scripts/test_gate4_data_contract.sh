@@ -30,8 +30,8 @@ with zipfile.ZipFile(valid / "pak000.pk3", "w", compression=zipfile.ZIP_DEFLATED
     archive.writestr("maps/synthetic.bsp", b"synthetic")
     archive.writestr("textures/synthetic.tga", b"synthetic")
 
-loose = root / "loose-kp1"
-loose.mkdir()
+loose = root / "loose-install" / "kp1"
+loose.mkdir(parents=True)
 for name in ("progs.dat", "csprogs.dat", "menu.dat"):
     (loose / name).write_bytes(b"synthetic")
 (loose / "maps").mkdir()
@@ -62,7 +62,7 @@ PY
 grep -q '^compatible=1$' "$WORK_DIR/valid.txt"
 grep -q '^packages=1$' "$WORK_DIR/valid.txt"
 
-"$CLI" "$WORK_DIR/loose-kp1" | tee "$WORK_DIR/loose.txt"
+"$CLI" "$WORK_DIR/loose-install/kp1" | tee "$WORK_DIR/loose.txt"
 grep -q '^compatible=1$' "$WORK_DIR/loose.txt"
 
 if "$CLI" "$WORK_DIR/missing" > "$WORK_DIR/missing.txt"; then

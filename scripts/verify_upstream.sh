@@ -40,3 +40,5 @@ verify_checkout() {
 verify_checkout wrath-darkplaces "$WRATH_ENGINE_URL" "$WRATH_ENGINE_COMMIT"
 verify_checkout wrath-qc "$WRATH_QC_URL" "$WRATH_QC_COMMIT"
 verify_checkout SDL2 "$SDL2_URL" "$SDL2_COMMIT"
+verify_checkout ogg "$OGG_URL" "$OGG_COMMIT"
+verify_checkout vorbis "$VORBIS_URL" "$VORBIS_COMMIT"

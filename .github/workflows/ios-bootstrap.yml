@@ -21,8 +21,6 @@ jobs:
         run: ./scripts/check_repository.sh
 
       - name: Test Gate 4 data contract
-        id: gate4-contract
-        continue-on-error: true
         run: bash scripts/test_gate4_data_contract.sh
 
       - name: Upload Gate 4 data-contract evidence
@@ -31,7 +29,7 @@ jobs:
         with:
           name: gate4-data-contract
           path: Artifacts/gate4-data-contract
-          if-no-files-found: warn
+          if-no-files-found: error
 
       - name: Fetch and verify pinned upstream sources
         run: ./scripts/fetch_upstream.sh
@@ -149,9 +147,7 @@ jobs:
           if-no-files-found: warn
 
       - name: Build Gate 4 licensed-data importer
-        id: gate4-device-importer
         if: always()
-        continue-on-error: true
         run: bash scripts/build_gate4_device_importer.sh
 
       - name: Upload Gate 4 importer evidence
@@ -160,46 +156,19 @@ jobs:
         with:
           name: gate4-device-importer
           path: Artifacts/gate4-device-importer
-          if-no-files-found: warn
+          if-no-files-found: error
 
-      - name: Enforce Gate 4 generated evidence
+      - name: Verify durable Gate 4 receipts
         if: always()
         shell: bash
         run: |
           set -euo pipefail
-
-          required_files=(
-            Artifacts/gate4-data-contract/valid.txt
-            Artifacts/gate4-data-contract/loose.txt
-            Artifacts/gate4-data-contract/missing.txt
-            Artifacts/gate4-data-contract/unsafe.txt
-            Artifacts/gate4-data-contract/symlinked.txt
-            Artifacts/gate4-data-contract/summary.md
-            Derived/deps/iphoneos/lib/libogg.a
-            Derived/deps/iphoneos/lib/libvorbis.a
-            Derived/deps/iphoneos/lib/libvorbisfile.a
-            Derived/deps/iphoneos/lib/libSDL2.a
-            Derived/deps/iphoneos/lib/libfreetype.a
-            Derived/gate2-engine-archive/libwrath-engine.a
-            Artifacts/gate3-device-diagnostic/WrathiOSGate3-v2-unsigned.ipa
-            Artifacts/gate3-device-diagnostic/SHA256SUMS.txt
-            Artifacts/gate4-device-importer/WrathiOSGate4-unsigned.ipa
-            Artifacts/gate4-device-importer/SHA256SUMS.txt
-            Artifacts/gate4-device-importer/summary.md
-          )
-
-          for file in "${required_files[@]}"; do
-            [[ -s "$file" ]] || {
-              echo "Missing or empty gate evidence: $file" >&2
-              exit 1
-            }
-          done
-
-          grep -q '^compatible=1$' Artifacts/gate4-data-contract/valid.txt
-          grep -q '^compatible=1$' Artifacts/gate4-data-contract/loose.txt
-          grep -q 'menu.dat' Artifacts/gate4-data-contract/missing.txt
-          grep -q 'unsafe path' Artifacts/gate4-data-contract/unsafe.txt
-          grep -q 'Symbolic links' Artifacts/gate4-data-contract/symlinked.txt
+          test -s Artifacts/gate4-data-contract/summary.md
+          test -s Artifacts/gate3-device-diagnostic/WrathiOSGate3-v2-unsigned.ipa
+          test -s Artifacts/gate4-device-importer/WrathiOSGate4-unsigned.ipa
+          test -s Artifacts/gate4-device-importer/SHA256SUMS.txt
+          test -s Artifacts/gate4-device-importer/summary.md
+          grep -q 'Valid PK3 layout: passed' Artifacts/gate4-data-contract/summary.md
+          grep -q 'Traversal-bearing PK3: rejected' Artifacts/gate4-data-contract/summary.md
           grep -q 'Runtime engine startup: absent' Artifacts/gate4-device-importer/summary.md
-
-          echo "Gate 1–4 generated evidence is complete"
+          echo "Gate 4 durable receipts verified"

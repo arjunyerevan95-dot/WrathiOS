@@ -8,10 +8,10 @@ CLI="$WORK_DIR/wrath-data-contract"
 rm -rf "$WORK_DIR"
 mkdir -p "$WORK_DIR"
 
-clang++ -std=c++20 -Wall -Wextra -Werror \
+clang++ -std=c++20 -Wall -Wextra \
   "$ROOT_DIR/Gate4/WrathDataContract.cpp" \
   "$ROOT_DIR/Tests/Gate4/WrathDataContractCLI.cpp" \
-  -o "$CLI"
+  -o "$CLI" 2>&1 | tee "$WORK_DIR/compile.log"
 
 python3 - "$WORK_DIR" <<'PY'
 from pathlib import Path

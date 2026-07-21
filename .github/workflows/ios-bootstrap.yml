@@ -42,7 +42,7 @@ jobs:
       - name: Build Gate 2 audio dependencies
         id: gate2-audio
         continue-on-error: true
-        run: ./scripts/build_gate2_audio_deps.sh
+        run: bash scripts/build_gate2_audio_deps.sh
 
       - name: Upload Gate 2 audio dependencies
         if: always()
@@ -55,7 +55,7 @@ jobs:
       - name: Build Gate 2 SDL2
         id: gate2-sdl
         continue-on-error: true
-        run: ./scripts/build_gate2_sdl.sh
+        run: bash scripts/build_gate2_sdl.sh
 
       - name: Upload Gate 2 SDL2
         if: always()
@@ -108,6 +108,20 @@ jobs:
           path: xcodebuild-smoke.log
           if-no-files-found: warn
 
+      - name: Build Gate 2 device static-link target
+        id: gate2-device-link
+        if: always()
+        continue-on-error: true
+        run: bash scripts/build_gate2_device_link.sh
+
+      - name: Upload Gate 2 device static-link evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate2-device-link
+          path: Artifacts/gate2-device-link
+          if-no-files-found: warn
+
       - name: Enforce Gate 2 diagnostic results
         if: always()
         shell: bash
@@ -126,5 +140,9 @@ jobs:
           }
           [[ "${{ steps.gate2-engine-archive.outcome }}" == "success" ]] || {
             echo "Gate 2 engine archive build failed" >&2
+            exit 1
+          }
+          [[ "${{ steps.gate2-device-link.outcome }}" == "success" ]] || {
+            echo "Gate 2 device static-link target failed" >&2
             exit 1
           }

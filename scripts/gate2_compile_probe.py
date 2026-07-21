@@ -15,7 +15,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 ENGINE = ROOT / "Vendor" / "wrath-darkplaces"
-SDL = ROOT / "Vendor" / "SDL"
+SDL = ROOT / "Vendor" / "SDL2"
 MANIFEST = ROOT / "config" / "engine" / "ios_upstream_sources.txt"
 OUTPUT_DIR = ROOT / "Artifacts" / "gate2-compile-probe"
 ENGINE_PREFIX = "Vendor/wrath-darkplaces/"

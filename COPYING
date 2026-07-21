@@ -1,0 +1,9 @@
+WrathiOS is distributed under the GNU General Public License, version 2 only (GPL-2.0-only), unless an individual file states otherwise.
+
+The canonical license text is available from the Free Software Foundation at:
+https://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
+
+The pinned upstream WRATH engine also includes the GPL-2.0 license text in its COPYING file:
+https://github.com/Official3DRealms/wrath-darkplaces/blob/f6862f628d6ddc133a9ef67bc4631b6137809772/COPYING
+
+No WRATH commercial game data is licensed or distributed by this repository.

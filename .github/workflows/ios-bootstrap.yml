@@ -30,7 +30,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: gate4-data-contract
-          path: Derived/gate4-contract-tests
+          path: Artifacts/gate4-data-contract
           if-no-files-found: warn
 
       - name: Fetch and verify pinned upstream sources
@@ -169,11 +169,12 @@ jobs:
           set -euo pipefail
 
           required_files=(
-            Derived/gate4-contract-tests/valid.txt
-            Derived/gate4-contract-tests/loose.txt
-            Derived/gate4-contract-tests/missing.txt
-            Derived/gate4-contract-tests/unsafe.txt
-            Derived/gate4-contract-tests/symlinked.txt
+            Artifacts/gate4-data-contract/valid.txt
+            Artifacts/gate4-data-contract/loose.txt
+            Artifacts/gate4-data-contract/missing.txt
+            Artifacts/gate4-data-contract/unsafe.txt
+            Artifacts/gate4-data-contract/symlinked.txt
+            Artifacts/gate4-data-contract/summary.md
             Derived/deps/iphoneos/lib/libogg.a
             Derived/deps/iphoneos/lib/libvorbis.a
             Derived/deps/iphoneos/lib/libvorbisfile.a
@@ -194,11 +195,11 @@ jobs:
             }
           done
 
-          grep -q '^compatible=1$' Derived/gate4-contract-tests/valid.txt
-          grep -q '^compatible=1$' Derived/gate4-contract-tests/loose.txt
-          grep -q 'menu.dat' Derived/gate4-contract-tests/missing.txt
-          grep -q 'unsafe path' Derived/gate4-contract-tests/unsafe.txt
-          grep -q 'Symbolic links' Derived/gate4-contract-tests/symlinked.txt
+          grep -q '^compatible=1$' Artifacts/gate4-data-contract/valid.txt
+          grep -q '^compatible=1$' Artifacts/gate4-data-contract/loose.txt
+          grep -q 'menu.dat' Artifacts/gate4-data-contract/missing.txt
+          grep -q 'unsafe path' Artifacts/gate4-data-contract/unsafe.txt
+          grep -q 'Symbolic links' Artifacts/gate4-data-contract/symlinked.txt
           grep -q 'Runtime engine startup: absent' Artifacts/gate4-device-importer/summary.md
 
           echo "Gate 1–4 generated evidence is complete"

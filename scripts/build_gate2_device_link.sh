@@ -6,10 +6,13 @@ DERIVED_DATA="$ROOT_DIR/DerivedData/Gate2"
 ARTIFACT_DIR="$ROOT_DIR/Artifacts/gate2-device-link"
 LOG="$ARTIFACT_DIR/xcodebuild.log"
 PROJECT="$ROOT_DIR/WrathiOSGate2.xcodeproj"
-BINARY="$DERIVED_DATA/Build/Products/Debug-iphoneos/WrathiOSGate2.app/WrathiOSGate2"
+APP_BUNDLE="$DERIVED_DATA/Build/Products/Debug-iphoneos/WrathiOSGate2.app"
+BINARY="$APP_BUNDLE/WrathiOSGate2"
+PACKAGE_ROOT="$ROOT_DIR/Derived/gate2-package"
+IPA="$ARTIFACT_DIR/WrathiOSGate2-unsigned.ipa"
 
 mkdir -p "$ARTIFACT_DIR"
-rm -rf "$DERIVED_DATA" "$PROJECT"
+rm -rf "$DERIVED_DATA" "$PROJECT" "$PACKAGE_ROOT"
 
 required_files=(
     "$ROOT_DIR/Derived/gate2-engine-archive/libwrath-engine.a"
@@ -46,8 +49,8 @@ xcodebuild \
     CODE_SIGNING_ALLOWED=NO \
     build 2>&1 | tee "$LOG"
 
-[[ -f "$BINARY" ]] || {
-    echo "error: Gate 2 application binary was not produced" >&2
+[[ -d "$APP_BUNDLE" && -f "$BINARY" ]] || {
+    echo "error: Gate 2 application bundle was not produced" >&2
     exit 1
 }
 
@@ -55,6 +58,7 @@ file "$BINARY" | tee "$ARTIFACT_DIR/file.txt"
 lipo -info "$BINARY" | tee "$ARTIFACT_DIR/architecture.txt"
 otool -L "$BINARY" | tee "$ARTIFACT_DIR/dynamic-dependencies.txt"
 nm -gU "$BINARY" > "$ARTIFACT_DIR/global-symbols.txt"
+plutil -p "$APP_BUNDLE/Info.plist" > "$ARTIFACT_DIR/Info.plist.txt"
 
 architecture="$(cat "$ARTIFACT_DIR/architecture.txt")"
 [[ "$architecture" == *"arm64"* ]] || {
@@ -83,6 +87,29 @@ if invalid:
 print(f"validated {len(paths)} system dynamic dependencies")
 PY
 
+if codesign --verify --deep --strict "$APP_BUNDLE" >/dev/null 2>&1; then
+    echo "error: CI diagnostic bundle unexpectedly contains a valid signature" >&2
+    exit 1
+else
+    echo "unsigned CI bundle confirmed" > "$ARTIFACT_DIR/signing-status.txt"
+fi
+
+mkdir -p "$PACKAGE_ROOT/Payload"
+ditto "$APP_BUNDLE" "$PACKAGE_ROOT/Payload/WrathiOSGate2.app"
+rm -rf "$PACKAGE_ROOT/Payload/WrathiOSGate2.app/_CodeSignature"
+rm -f "$PACKAGE_ROOT/Payload/WrathiOSGate2.app/embedded.mobileprovision"
+(
+    cd "$PACKAGE_ROOT"
+    /usr/bin/zip -qry "$IPA" Payload
+)
+
+[[ -s "$IPA" ]] || {
+    echo "error: unsigned IPA was not produced" >&2
+    exit 1
+}
+
+/usr/bin/unzip -tq "$IPA" > "$ARTIFACT_DIR/ipa-validation.txt"
+shasum -a 256 "$BINARY" "$IPA" > "$ARTIFACT_DIR/SHA256SUMS.txt"
 cp "$BINARY" "$ARTIFACT_DIR/WrathiOSGate2-arm64"
 
 cat > "$ARTIFACT_DIR/summary.md" <<EOF
@@ -96,8 +123,9 @@ cat > "$ARTIFACT_DIR/summary.md" <<EOF
 - Engine build diagnostic symbol: present
 - Non-system dynamic dependencies: none
 - Runtime engine startup: intentionally disabled
+- Packaging: complete unsigned IPA for external signing and device launch testing
 
-This establishes the compile and static-link portion of Gate 2. Physical-device launch evidence is still required before the gate can be declared fully passed.
+This establishes the compile, static-link, and unsigned packaging portion of Gate 2. The IPA must be signed by the tester's own sideloading workflow. Physical-device launch evidence is still required before the gate can be declared fully passed.
 EOF
 
-echo "Gate 2 device static-link validation passed"
+echo "Gate 2 device static-link and unsigned packaging validation passed"

@@ -18,7 +18,7 @@ targets:
     deploymentTarget: "16.3"
     sources:
       - path: App
-      - path: Platform
+      - path: Derived/gate3-platform
     info:
       path: App/Info.plist
     dependencies:

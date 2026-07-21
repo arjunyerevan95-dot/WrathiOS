@@ -38,9 +38,11 @@ def main() -> int:
         SDL / "include" / "SDL.h",
         DEPS_PREFIX / "include" / "ogg" / "ogg.h",
         DEPS_PREFIX / "include" / "vorbis" / "vorbisfile.h",
+        DEPS_PREFIX / "include" / "freetype2" / "ft2build.h",
         DEPS_PREFIX / "lib" / "libogg.a",
         DEPS_PREFIX / "lib" / "libvorbis.a",
         DEPS_PREFIX / "lib" / "libvorbisfile.a",
+        DEPS_PREFIX / "lib" / "libfreetype.a",
     ]
     missing = [str(path.relative_to(ROOT)) for path in required if not path.exists()]
     if missing:
@@ -89,6 +91,7 @@ def main() -> int:
         f"-I{ENGINE}",
         f"-I{SDL / 'include'}",
         f"-I{DEPS_PREFIX / 'include'}",
+        f"-I{DEPS_PREFIX / 'include' / 'freetype2'}",
     ]
 
     manifest_paths = [

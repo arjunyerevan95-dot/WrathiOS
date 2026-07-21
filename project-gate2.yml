@@ -47,6 +47,7 @@ targets:
         SUPPORTED_PLATFORMS: iphoneos
         ARCHS: arm64
         ONLY_ACTIVE_ARCH: NO
+        ENABLE_DEBUG_DYLIB: NO
         HEADER_SEARCH_PATHS:
           - "$(inherited)"
           - "$(SRCROOT)/Derived/deps/iphoneos/include/SDL2"

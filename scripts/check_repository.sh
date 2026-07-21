@@ -8,6 +8,7 @@ required_files=(
     README.md
     COPYING
     project.yml
+    project-gate2.yml
     project-gate3.yml
     App/Info.plist
     App/LaunchScreen.storyboard
@@ -41,6 +42,17 @@ if git grep -nE '(^|/)(kp1|GameData)/|\.(pak|pk3|pk4|wad)$' -- ':!docs/*' ':!REA
     git grep -nE '(^|/)(kp1|GameData)/|\.(pak|pk3|pk4|wad)$' -- ':!docs/*' ':!README.md' ':!.gitignore' || true
     exit 1
 fi
+
+for spec in project.yml project-gate2.yml project-gate3.yml; do
+    grep -q 'INFOPLIST_FILE: App/Info.plist' "$spec" || {
+        echo "error: $spec does not consume the committed Info.plist" >&2
+        exit 1
+    }
+    if grep -Eq '^[[:space:]]+info:[[:space:]]*$' "$spec"; then
+        echo "error: $spec lets XcodeGen overwrite the committed Info.plist" >&2
+        exit 1
+    fi
+done
 
 python3 - <<'PY'
 import plistlib

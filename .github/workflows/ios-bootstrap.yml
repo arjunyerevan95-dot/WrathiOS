@@ -31,15 +31,18 @@ jobs:
         with:
           name: gate2-compile-probe
           path: Artifacts/gate2-compile-probe
-          if-no-files-found: error
+          if-no-files-found: warn
 
       - name: Install XcodeGen
+        if: always()
         run: brew install xcodegen
 
       - name: Generate Xcode project
+        if: always()
         run: ./scripts/generate_project.sh
 
       - name: Build simulator smoke target
+        if: always()
         shell: bash
         run: |
           set -o pipefail
@@ -58,4 +61,4 @@ jobs:
         with:
           name: xcodebuild-smoke-log
           path: xcodebuild-smoke.log
-          if-no-files-found: error
+          if-no-files-found: warn

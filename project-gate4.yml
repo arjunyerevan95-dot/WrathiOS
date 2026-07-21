@@ -1,0 +1,40 @@
+name: WrathiOSGate4
+options:
+  bundleIdPrefix: com.arjukstudios
+  createIntermediateGroups: true
+  deploymentTarget:
+    iOS: "16.3"
+settings:
+  base:
+    CLANG_C_LANGUAGE_STANDARD: gnu17
+    CLANG_CXX_LANGUAGE_STANDARD: gnu++17
+    CLANG_ENABLE_OBJC_ARC: YES
+    ENABLE_BITCODE: NO
+    IPHONEOS_DEPLOYMENT_TARGET: "16.3"
+    TARGETED_DEVICE_FAMILY: "1,2"
+targets:
+  WrathiOSGate4:
+    type: application
+    platform: iOS
+    deploymentTarget: "16.3"
+    sources:
+      - path: Gate4
+      - path: App/LaunchScreen.storyboard
+    dependencies:
+      - sdk: UIKit.framework
+      - sdk: Foundation.framework
+      - sdk: UniformTypeIdentifiers.framework
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.arjukstudios.wrathios.gate3
+        PRODUCT_NAME: WrathiOSGate4
+        INFOPLIST_FILE: App/Gate4Info.plist
+        GENERATE_INFOPLIST_FILE: NO
+        CODE_SIGN_STYLE: Automatic
+        SDKROOT: iphoneos
+        SUPPORTED_PLATFORMS: iphoneos
+        ARCHS: arm64
+        ONLY_ACTIVE_ARCH: NO
+        ENABLE_DEBUG_DYLIB: NO
+    scheme:
+      gatherCoverageData: false

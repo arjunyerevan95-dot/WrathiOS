@@ -18,6 +18,7 @@ required_files=(
     scripts/upstream.env
     scripts/validate_engine_manifest.py
     scripts/materialize_sdl_ios_patches.py
+    scripts/materialize_gate3_platform.py
     scripts/build_gate2_sdl.sh
     scripts/build_gate3_device_diagnostic.sh
     config/engine/source_dispositions.json
@@ -49,15 +50,34 @@ from pathlib import Path
 with Path("App/Info.plist").open("rb") as handle:
     plist = plistlib.load(handle)
 
-if plist.get("UILaunchStoryboardName") != "LaunchScreen":
-    raise SystemExit("error: adaptive LaunchScreen storyboard is not configured")
+expected = {
+    "CFBundleDisplayName": "WrathiOS G3 v2",
+    "CFBundleShortVersionString": "0.0.2",
+    "CFBundleVersion": "2",
+    "UILaunchStoryboardName": "LaunchScreen",
+}
+for key, value in expected.items():
+    if plist.get(key) != value:
+        raise SystemExit(f"error: {key} must be {value!r}, found {plist.get(key)!r}")
+
 ET.parse("App/LaunchScreen.storyboard")
-print("validated App/Info.plist and LaunchScreen.storyboard")
+print("validated versioned App/Info.plist and LaunchScreen.storyboard")
 PY
 
 bash -n scripts/build_gate2_sdl.sh
 bash -n scripts/build_gate3_device_diagnostic.sh
-python3 -m py_compile scripts/materialize_sdl_ios_patches.py
+python3 -m py_compile scripts/materialize_sdl_ios_patches.py scripts/materialize_gate3_platform.py
+python3 scripts/materialize_gate3_platform.py
+
+grep -q 'WrathGate3LaunchCountV2' Derived/gate3-platform/WrathGraphicsDiagnostic.mm || {
+    echo "error: Gate 3 derived counter namespace was not materialized" >&2
+    exit 1
+}
+grep -q 'Host scene:' Derived/gate3-platform/WrathGraphicsDiagnostic.mm || {
+    echo "error: Gate 3 UIKit geometry telemetry was not materialized" >&2
+    exit 1
+}
+
 python3 scripts/validate_engine_manifest.py
 
 echo "repository checks passed"

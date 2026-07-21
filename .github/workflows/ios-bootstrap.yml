@@ -39,6 +39,19 @@ jobs:
           path: Artifacts/gate2-compile-probe
           if-no-files-found: warn
 
+      - name: Build Gate 2 audio dependencies
+        id: gate2-audio
+        continue-on-error: true
+        run: ./scripts/build_gate2_audio_deps.sh
+
+      - name: Upload Gate 2 audio dependencies
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate2-audio-deps
+          path: Artifacts/gate2-audio-deps
+          if-no-files-found: warn
+
       - name: Install XcodeGen
         if: always()
         run: brew install xcodegen
@@ -68,3 +81,16 @@ jobs:
           name: xcodebuild-smoke-log
           path: xcodebuild-smoke.log
           if-no-files-found: warn
+
+      - name: Enforce Gate 2 diagnostic results
+        if: always()
+        shell: bash
+        run: |
+          [[ "${{ steps.gate2-probe.outcome }}" == "success" ]] || {
+            echo "Gate 2 engine compile probe failed" >&2
+            exit 1
+          }
+          [[ "${{ steps.gate2-audio.outcome }}" == "success" ]] || {
+            echo "Gate 2 audio dependency build failed" >&2
+            exit 1
+          }

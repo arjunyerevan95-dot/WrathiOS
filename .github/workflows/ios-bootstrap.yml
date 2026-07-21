@@ -27,12 +27,22 @@ jobs:
         run: ./scripts/generate_project.sh
 
       - name: Build simulator smoke target
-        run: >-
-          xcodebuild
-          -project WrathiOS.xcodeproj
-          -scheme WrathiOS
-          -configuration Debug
-          -sdk iphonesimulator
-          -destination 'generic/platform=iOS Simulator'
-          CODE_SIGNING_ALLOWED=NO
-          build
+        shell: bash
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project WrathiOS.xcodeproj \
+            -scheme WrathiOS \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO \
+            build 2>&1 | tee xcodebuild-smoke.log
+
+      - name: Upload Xcode smoke-build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcodebuild-smoke-log
+          path: xcodebuild-smoke.log
+          if-no-files-found: error

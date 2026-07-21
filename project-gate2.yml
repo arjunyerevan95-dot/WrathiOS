@@ -1,0 +1,74 @@
+name: WrathiOSGate2
+options:
+  bundleIdPrefix: com.arjukstudios
+  createIntermediateGroups: true
+  deploymentTarget:
+    iOS: "16.3"
+settings:
+  base:
+    CLANG_C_LANGUAGE_STANDARD: gnu17
+    CLANG_CXX_LANGUAGE_STANDARD: gnu++17
+    ENABLE_BITCODE: NO
+    IPHONEOS_DEPLOYMENT_TARGET: "16.3"
+    TARGETED_DEVICE_FAMILY: "1,2"
+targets:
+  WrathiOSGate2:
+    type: application
+    platform: iOS
+    deploymentTarget: "16.3"
+    sources:
+      - path: App
+      - path: Platform
+    info:
+      path: App/Info.plist
+    dependencies:
+      - sdk: UIKit.framework
+      - sdk: Foundation.framework
+      - sdk: CoreGraphics.framework
+      - sdk: QuartzCore.framework
+      - sdk: OpenGLES.framework
+      - sdk: AudioToolbox.framework
+      - sdk: AVFoundation.framework
+      - sdk: CoreAudio.framework
+      - sdk: CoreMotion.framework
+      - sdk: GameController.framework
+      - sdk: Metal.framework
+      - sdk: CoreHaptics.framework
+      - sdk: Security.framework
+      - sdk: SystemConfiguration.framework
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.arjukstudios.wrathios.gate2
+        PRODUCT_NAME: WrathiOSGate2
+        GENERATE_INFOPLIST_FILE: NO
+        CODE_SIGN_STYLE: Automatic
+        SDKROOT: iphoneos
+        SUPPORTED_PLATFORMS: iphoneos
+        ARCHS: arm64
+        ONLY_ACTIVE_ARCH: NO
+        HEADER_SEARCH_PATHS:
+          - "$(inherited)"
+          - "$(SRCROOT)/Derived/deps/iphoneos/include/SDL2"
+          - "$(SRCROOT)/Derived/deps/iphoneos/include"
+        LIBRARY_SEARCH_PATHS:
+          - "$(inherited)"
+          - "$(SRCROOT)/Derived/deps/iphoneos/lib"
+          - "$(SRCROOT)/Derived/gate2-engine-archive"
+        GCC_PREPROCESSOR_DEFINITIONS:
+          - "$(inherited)"
+          - WRATH_IOS=1
+          - WRATH_ENGINE_LINKED=1
+          - __IPHONEOS__=1
+        OTHER_LDFLAGS:
+          - "$(inherited)"
+          - -ObjC
+          - -force_load
+          - "$(SRCROOT)/Derived/gate2-engine-archive/libwrath-engine.a"
+          - -force_load
+          - "$(SRCROOT)/Derived/deps/iphoneos/lib/libSDL2.a"
+          - -lvorbisfile
+          - -lvorbis
+          - -logg
+          - -lz
+    scheme:
+      gatherCoverageData: false

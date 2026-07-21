@@ -31,6 +31,7 @@ targets:
       - sdk: AVFoundation.framework
       - sdk: CoreAudio.framework
       - sdk: CoreMotion.framework
+      - sdk: CoreBluetooth.framework
       - sdk: GameController.framework
       - sdk: Metal.framework
       - sdk: CoreHaptics.framework
@@ -50,6 +51,7 @@ targets:
           - "$(inherited)"
           - "$(SRCROOT)/Derived/deps/iphoneos/include/SDL2"
           - "$(SRCROOT)/Derived/deps/iphoneos/include"
+          - "$(SRCROOT)/Derived/deps/iphoneos/include/freetype2"
         LIBRARY_SEARCH_PATHS:
           - "$(inherited)"
           - "$(SRCROOT)/Derived/deps/iphoneos/lib"
@@ -66,6 +68,7 @@ targets:
           - "$(SRCROOT)/Derived/gate2-engine-archive/libwrath-engine.a"
           - -force_load
           - "$(SRCROOT)/Derived/deps/iphoneos/lib/libSDL2.a"
+          - -lfreetype
           - -lvorbisfile
           - -lvorbis
           - -logg

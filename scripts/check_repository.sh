@@ -8,16 +8,21 @@ required_files=(
     README.md
     COPYING
     project.yml
+    project-gate3.yml
     App/Info.plist
     App/main.mm
     Platform/WrathEngineBridge.mm
+    Platform/WrathGraphicsDiagnostic.h
+    Platform/WrathGraphicsDiagnostic.mm
     scripts/upstream.env
     scripts/validate_engine_manifest.py
+    scripts/build_gate3_device_diagnostic.sh
     config/engine/source_dispositions.json
     config/engine/ios_upstream_sources.txt
     docs/PORTING_PLAN.md
     docs/ASSET_POLICY.md
     docs/GATE1_SOURCE_INVENTORY.md
+    docs/GATE3_GRAPHICS_DIAGNOSTIC.md
 )
 
 for file in "${required_files[@]}"; do
@@ -41,6 +46,7 @@ with Path("App/Info.plist").open("rb") as handle:
 print("validated App/Info.plist")
 PY
 
+bash -n scripts/build_gate3_device_diagnostic.sh
 python3 scripts/validate_engine_manifest.py
 
 echo "repository checks passed"

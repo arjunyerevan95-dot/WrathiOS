@@ -10,6 +10,7 @@ required_files=(
     project.yml
     project-gate3.yml
     App/Info.plist
+    App/LaunchScreen.storyboard
     App/main.mm
     Platform/WrathEngineBridge.mm
     Platform/WrathGraphicsDiagnostic.h
@@ -42,10 +43,16 @@ fi
 
 python3 - <<'PY'
 import plistlib
+import xml.etree.ElementTree as ET
 from pathlib import Path
+
 with Path("App/Info.plist").open("rb") as handle:
-    plistlib.load(handle)
-print("validated App/Info.plist")
+    plist = plistlib.load(handle)
+
+if plist.get("UILaunchStoryboardName") != "LaunchScreen":
+    raise SystemExit("error: adaptive LaunchScreen storyboard is not configured")
+ET.parse("App/LaunchScreen.storyboard")
+print("validated App/Info.plist and LaunchScreen.storyboard")
 PY
 
 bash -n scripts/build_gate2_sdl.sh

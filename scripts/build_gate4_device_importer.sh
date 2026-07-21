@@ -44,6 +44,7 @@ otool -L "$BINARY" | tee "$ARTIFACT_DIR/dynamic-dependencies.txt"
 nm -gU "$BINARY" > "$ARTIFACT_DIR/global-symbols.txt"
 plutil -p "$APP_BUNDLE/Info.plist" > "$ARTIFACT_DIR/Info.plist.txt"
 strings -a "$BINARY" > "$ARTIFACT_DIR/strings.txt"
+find "$APP_BUNDLE" -print | sed "s#^$APP_BUNDLE#.#" | sort > "$ARTIFACT_DIR/bundle-inventory.txt"
 
 architecture="$(cat "$ARTIFACT_DIR/architecture.txt")"
 [[ "$architecture" == *"arm64"* ]] || {
@@ -63,9 +64,12 @@ grep -q 'Choose WRATH Folder' "$ARTIFACT_DIR/strings.txt" || {
   echo "error: Gate 4 folder-picker marker is missing" >&2
   exit 1
 }
-grep -q 'progs.dat' "$ARTIFACT_DIR/strings.txt"
-grep -q 'csprogs.dat' "$ARTIFACT_DIR/strings.txt"
-grep -q 'menu.dat' "$ARTIFACT_DIR/strings.txt"
+for sentinel in progs.dat csprogs.dat menu.dat; do
+  grep -q "$sentinel" "$ARTIFACT_DIR/strings.txt" || {
+    echo "error: Gate 4 binary is missing sentinel marker: $sentinel" >&2
+    exit 1
+  }
+done
 
 if grep -Eq '_Host_Main$|_SDL_Init$' "$ARTIFACT_DIR/global-symbols.txt"; then
   echo "error: Gate 4 must not link or start the WRATH runtime" >&2
@@ -76,11 +80,29 @@ bundle_id="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP_BUNDLE
 short_version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP_BUNDLE/Info.plist")"
 build_version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$APP_BUNDLE/Info.plist")"
 launch_storyboard="$(/usr/libexec/PlistBuddy -c 'Print :UILaunchStoryboardName' "$APP_BUNDLE/Info.plist")"
-[[ "$bundle_id" == "com.arjukstudios.wrathios.gate3" ]]
-[[ "$short_version" == "0.0.3" ]]
-[[ "$build_version" == "3" ]]
-[[ "$launch_storyboard" == "LaunchScreen" ]]
-[[ -d "$APP_BUNDLE/LaunchScreen.storyboardc" ]]
+[[ "$bundle_id" == "com.arjukstudios.wrathios.gate3" ]] || {
+  echo "error: unexpected Gate 4 bundle identifier: $bundle_id" >&2
+  exit 1
+}
+[[ "$short_version" == "0.0.3" ]] || {
+  echo "error: unexpected Gate 4 short version: $short_version" >&2
+  exit 1
+}
+[[ "$build_version" == "3" ]] || {
+  echo "error: unexpected Gate 4 build version: $build_version" >&2
+  exit 1
+}
+[[ "$launch_storyboard" == "LaunchScreen" ]] || {
+  echo "error: unexpected Gate 4 launch storyboard declaration: $launch_storyboard" >&2
+  exit 1
+}
+launch_storyboard_path="$(find "$APP_BUNDLE" -type d -name 'LaunchScreen.storyboardc' -print -quit)"
+[[ -n "$launch_storyboard_path" ]] || {
+  echo "error: compiled LaunchScreen.storyboardc is missing from the Gate 4 bundle" >&2
+  cat "$ARTIFACT_DIR/bundle-inventory.txt" >&2
+  exit 1
+}
+printf '%s\n' "${launch_storyboard_path#"$APP_BUNDLE"/}" > "$ARTIFACT_DIR/launch-storyboard-location.txt"
 
 python3 - "$ARTIFACT_DIR/dynamic-dependencies.txt" <<'PY'
 from pathlib import Path
@@ -119,7 +141,10 @@ rm -f "$PACKAGE_ROOT/Payload/WrathiOSGate4.app/embedded.mobileprovision"
   /usr/bin/zip -qry "$IPA" Payload
 )
 
-[[ -s "$IPA" ]]
+[[ -s "$IPA" ]] || {
+  echo "error: unsigned Gate 4 IPA was not produced" >&2
+  exit 1
+}
 /usr/bin/unzip -tq "$IPA" > "$ARTIFACT_DIR/ipa-validation.txt"
 shasum -a 256 "$BINARY" "$IPA" > "$ARTIFACT_DIR/SHA256SUMS.txt"
 cp "$BINARY" "$ARTIFACT_DIR/WrathiOSGate4-arm64"
@@ -149,6 +174,7 @@ cat > "$ARTIFACT_DIR/summary.md" <<EOF
 - Validation profile: \`wrath-1.1.2-qc-layout-v1\`
 - Required sentinels: \`progs.dat\`, \`csprogs.dat\`, \`menu.dat\`
 - Supported package indexes: PK3 and Quake PAK
+- Launch storyboard: \`${launch_storyboard_path#"$APP_BUNDLE"/}\`
 - Non-system dynamic dependencies: none
 - Commercial data in IPA: absent
 - Packaging: unsigned IPA for external signing

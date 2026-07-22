@@ -236,11 +236,11 @@ cat > "$ARTIFACT_DIR/summary.md" <<EOF
 # Gate 5A runtime-bootstrap device build
 
 - Target: arm64-apple-ios16.3
-- Bundle identifier: `$bundle_id` (unchanged)
-- Version: `$short_version ($build_version)`
-- IPA: `$(basename "$IPA")`
-- IPA size: `$ipa_size bytes`
-- IPA SHA-256: `$ipa_sha256`
+- Bundle identifier: $bundle_id (unchanged)
+- Version: $short_version ($build_version)
+- IPA: $(basename "$IPA")
+- IPA size: $ipa_size bytes
+- IPA SHA-256: $ipa_sha256
 - WRATH engine and SDL2: statically linked
 - Host_Main and authentic runtime entry symbols: present
 - Gate 4 importer: retained

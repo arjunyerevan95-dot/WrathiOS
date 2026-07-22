@@ -42,10 +42,12 @@ The old `DPiOS.xcodeproj` is evidence and reference material, not the build syst
 - Gate 1: passed and merged
 - Gate 2: passed and merged at repository commit `fed2c72d0fb7497869f5c547d3e4d13b456c719d`
 - Gate 2 device evidence: unsigned diagnostic IPA launched on a physical iPhone, displayed the pinned WRATH engine revision, and remained stable with runtime startup intentionally disabled
-- Active work: Gate 3 graphics-context diagnostic only
-- Blocked: Gates 4 through 8 until Gate 3 physical-device acceptance is complete
+- Gate 3: passed and merged at repository commit `2fc304e572f1c4f2af733437b99bd6d69651917b`
+- Gate 3 device evidence: SDL2/OpenGL ES 2 rendered at native `956 × 440` points and `2868 × 1320` pixels, respected the device safe area, survived foreground recovery, and created the context across three launches
+- Active work: Gate 4 licensed-data importer only
+- Blocked: Gates 5 through 8 until Gate 4 physical-device acceptance is complete
 
-The active Gate 3 work must not call `Host_Main`, access commercial files, initialize the WRATH filesystem, or begin menu/runtime debugging.
+The active Gate 4 work may validate and copy user-owned files into the app sandbox. It must not call `Host_Main`, initialize or mount the WRATH filesystem, render the menu, initialize runtime audio, or begin controls/gameplay work.
 
 ## Milestone gates
 
@@ -100,26 +102,34 @@ Pass conditions:
 - drawable size and safe-area handling are correct
 - no game data is needed
 
-Current implementation scope:
+Status: passed in CI and on a physical device. The diagnostic rendered at the native landscape drawable, respected safe-area insets, survived foreground recovery, and created the context on three launches.
 
-- project-authored RGB triangle and diagnostic overlay only
-- SDL2 fullscreen high-DPI iOS window
-- OpenGL ES 2 context and shader validation
-- persisted launch counter and foreground-recovery counter
-- unsigned IPA for physical-device acceptance
-
-Stop condition: do not begin Gate 4, WRATH filesystem startup, engine renderer debugging, menu work, controls, or gameplay until all Gate 3 physical-device criteria pass.
+Stop condition: do not begin Gate 4 until all Gate 3 physical-device criteria pass.
 
 ### Gate 4: licensed-data importer
 
-Implement document-picker import from a user-selected WRATH installation directory or supported archive. Copy validated files into the app sandbox.
+Implement document-picker import from a user-selected WRATH installation directory or its `kp1` directory. Copy validated files into the app sandbox.
+
+Current implementation scope:
+
+- security-scoped folder selection
+- loose-file plus PK3/Quake PAK index validation
+- required `progs.dat`, `csprogs.dat`, and `menu.dat` sentinels
+- traversal, malformed-package, symlink, and import-size rejection
+- staged copy, post-copy validation, atomic replacement, rollback, and local manifest
+- relaunch validation and sandboxed-copy removal
 
 Pass conditions:
 
 - import contains no hard-coded user paths
-- validation uses documented sentinel files and version checks
+- validation uses documented sentinel files and compatibility profile
 - failures explain missing or incompatible files
 - imported data never enters Git or public CI artifacts
+- a licensed installation imports successfully on a physical device
+- a relaunch validates the installed copy without reselecting the source
+- removal deletes only the app's sandboxed copy
+
+Stop condition: do not begin Gate 5, mount imported packages, or call `Host_Main` until Gate 4 physical-device acceptance is recorded.
 
 ### Gate 5: WRATH menu
 

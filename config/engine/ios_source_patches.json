@@ -9,6 +9,14 @@
         {
           "old": "static int M_InputEvent (int type, int key, int ascii)",
           "new": "static int M_InputEvent (int type, float key, float ascii)"
+        },
+        {
+          "old": "\tPRVM_Prog_Load(prog, menu_progs.string, NULL, 0, m_numrequiredfunc, m_required_func, m_numrequiredfields, m_required_fields, m_numrequiredglobals, m_required_globals);",
+          "new": "#ifdef WRATH_IOS_GATE5\n\tWrathIOSRuntimeStage(\"QuakeC VM loading entered\", \"Menu VM initialization entered.\");\n\tWrathIOSRuntimeStage(\"menu.dat loading entered\", \"Loading the authentic WRATH menu program.\");\n#endif\n\tPRVM_Prog_Load(prog, menu_progs.string, NULL, 0, m_numrequiredfunc, m_required_func, m_numrequiredfields, m_required_fields, m_numrequiredglobals, m_required_globals);\n#ifdef WRATH_IOS_GATE5\n\tWrathIOSRuntimeStage(\"menu.dat loading passed\", \"The authentic WRATH menu program loaded.\");\n#endif"
+        },
+        {
+          "old": "\tprog->ExecuteProgram(prog, PRVM_menufunction(m_draw),\"m_draw() required\");",
+          "new": "\tprog->ExecuteProgram(prog, PRVM_menufunction(m_draw),\"m_draw() required\");\n#ifdef WRATH_IOS_GATE5\n\t{\n\t\tstatic qboolean wrath_ios_menu_frame_recorded = false;\n\t\tif (!wrath_ios_menu_frame_recorded)\n\t\t{\n\t\t\twrath_ios_menu_frame_recorded = true;\n\t\t\tWrathIOSRuntimeStage(\"Main menu reached\", \"The authentic menu VM completed its first draw.\");\n\t\t}\n\t}\n#endif"
         }
       ]
     },
@@ -33,6 +41,70 @@
         {
           "old": "\t\t\t\tvid_sdljoystick = SDL_GameControllerOpen(sdlindex);\n\t\t\t\tvid_sdlcontroller = vid_sdljoystick;\n\t\t\t\tif (vid_sdljoystick)\n\t\t\t\t{\n\t\t\t\t\tconst char *joystickname = SDL_GameControllerName(vid_sdljoystick);",
           "new": "\t\t\t\tvid_sdlcontroller = SDL_GameControllerOpen(sdlindex);\n\t\t\t\tvid_sdljoystick = vid_sdlcontroller ? SDL_GameControllerGetJoystick(vid_sdlcontroller) : NULL;\n\t\t\t\tif (vid_sdlcontroller)\n\t\t\t\t{\n\t\t\t\t\tconst char *joystickname = SDL_GameControllerName(vid_sdlcontroller);"
+        },
+        {
+          "old": "\tif (SDL_Init(SDL_INIT_VIDEO) < 0)\n\t\tSys_Error (\"Failed to init SDL video subsystem: %s\", SDL_GetError());",
+          "new": "#ifdef WRATH_IOS_GATE5\n\tWrathIOSRuntimeStage(\"Video subsystem initialized entered\", \"SDL UIKit video initialization entered.\");\n#endif\n\tif (SDL_Init(SDL_INIT_VIDEO) < 0)\n\t\tSys_Error (\"Failed to init SDL video subsystem: %s\", SDL_GetError());\n#ifdef WRATH_IOS_GATE5\n\tWrathIOSRuntimeStage(\"Video subsystem initialized\", \"SDL UIKit video initialization passed.\");\n#endif"
+        },
+        {
+          "old": "\twindow_flags = windowflags;\n\twindow = SDL_CreateWindow(gamename, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, mode->width, mode->height, windowflags);\n\tif (window == NULL)\n\t{\n\t\tCon_Printf(\"Failed to set video mode to %ix%i: %s\\n\", mode->width, mode->height, SDL_GetError());\n\t\tVID_Shutdown();\n\t\treturn false;\n\t}\n\tSDL_GetWindowSize(window, &mode->width, &mode->height);\n\tcontext = SDL_GL_CreateContext(window);",
+          "new": "\twindow_flags = windowflags;\n#ifdef WRATH_IOS_GATE5\n\tWrathIOSRuntimeStage(\"GLES window creation entered\", \"Creating the scene-aware SDL iOS window.\");\n#endif\n\twindow = SDL_CreateWindow(gamename, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, mode->width, mode->height, windowflags);\n\tif (window == NULL)\n\t{\n\t\tCon_Printf(\"Failed to set video mode to %ix%i: %s\\n\", mode->width, mode->height, SDL_GetError());\n\t\tVID_Shutdown();\n\t\treturn false;\n\t}\n\tSDL_GetWindowSize(window, &mode->width, &mode->height);\n#ifdef WRATH_IOS_GATE5\n\tWrathIOSRuntimeStage(\"GLES context creation entered\", \"Creating the OpenGL ES 2 context on the main thread.\");\n#endif\n\tcontext = SDL_GL_CreateContext(window);"
+        },
+        {
+          "old": "\tif (context == NULL)\n\t{\n\t\tCon_Printf(\"Failed to initialize OpenGL context: %s\\n\", SDL_GetError());\n\t\tVID_Shutdown();\n\t\treturn false;\n\t}\n#endif",
+          "new": "\tif (context == NULL)\n\t{\n\t\tCon_Printf(\"Failed to initialize OpenGL context: %s\\n\", SDL_GetError());\n\t\tVID_Shutdown();\n\t\treturn false;\n\t}\n#ifdef WRATH_IOS_GATE5\n\tWrathIOSRuntimeStage(\"GLES context created\", \"OpenGL ES 2 context creation passed.\");\n#endif\n#endif"
+        }
+      ]
+    },
+    {
+      "path": "host.c",
+      "reason": "Record entry into the authentic WRATH host-owned runtime loop for Gate 5 device evidence.",
+      "replacements": [
+        {
+          "old": "\tHost_Init();\n\n\trealtime = 0;",
+          "new": "#ifdef WRATH_IOS_GATE5\n\tWrathIOSRuntimeStage(\"WRATH Host_Main entered\", \"Authentic host initialization and host-owned frame loop selected.\");\n#endif\n\tHost_Init();\n\n\trealtime = 0;"
+        }
+      ]
+    },
+    {
+      "path": "fs.c",
+      "reason": "Record the real WRATH filesystem rescan that discovers the sandboxed kp1 package search path.",
+      "replacements": [
+        {
+          "old": "\t// generate the searchpath\n\tFS_Rescan();",
+          "new": "\t// generate the searchpath\n#ifdef WRATH_IOS_GATE5\n\tWrathIOSRuntimeStage(\"WRATH filesystem initialization entered\", \"Filesystem search-path generation entered.\");\n\tWrathIOSRuntimeStage(\"kp1 package discovery entered\", \"Scanning the sandboxed kp1 tree and package indexes.\");\n#endif\n\tFS_Rescan();\n#ifdef WRATH_IOS_GATE5\n\tWrathIOSRuntimeStage(\"kp1 package discovery passed\", \"Filesystem search-path generation completed.\");\n#endif"
+        }
+      ]
+    },
+    {
+      "path": "snd_main.c",
+      "reason": "Record authentic SDL sound startup and its exact pass or failure frontier without changing audio behavior.",
+      "replacements": [
+        {
+          "old": "void S_Startup (void)\n{\n\tqboolean fixed_speed, fixed_width, fixed_channels;",
+          "new": "void S_Startup (void)\n{\n#ifdef WRATH_IOS_GATE5\n\tWrathIOSRuntimeStage(\"Audio initialization entered\", \"Authentic WRATH sound startup entered.\");\n#endif\n\tqboolean fixed_speed, fixed_width, fixed_channels;"
+        },
+        {
+          "old": "\tif (!snd_initialized.integer)\n\t\treturn;",
+          "new": "\tif (!snd_initialized.integer)\n\t{\n#ifdef WRATH_IOS_GATE5\n\t\tWrathIOSRuntimeStage(\"Audio initialization failed\", \"Sound was disabled before backend startup.\");\n#endif\n\t\treturn;\n\t}"
+        },
+        {
+          "old": "\t\t\tCon_Print(\"S_Startup: SndSys_Init failed.\\n\");\n\t\t\tsound_spatialized = false;\n\t\t\treturn;",
+          "new": "\t\t\tCon_Print(\"S_Startup: SndSys_Init failed.\\n\");\n\t\t\tsound_spatialized = false;\n#ifdef WRATH_IOS_GATE5\n\t\t\tWrathIOSRuntimeStage(\"Audio initialization failed\", \"SDL sound backend did not accept a supported format.\");\n#endif\n\t\t\treturn;"
+        },
+        {
+          "old": "\trecording_sound = false;\n}",
+          "new": "\trecording_sound = false;\n#ifdef WRATH_IOS_GATE5\n\tWrathIOSRuntimeStage(\"Audio initialization passed\", \"Authentic WRATH sound output started.\");\n#endif\n}"
+        }
+      ]
+    },
+    {
+      "path": "sys_shared.c",
+      "reason": "Return engine-requested quit paths to the controlled Gate 5 launcher instead of terminating the iOS process.",
+      "replacements": [
+        {
+          "old": "\thost_shuttingdown = true;\n\tHost_Shutdown();\n\texit(returnvalue);",
+          "new": "\thost_shuttingdown = true;\n\tHost_Shutdown();\n#ifdef WRATH_IOS_GATE5\n\tWrathIOSRuntimeAbort(returnvalue == 0 ? \"WRATH requested an orderly shutdown.\" : \"WRATH requested a non-zero shutdown.\");\n#else\n\texit(returnvalue);\n#endif"
         }
       ]
     }

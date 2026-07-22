@@ -44,10 +44,12 @@ The old `DPiOS.xcodeproj` is evidence and reference material, not the build syst
 - Gate 2 device evidence: unsigned diagnostic IPA launched on a physical iPhone, displayed the pinned WRATH engine revision, and remained stable with runtime startup intentionally disabled
 - Gate 3: passed and merged at repository commit `2fc304e572f1c4f2af733437b99bd6d69651917b`
 - Gate 3 device evidence: SDL2/OpenGL ES 2 rendered at native `956 × 440` points and `2868 × 1320` pixels, respected the device safe area, survived foreground recovery, and created the context across three launches
-- Active work: Gate 4 licensed-data importer only
-- Blocked: Gates 5 through 8 until Gate 4 physical-device acceptance is complete
+- Gate 4: passed and merged at repository commit `f647cdf7b6c961afc634f70f56329a14d99d7276`
+- Gate 4 device evidence: the user's approximately 1.5 GiB licensed installation imported, passed post-copy validation, persisted across relaunch, and was safely removed
+- Active work: Gate 5A controlled runtime bootstrap to the authentic WRATH menu
+- Blocked: Gates 6 through 8 until Gate 5 physical-device acceptance is complete
 
-The active Gate 4 work may validate and copy user-owned files into the app sandbox. It must not call `Host_Main`, initialize or mount the WRATH filesystem, render the menu, initialize runtime audio, or begin controls/gameplay work.
+The active Gate 5A work may call `Host_Main`, mount the sandboxed import, render the authentic menu, test upstream menu touch input, and observe authentic audio startup. It must not begin gameplay or final control work.
 
 ## Milestone gates
 
@@ -118,6 +120,8 @@ Current implementation scope:
 - traversal, malformed-package, symlink, and import-size rejection
 - staged copy, post-copy validation, atomic replacement, rollback, and local manifest
 - relaunch validation and sandboxed-copy removal
+
+Status: passed in CI and on a physical device, then merged at `f647cdf7b6c961afc634f70f56329a14d99d7276`.
 
 Pass conditions:
 

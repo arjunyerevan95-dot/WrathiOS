@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 import shlex
 import shutil
@@ -16,9 +17,13 @@ PATCHED_ENGINE = ROOT / "Derived" / "wrath-darkplaces-ios"
 SDL = ROOT / "Vendor" / "SDL2"
 DEPS_PREFIX = ROOT / "Derived" / "deps" / "iphoneos"
 MANIFEST = ROOT / "config" / "engine" / "ios_upstream_sources.txt"
-BUILD_DIR = ROOT / "Derived" / "gate2-engine-archive"
+BUILD_FLAVOR = os.environ.get("WRATH_ENGINE_BUILD_FLAVOR", "gate2")
+if BUILD_FLAVOR not in {"gate2", "gate5"}:
+    raise SystemExit(f"error: unsupported WRATH_ENGINE_BUILD_FLAVOR: {BUILD_FLAVOR}")
+BUILD_DIR = ROOT / "Derived" / ("gate5-engine-archive" if BUILD_FLAVOR == "gate5" else "gate2-engine-archive")
 OBJECT_DIR = BUILD_DIR / "objects"
-ARTIFACT_DIR = ROOT / "Artifacts" / "gate2-engine-archive"
+ARTIFACT_DIR = ROOT / "Artifacts" / ("gate5-engine-archive" if BUILD_FLAVOR == "gate5" else "gate2-engine-archive")
+ARCHIVE_NAME = "libwrath-engine-gate5.a" if BUILD_FLAVOR == "gate5" else "libwrath-engine.a"
 ENGINE_PREFIX = "Vendor/wrath-darkplaces/"
 ENGINE_COMMIT = "f6862f628d6ddc133a9ef67bc4631b6137809772"
 
@@ -87,12 +92,18 @@ def main() -> int:
         "-D_FILE_OFFSET_BITS=64",
         "-D__KERNEL_STRICT_NAMES=1",
         f"-DSVNREVISION={ENGINE_COMMIT}",
-        "-DBUILDTYPE=ios_gate2",
+        f"-DBUILDTYPE={'ios_gate5a' if BUILD_FLAVOR == 'gate5' else 'ios_gate2'}",
         f"-I{ENGINE}",
         f"-I{SDL / 'include'}",
         f"-I{DEPS_PREFIX / 'include'}",
         f"-I{DEPS_PREFIX / 'include' / 'freetype2'}",
     ]
+    if BUILD_FLAVOR == "gate5":
+        common.extend([
+            "-DWRATH_IOS_GATE5=1",
+            "-DDP_MOBILETOUCH=1",
+            "-include", str(ROOT / "Gate5" / "WrathRuntimeHooks.h"),
+        ])
 
     manifest_paths = [
         line.strip()
@@ -134,6 +145,7 @@ def main() -> int:
     report: dict[str, object] = {
         "schema_version": 1,
         "target": "arm64-apple-ios16.3",
+        "build_flavor": BUILD_FLAVOR,
         "engine_commit": ENGINE_COMMIT,
         "summary": {
             "total": len(results),
@@ -149,7 +161,7 @@ def main() -> int:
         print(f"error: {len(failed)} engine units failed object compilation", file=sys.stderr)
         return 1
 
-    archive = BUILD_DIR / "libwrath-engine.a"
+    archive = BUILD_DIR / ARCHIVE_NAME
     archive_command = [ar_path, "rcs", str(archive), *(str(path) for path in object_paths)]
     archived = run(archive_command)
     if archived.returncode:
@@ -190,6 +202,7 @@ def main() -> int:
         f"- Compiled units: {len(object_paths)}/{len(results)}",
         f"- Archive members: {len(member_names)}",
         f"- Architecture: `{lipo.stdout.strip()}`",
+        f"- Build flavor: `{BUILD_FLAVOR}`",
         f"- Undefined-symbol output lines: {len(undefined_lines)}",
         "",
         "The archive is not a Gate 2 pass by itself. The next experiment must force-load it into the iOS application and resolve the recorded platform and dependency symbols.",

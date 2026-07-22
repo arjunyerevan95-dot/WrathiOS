@@ -11,8 +11,10 @@ required_files=(
     project-gate2.yml
     project-gate3.yml
     project-gate4.yml
+    project-gate5.yml
     App/Info.plist
     App/Gate4Info.plist
+    App/Gate5Info.plist
     App/LaunchScreen.storyboard
     App/main.mm
     Platform/WrathEngineBridge.mm
@@ -27,6 +29,12 @@ required_files=(
     Gate4/AppDelegate.h
     Gate4/AppDelegate.mm
     Gate4/main.mm
+    Gate5/WrathRuntimeHooks.h
+    Gate5/WrathRuntime.h
+    Gate5/WrathRuntime.mm
+    Gate5/AppDelegate.h
+    Gate5/AppDelegate.mm
+    Gate5/main.mm
     Tests/Gate4/WrathDataContractCLI.cpp
     scripts/upstream.env
     scripts/validate_engine_manifest.py
@@ -35,6 +43,7 @@ required_files=(
     scripts/build_gate2_sdl.sh
     scripts/build_gate3_device_diagnostic.sh
     scripts/build_gate4_device_importer.sh
+    scripts/build_gate5_device_menu.sh
     scripts/test_gate4_data_contract.sh
     config/engine/source_dispositions.json
     config/engine/ios_upstream_sources.txt
@@ -44,6 +53,8 @@ required_files=(
     docs/GATE3_GRAPHICS_DIAGNOSTIC.md
     docs/GATE4_LICENSED_DATA_IMPORT.md
     docs/GATE4_DEVICE_CHECKLIST.md
+    docs/GATE5_RUNTIME_BOOTSTRAP.md
+    docs/GATE5_DEVICE_CHECKLIST.md
 )
 
 for file in "${required_files[@]}"; do
@@ -81,6 +92,15 @@ if grep -Eq '^[[:space:]]+info:[[:space:]]*$' project-gate4.yml; then
     exit 1
 fi
 
+grep -q 'INFOPLIST_FILE: App/Gate5Info.plist' project-gate5.yml || {
+    echo "error: Gate 5 does not consume its committed Info.plist" >&2
+    exit 1
+}
+if grep -Eq '^[[:space:]]+info:[[:space:]]*$' project-gate5.yml; then
+    echo "error: Gate 5 lets XcodeGen overwrite its committed Info.plist" >&2
+    exit 1
+fi
+
 python3 - <<'PY'
 import plistlib
 import xml.etree.ElementTree as ET
@@ -90,6 +110,8 @@ with Path("App/Info.plist").open("rb") as handle:
     gate3 = plistlib.load(handle)
 with Path("App/Gate4Info.plist").open("rb") as handle:
     gate4 = plistlib.load(handle)
+with Path("App/Gate5Info.plist").open("rb") as handle:
+    gate5 = plistlib.load(handle)
 
 expected_gate3 = {
     "CFBundleDisplayName": "WrathiOS G3 v2",
@@ -103,20 +125,28 @@ expected_gate4 = {
     "CFBundleVersion": "4",
     "UILaunchStoryboardName": "LaunchScreen",
 }
-for name, plist, expected in (("Gate 3", gate3, expected_gate3), ("Gate 4", gate4, expected_gate4)):
+expected_gate5 = {
+    "CFBundleDisplayName": "WrathiOS G5",
+    "CFBundleShortVersionString": "0.0.5",
+    "CFBundleVersion": "5",
+    "UILaunchStoryboardName": "LaunchScreen",
+}
+for name, plist, expected in (("Gate 3", gate3, expected_gate3), ("Gate 4", gate4, expected_gate4), ("Gate 5", gate5, expected_gate5)):
     for key, value in expected.items():
         if plist.get(key) != value:
             raise SystemExit(f"error: {name} {key} must be {value!r}, found {plist.get(key)!r}")
 
 ET.parse("App/LaunchScreen.storyboard")
-print("validated Gate 3 and Gate 4 plists plus LaunchScreen.storyboard")
+print("validated Gate 3, Gate 4, and Gate 5 plists plus LaunchScreen.storyboard")
 PY
 
 bash -n scripts/build_gate2_sdl.sh
 bash -n scripts/build_gate3_device_diagnostic.sh
 bash -n scripts/build_gate4_device_importer.sh
+bash -n scripts/build_gate5_device_menu.sh
 bash -n scripts/test_gate4_data_contract.sh
 python3 -m py_compile scripts/materialize_sdl_ios_patches.py scripts/materialize_gate3_platform.py
+python3 -m py_compile scripts/build_gate2_engine_archive.py scripts/materialize_engine_patches.py
 python3 scripts/materialize_gate3_platform.py
 
 grep -q 'WrathGate3LaunchCountV2' Derived/gate3-platform/WrathGraphicsDiagnostic.mm || {
@@ -166,5 +196,50 @@ if grep -Eq 'self\.(chooseButton|removeButton)\.configuration\.(title|baseForegr
     echo "error: Gate 4 mutates an already-assigned button configuration without reapplying it" >&2
     exit 1
 fi
+
+required_gate5_stages=(
+    "Imported data detected"
+    "Imported data validation passed"
+    "Runtime path contract prepared"
+    "SDL main readiness established"
+    "SDL initialized"
+    "Video subsystem initialized"
+    "GLES context created"
+    "WRATH filesystem initialization entered"
+    "kp1 package discovery entered"
+    "QuakeC VM loading entered"
+    "menu.dat loading entered"
+    "Main menu reached"
+    "Audio initialization entered"
+    "Audio initialization passed"
+    "Audio initialization failed"
+)
+for stage in "${required_gate5_stages[@]}"; do
+    grep -Fq "$stage" Gate5/WrathRuntime.mm config/engine/ios_source_patches.json || {
+        echo "error: Gate 5 source is missing runtime stage: $stage" >&2
+        exit 1
+    }
+done
+
+grep -Fq 'Launch WRATH' Gate4/WrathImportViewController.mm || {
+    echo "error: Gate 5 launch action is missing" >&2
+    exit 1
+}
+grep -Fq 'SDL_iPhoneSetEventPump(SDL_TRUE)' Gate5/WrathRuntime.mm || {
+    echo "error: Gate 5 does not enable SDL's UIKit event pump around Host_Main" >&2
+    exit 1
+}
+grep -Fq 'Host_Main();' Gate5/WrathRuntime.mm || {
+    echo "error: Gate 5 does not invoke the authentic WRATH runtime" >&2
+    exit 1
+}
+grep -Fq '<private-path>' Gate5/WrathRuntime.mm || {
+    echo "error: Gate 5 private-path sanitizer marker is missing" >&2
+    exit 1
+}
+grep -Fq 'WRATH_ENGINE_BUILD_FLAVOR=gate5' scripts/build_gate5_device_menu.sh || {
+    echo "error: Gate 5 device build does not select the instrumented engine archive" >&2
+    exit 1
+}
 
 echo "repository checks passed"

@@ -6,21 +6,22 @@ This repository contains porting code, build infrastructure, documentation, and 
 
 ## Current milestone
 
-Milestone 0 establishes a reproducible modern iOS application shell and pins the official WRATH 1.1.2 source baseline.
+Gates 0 through 4 have passed. Gate 5A is a controlled physical-device experiment that starts the authentic WRATH runtime from an explicit launcher action and records the exact startup frontier on the way to the real main menu.
 
-Implemented in this bootstrap:
+Established foundations include:
 
 - iOS 16.3+ UIKit application shell for iPhone and iPad
 - arm64 device requirement
 - landscape-only presentation
-- lifecycle bridge reserved for the engine
-- Files-app document sharing enabled for later user-owned data import
+- SDL2-backed OpenGL ES 2 device rendering
+- validated import and persistence of user-owned licensed `kp1` data
+- controlled runtime stages, sanitized local diagnostics, and separate writable state
 - exact upstream engine and QuakeC revision pins
 - scripts to fetch and verify upstream source without silently following a moving branch
 - CI smoke build generated with XcodeGen
 - explicit prohibition on committing commercial game data
 
-The WRATH engine is **not linked yet**. The shell deliberately reports that state rather than pretending a title screen is gameplay, a proud software tradition we will skip.
+The engine and dependencies are statically linked in the Gate 5 device target. CI cannot establish that the authentic menu renders; that remains a physical-device acceptance result.
 
 ## Canonical upstream revisions
 

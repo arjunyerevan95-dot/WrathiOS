@@ -158,7 +158,19 @@ jobs:
           path: Artifacts/gate4-device-importer
           if-no-files-found: error
 
-      - name: Verify durable Gate 4 receipts
+      - name: Build Gate 5A runtime bootstrap
+        if: always()
+        run: bash scripts/build_gate5_device_menu.sh
+
+      - name: Upload Gate 5A runtime evidence and IPA
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate5-menu-bootstrap
+          path: Artifacts/gate5-menu-bootstrap
+          if-no-files-found: error
+
+      - name: Verify durable Gate 1-5A receipts
         if: always()
         shell: bash
         run: |
@@ -168,7 +180,12 @@ jobs:
           test -s Artifacts/gate4-device-importer/WrathiOSGate4-v4-unsigned.ipa
           test -s Artifacts/gate4-device-importer/SHA256SUMS.txt
           test -s Artifacts/gate4-device-importer/summary.md
+          test -s Artifacts/gate5-menu-bootstrap/WrathiOSGate5-v5-unsigned.ipa
+          test -s Artifacts/gate5-menu-bootstrap/SHA256SUMS.txt
+          test -s Artifacts/gate5-menu-bootstrap/summary.md
           grep -q 'Valid PK3 layout: passed' Artifacts/gate4-data-contract/summary.md
           grep -q 'Traversal-bearing PK3: rejected' Artifacts/gate4-data-contract/summary.md
           grep -q 'Runtime engine startup: absent' Artifacts/gate4-device-importer/summary.md
-          echo "Gate 4 durable receipts verified"
+          grep -q 'Host_Main and authentic runtime entry symbols: present' Artifacts/gate5-menu-bootstrap/summary.md
+          grep -q 'Commercial WRATH data: absent' Artifacts/gate5-menu-bootstrap/summary.md
+          echo "Gate 1-5A durable receipts verified"

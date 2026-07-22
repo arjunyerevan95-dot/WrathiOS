@@ -158,6 +158,9 @@ def main() -> int:
     if failed:
         (ARTIFACT_DIR / "report.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
         (ARTIFACT_DIR / "build.log").write_text("\n".join(transcript) + "\n", encoding="utf-8")
+        for item in failed:
+            print(f"compiler diagnostics for {item['source']}:", file=sys.stderr)
+            print(item["stderr"], file=sys.stderr)
         print(f"error: {len(failed)} engine units failed object compilation", file=sys.stderr)
         return 1
 

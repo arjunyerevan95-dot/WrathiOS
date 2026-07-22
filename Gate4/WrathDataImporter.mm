@@ -158,6 +158,7 @@ static void WrathProgress(WrathImportProgress progress, NSString *message) {
                                            sourceReport.details));
                 return;
             }
+            WrathProgress(progress, @"Source data validation passed");
 
             NSURL *sourceKP1 = [NSURL fileURLWithFileSystemRepresentation:sourceValidation.kp1Root.c_str()
                                                               isDirectory:YES
@@ -193,7 +194,7 @@ static void WrathProgress(WrathImportProgress progress, NSString *message) {
                 return;
             }
 
-            WrathProgress(progress, @"Copying licensed files into the app sandbox…");
+            WrathProgress(progress, @"Copy in progress");
             __block NSError *copyError = nil;
             NSError *coordinationError = nil;
             NSFileCoordinator *coordinator = [[NSFileCoordinator alloc] initWithFilePresenter:nil];
@@ -222,6 +223,7 @@ static void WrathProgress(WrathImportProgress progress, NSString *message) {
                                            stagedReport.details));
                 return;
             }
+            WrathProgress(progress, @"Post-copy validation passed");
 
             NSURL *destination = WrathDataImporter.installedKP1URL;
             BOOL hadExisting = [manager fileExistsAtPath:destination.path];

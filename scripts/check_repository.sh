@@ -43,6 +43,7 @@ required_files=(
     docs/GATE1_SOURCE_INVENTORY.md
     docs/GATE3_GRAPHICS_DIAGNOSTIC.md
     docs/GATE4_LICENSED_DATA_IMPORT.md
+    docs/GATE4_DEVICE_CHECKLIST.md
 )
 
 for file in "${required_files[@]}"; do
@@ -98,8 +99,8 @@ expected_gate3 = {
 }
 expected_gate4 = {
     "CFBundleDisplayName": "WrathiOS Import",
-    "CFBundleShortVersionString": "0.0.3",
-    "CFBundleVersion": "3",
+    "CFBundleShortVersionString": "0.0.4",
+    "CFBundleVersion": "4",
     "UILaunchStoryboardName": "LaunchScreen",
 }
 for name, plist, expected in (("Gate 3", gate3, expected_gate3), ("Gate 4", gate4, expected_gate4)):
@@ -128,5 +129,42 @@ grep -q 'Host scene:' Derived/gate3-platform/WrathGraphicsDiagnostic.mm || {
 }
 
 python3 scripts/validate_engine_manifest.py
+
+gate4_source="Gate4/WrathImportViewController.mm"
+for title in "Choose WRATH Folder" "Remove Imported Data"; do
+    grep -Fq "$title" "$gate4_source" || {
+        echo "error: Gate 4 source is missing action title: $title" >&2
+        exit 1
+    }
+done
+
+required_gate4_statuses=(
+    "No imported data"
+    "Invalid folder rejected"
+    "Source data validation passed"
+    "Copy in progress"
+    "Post-copy validation passed"
+    "Imported data available after relaunch"
+    "Imported data removed"
+)
+for status in "${required_gate4_statuses[@]}"; do
+    grep -Fq "$status" Gate4/WrathImportViewController.mm Gate4/WrathDataImporter.mm || {
+        echo "error: Gate 4 source is missing acceptance status: $status" >&2
+        exit 1
+    }
+done
+
+grep -q 'configurationUpdateHandler' "$gate4_source" || {
+    echo "error: Gate 4 buttons do not define configuration state handling" >&2
+    exit 1
+}
+grep -q 'baseForegroundColor' "$gate4_source" || {
+    echo "error: Gate 4 buttons do not define readable configuration foreground colors" >&2
+    exit 1
+}
+if grep -Eq 'self\.(chooseButton|removeButton)\.configuration\.(title|baseForegroundColor|cornerStyle)[[:space:]]*=' "$gate4_source"; then
+    echo "error: Gate 4 mutates an already-assigned button configuration without reapplying it" >&2
+    exit 1
+fi
 
 echo "repository checks passed"

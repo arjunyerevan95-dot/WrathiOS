@@ -9,7 +9,7 @@ PROJECT="$ROOT_DIR/WrathiOSGate4.xcodeproj"
 APP_BUNDLE="$DERIVED_DATA/Build/Products/Debug-iphoneos/WrathiOSGate4.app"
 BINARY="$APP_BUNDLE/WrathiOSGate4"
 PACKAGE_ROOT="$ROOT_DIR/Derived/gate4-package"
-IPA="$ARTIFACT_DIR/WrathiOSGate4-unsigned.ipa"
+IPA="$ARTIFACT_DIR/WrathiOSGate4-v4-unsigned.ipa"
 
 mkdir -p "$ARTIFACT_DIR"
 rm -rf "$DERIVED_DATA" "$PROJECT" "$PACKAGE_ROOT"
@@ -60,10 +60,12 @@ grep -q '_OBJC_CLASS_$_WrathDataImporter' "$ARTIFACT_DIR/global-symbols.txt" || 
   echo "error: Gate 4 importer service class is missing" >&2
   exit 1
 }
-grep -q 'Choose WRATH Folder' "$ARTIFACT_DIR/strings.txt" || {
-  echo "error: Gate 4 folder-picker marker is missing" >&2
-  exit 1
-}
+for title in 'Choose WRATH Folder' 'Remove Imported Data'; do
+  grep -Fq "$title" "$ARTIFACT_DIR/strings.txt" || {
+    echo "error: Gate 4 binary is missing visible button title: $title" >&2
+    exit 1
+  }
+done
 for sentinel in progs.dat csprogs.dat menu.dat; do
   grep -q "$sentinel" "$ARTIFACT_DIR/strings.txt" || {
     echo "error: Gate 4 binary is missing sentinel marker: $sentinel" >&2
@@ -75,6 +77,7 @@ if grep -Eq '_Host_Main$|_SDL_Init$' "$ARTIFACT_DIR/global-symbols.txt"; then
   echo "error: Gate 4 must not link or start the WRATH runtime" >&2
   exit 1
 fi
+printf '%s\n' 'Host_Main: absent' 'SDL_Init: absent' > "$ARTIFACT_DIR/runtime-symbol-audit.txt"
 
 bundle_id="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP_BUNDLE/Info.plist")"
 short_version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP_BUNDLE/Info.plist")"
@@ -84,11 +87,11 @@ launch_storyboard="$(/usr/libexec/PlistBuddy -c 'Print :UILaunchStoryboardName' 
   echo "error: unexpected Gate 4 bundle identifier: $bundle_id" >&2
   exit 1
 }
-[[ "$short_version" == "0.0.3" ]] || {
+[[ "$short_version" == "0.0.4" ]] || {
   echo "error: unexpected Gate 4 short version: $short_version" >&2
   exit 1
 }
-[[ "$build_version" == "3" ]] || {
+[[ "$build_version" == "4" ]] || {
   echo "error: unexpected Gate 4 build version: $build_version" >&2
   exit 1
 }
@@ -104,7 +107,21 @@ launch_storyboard_path="$(find "$APP_BUNDLE" -type d -name 'LaunchScreen.storybo
 }
 printf '%s\n' "${launch_storyboard_path#"$APP_BUNDLE"/}" > "$ARTIFACT_DIR/launch-storyboard-location.txt"
 
-python3 - "$ARTIFACT_DIR/dynamic-dependencies.txt" <<'PY'
+python3 - "$APP_BUNDLE/Info.plist" <<'PY'
+import plistlib
+from pathlib import Path
+import sys
+
+with Path(sys.argv[1]).open("rb") as handle:
+    info = plistlib.load(handle)
+expected = ["UIInterfaceOrientationLandscapeLeft", "UIInterfaceOrientationLandscapeRight"]
+for key in ("UISupportedInterfaceOrientations", "UISupportedInterfaceOrientations~ipad"):
+    if info.get(key) != expected:
+        raise SystemExit(f"error: {key} is not landscape-only: {info.get(key)!r}")
+print("validated landscape-only orientation declarations")
+PY
+
+python3 - "$ARTIFACT_DIR/dynamic-dependencies.txt" <<'PY' | tee "$ARTIFACT_DIR/dynamic-dependency-audit.txt"
 from pathlib import Path
 import sys
 
@@ -120,10 +137,31 @@ if invalid:
 print(f"validated {len(paths)} system dynamic dependencies")
 PY
 
-if find "$APP_BUNDLE" -type f \( -iname '*.pak' -o -iname '*.pk3' -o -iname '*.pk4' -o -iname '*.wad' \) -print -quit | grep -q .; then
-  echo "error: Gate 4 bundle unexpectedly contains commercial-style archives" >&2
-  exit 1
-fi
+python3 - "$APP_BUNDLE" <<'PY' | tee "$ARTIFACT_DIR/commercial-data-audit.txt"
+from pathlib import Path
+import sys
+
+root = Path(sys.argv[1])
+archive_suffixes = {".pak", ".pk3", ".pk4", ".wad", ".gro"}
+sentinels = {"progs.dat", "csprogs.dat", "menu.dat"}
+commercial_paths = []
+for path in root.rglob("*"):
+    relative = path.relative_to(root)
+    lowered_parts = {part.lower() for part in relative.parts}
+    if (path.is_file() and (
+        path.suffix.lower() in archive_suffixes
+        or path.name.lower() in sentinels
+        or "kp1" in lowered_parts
+        or "gamedata" in lowered_parts
+    )):
+        commercial_paths.append(relative.as_posix())
+if commercial_paths:
+    print("error: Gate 4 bundle contains commercial-data paths:", file=sys.stderr)
+    for path in commercial_paths:
+        print(f"  {path}", file=sys.stderr)
+    raise SystemExit(1)
+print("commercial WRATH files: absent")
+PY
 
 if codesign --verify --deep --strict "$APP_BUNDLE" >/dev/null 2>&1; then
   echo "error: CI importer unexpectedly contains a valid signature" >&2
@@ -146,20 +184,30 @@ rm -f "$PACKAGE_ROOT/Payload/WrathiOSGate4.app/embedded.mobileprovision"
   exit 1
 }
 /usr/bin/unzip -tq "$IPA" > "$ARTIFACT_DIR/ipa-validation.txt"
+/usr/bin/unzip -Z1 "$IPA" | sort > "$ARTIFACT_DIR/ipa-inventory.txt"
+if grep -Eq '(^|/)(_CodeSignature/|embedded\.mobileprovision$)' "$ARTIFACT_DIR/ipa-inventory.txt"; then
+  echo "error: unsigned Gate 4 IPA contains signing material" >&2
+  exit 1
+fi
 shasum -a 256 "$BINARY" "$IPA" > "$ARTIFACT_DIR/SHA256SUMS.txt"
 cp "$BINARY" "$ARTIFACT_DIR/WrathiOSGate4-arm64"
+
+ipa_size="$(stat -f '%z' "$IPA")"
+ipa_sha256="$(shasum -a 256 "$IPA" | awk '{print $1}')"
 
 cat > "$ARTIFACT_DIR/device-test-checklist.md" <<'EOF'
 # Gate 4 physical-device checklist
 
-1. Install `WrathiOSGate4-unsigned.ipa` through the existing Gate 3 App ID.
-2. Confirm the screen identifies Gate 4 and says the engine/runtime remain disabled.
-3. Tap **Choose WRATH Folder** and select either the licensed installation root or its `kp1` folder.
-4. Confirm an incomplete or unrelated folder fails with missing sentinel details.
-5. Import the licensed folder and wait for both source and sandboxed-copy validation.
-6. Confirm the final card reports compatible data, file count, package count, and total size.
-7. Force-quit and relaunch. Confirm the installed-data validation still passes without selecting the source again.
-8. Confirm **Remove Imported Data** removes only the sandboxed copy.
+1. Install `WrathiOSGate4-v4-unsigned.ipa` through the existing Gate 3 App ID without deleting the app first.
+2. Launch with no imported data. Capture **No imported data** and both readable button titles.
+3. Select an unrelated or invalid folder and capture **Invalid folder rejected**.
+4. Select the licensed WRATH root containing `kp1`, or `kp1` itself.
+5. Observe **Source data validation passed** and capture **Copy in progress** with the completed source-validation line.
+6. Capture **Post-copy validation passed** with profile, file count, package count, size, sentinels, and **Imported during this session**.
+7. Force-quit and relaunch. Without selecting the source again, capture **Imported data available after relaunch** and **Detected at launch**.
+8. Tap **Remove Imported Data**, confirm, and capture **Imported data removed**.
+9. Confirm the removal action is no longer exposed and the screen explicitly reports that no imported data remains.
+10. Force-quit and relaunch once more; capture **No imported data** to prove removal persisted.
 
 Do not attach imported files, package listings containing private paths, or the app container to issues or CI artifacts.
 EOF
@@ -170,14 +218,23 @@ cat > "$ARTIFACT_DIR/summary.md" <<EOF
 - Target: arm64-apple-ios16.3
 - Bundle ID: \`$bundle_id\` (reuses the existing diagnostic App ID)
 - Version: \`$short_version ($build_version)\`
+- IPA: \`$(basename "$IPA")\`
+- IPA size: \`$ipa_size bytes\`
+- IPA SHA-256: \`$ipa_sha256\`
 - Runtime engine startup: absent
 - Validation profile: \`wrath-1.1.2-qc-layout-v1\`
 - Required sentinels: \`progs.dat\`, \`csprogs.dat\`, \`menu.dat\`
 - Supported package indexes: PK3 and Quake PAK
 - Launch storyboard: \`${launch_storyboard_path#"$APP_BUNDLE"/}\`
+- Orientation: landscape-only
 - Non-system dynamic dependencies: none
+- Bundle inventory: commercial-data and signing-material audit passed
 - Commercial data in IPA: absent
+- Provisioning profile: absent
+- ZIP integrity: passed
 - Packaging: unsigned IPA for external signing
 EOF
 
+cat "$ARTIFACT_DIR/summary.md"
+cat "$ARTIFACT_DIR/SHA256SUMS.txt"
 echo "Gate 4 device importer build and packaging validation passed"

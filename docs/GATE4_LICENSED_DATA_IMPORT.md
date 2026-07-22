@@ -89,6 +89,8 @@ Gate 4 passes only after device evidence confirms:
 - a relaunch validates the installed data without selecting the source again;
 - removal deletes only the app's sandboxed copy.
 
+Run the complete ordered acceptance procedure in `docs/GATE4_DEVICE_CHECKLIST.md`. The UI exposes screenshot-safe states for no data, invalid selection, source validation, copying, post-copy validation, relaunch detection, and removal.
+
 ## Stop condition
 
 Do not call `Host_Main`, initialize WRATH's filesystem, mount imported packages, reach the menu, initialize audio, or begin controls/gameplay until Gate 4 physical-device acceptance is recorded.

@@ -12,9 +12,11 @@ required_files=(
     project-gate3.yml
     project-gate4.yml
     project-gate5.yml
+    project-gate5b.yml
     App/Info.plist
     App/Gate4Info.plist
     App/Gate5Info.plist
+    App/Gate5BInfo.plist
     App/LaunchScreen.storyboard
     App/main.mm
     Platform/WrathEngineBridge.mm
@@ -44,6 +46,8 @@ required_files=(
     scripts/build_gate3_device_diagnostic.sh
     scripts/build_gate4_device_importer.sh
     scripts/build_gate5_device_menu.sh
+    scripts/build_gate5b_device_menu.sh
+    scripts/test_gate5b_input_contract.py
     scripts/test_gate4_data_contract.sh
     config/engine/source_dispositions.json
     config/engine/ios_upstream_sources.txt
@@ -55,6 +59,8 @@ required_files=(
     docs/GATE4_DEVICE_CHECKLIST.md
     docs/GATE5_RUNTIME_BOOTSTRAP.md
     docs/GATE5_DEVICE_CHECKLIST.md
+    docs/GATE5B_MENU_INPUT.md
+    docs/GATE5B_DEVICE_CHECKLIST.md
 )
 
 for file in "${required_files[@]}"; do
@@ -101,6 +107,15 @@ if grep -Eq '^[[:space:]]+info:[[:space:]]*$' project-gate5.yml; then
     exit 1
 fi
 
+grep -q 'INFOPLIST_FILE: App/Gate5BInfo.plist' project-gate5b.yml || {
+    echo "error: Gate 5B does not consume its committed Info.plist" >&2
+    exit 1
+}
+if grep -Eq '^[[:space:]]+info:[[:space:]]*$' project-gate5b.yml; then
+    echo "error: Gate 5B lets XcodeGen overwrite its committed Info.plist" >&2
+    exit 1
+fi
+
 python3 - <<'PY'
 import plistlib
 import xml.etree.ElementTree as ET
@@ -112,6 +127,8 @@ with Path("App/Gate4Info.plist").open("rb") as handle:
     gate4 = plistlib.load(handle)
 with Path("App/Gate5Info.plist").open("rb") as handle:
     gate5 = plistlib.load(handle)
+with Path("App/Gate5BInfo.plist").open("rb") as handle:
+    gate5b = plistlib.load(handle)
 
 expected_gate3 = {
     "CFBundleDisplayName": "WrathiOS G3 v2",
@@ -131,22 +148,30 @@ expected_gate5 = {
     "CFBundleVersion": "5",
     "UILaunchStoryboardName": "LaunchScreen",
 }
-for name, plist, expected in (("Gate 3", gate3, expected_gate3), ("Gate 4", gate4, expected_gate4), ("Gate 5", gate5, expected_gate5)):
+expected_gate5b = {
+    "CFBundleDisplayName": "WrathiOS G5B",
+    "CFBundleShortVersionString": "0.0.6",
+    "CFBundleVersion": "6",
+    "UILaunchStoryboardName": "LaunchScreen",
+}
+for name, plist, expected in (("Gate 3", gate3, expected_gate3), ("Gate 4", gate4, expected_gate4), ("Gate 5", gate5, expected_gate5), ("Gate 5B", gate5b, expected_gate5b)):
     for key, value in expected.items():
         if plist.get(key) != value:
             raise SystemExit(f"error: {name} {key} must be {value!r}, found {plist.get(key)!r}")
 
 ET.parse("App/LaunchScreen.storyboard")
-print("validated Gate 3, Gate 4, and Gate 5 plists plus LaunchScreen.storyboard")
+print("validated Gate 3 through Gate 5B plists plus LaunchScreen.storyboard")
 PY
 
 bash -n scripts/build_gate2_sdl.sh
 bash -n scripts/build_gate3_device_diagnostic.sh
 bash -n scripts/build_gate4_device_importer.sh
 bash -n scripts/build_gate5_device_menu.sh
+bash -n scripts/build_gate5b_device_menu.sh
 bash -n scripts/test_gate4_data_contract.sh
 python3 -m py_compile scripts/materialize_sdl_ios_patches.py scripts/materialize_gate3_platform.py
 python3 -m py_compile scripts/build_gate2_engine_archive.py scripts/materialize_engine_patches.py
+python3 scripts/test_gate5b_input_contract.py
 python3 scripts/materialize_gate3_platform.py
 
 grep -q 'WrathGate3LaunchCountV2' Derived/gate3-platform/WrathGraphicsDiagnostic.mm || {
@@ -239,6 +264,10 @@ grep -Fq '<private-path>' Gate5/WrathRuntime.mm || {
 }
 grep -Fq 'WRATH_ENGINE_BUILD_FLAVOR=gate5' scripts/build_gate5_device_menu.sh || {
     echo "error: Gate 5 device build does not select the instrumented engine archive" >&2
+    exit 1
+}
+grep -Fq 'WRATH_ENGINE_BUILD_FLAVOR=gate5b' scripts/build_gate5b_device_menu.sh || {
+    echo "error: Gate 5B device build does not select the deterministic-input engine archive" >&2
     exit 1
 }
 

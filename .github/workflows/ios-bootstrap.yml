@@ -170,7 +170,23 @@ jobs:
           path: Artifacts/gate5-menu-bootstrap
           if-no-files-found: error
 
-      - name: Verify durable Gate 1-5A receipts
+      - name: Verify Gate 5B deterministic-input source contract
+        if: always()
+        run: python3 scripts/test_gate5b_input_contract.py
+
+      - name: Build Gate 5B deterministic menu input
+        if: always()
+        run: bash scripts/build_gate5b_device_menu.sh
+
+      - name: Upload Gate 5B input evidence and IPA
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate5b-menu-input
+          path: Artifacts/gate5b-menu-input
+          if-no-files-found: error
+
+      - name: Verify durable Gate 1-5B receipts
         if: always()
         shell: bash
         run: |
@@ -183,9 +199,14 @@ jobs:
           test -s Artifacts/gate5-menu-bootstrap/WrathiOSGate5-v5-unsigned.ipa
           test -s Artifacts/gate5-menu-bootstrap/SHA256SUMS.txt
           test -s Artifacts/gate5-menu-bootstrap/summary.md
+          test -s Artifacts/gate5b-menu-input/WrathiOSGate5B-v6-unsigned.ipa
+          test -s Artifacts/gate5b-menu-input/SHA256SUMS.txt
+          test -s Artifacts/gate5b-menu-input/summary.md
           grep -q 'Valid PK3 layout: passed' Artifacts/gate4-data-contract/summary.md
           grep -q 'Traversal-bearing PK3: rejected' Artifacts/gate4-data-contract/summary.md
           grep -q 'Runtime engine startup: absent' Artifacts/gate4-device-importer/summary.md
           grep -q 'Host_Main and authentic runtime entry symbols: present' Artifacts/gate5-menu-bootstrap/summary.md
           grep -q 'Commercial WRATH data: absent' Artifacts/gate5-menu-bootstrap/summary.md
-          echo "Gate 1-5A durable receipts verified"
+          grep -q 'Input model: single-finger relative touchpad' Artifacts/gate5b-menu-input/summary.md
+          grep -q 'Commercial WRATH data: absent' Artifacts/gate5b-menu-input/summary.md
+          echo "Gate 1-5B durable receipts verified"

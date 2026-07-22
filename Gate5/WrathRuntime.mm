@@ -24,6 +24,11 @@ static NSString * const WrathStageValidationPassed = @"Imported data validation 
 static NSString * const WrathStagePathsPrepared = @"Runtime path contract prepared";
 static NSString * const WrathStageSDLMainReady = @"SDL main readiness established";
 static NSString * const WrathStageSDLInitialized = @"SDL initialized";
+#ifdef WRATH_IOS_GATE5B
+static NSString * const WrathTranscriptVersion = @"0.0.6 (6)";
+#else
+static NSString * const WrathTranscriptVersion = @"0.0.5 (5)";
+#endif
 
 static jmp_buf gRuntimeAbortTarget;
 static WrathRuntime *gActiveRuntime;
@@ -138,7 +143,7 @@ static int WrathRunHostMain(void) {
     }
     NSDictionary *document = @{
         @"schema": @1,
-        @"version": @"0.0.5 (5)",
+        @"version": WrathTranscriptVersion,
         @"entries": self.entries
     };
     NSError *jsonError = nil;
@@ -158,6 +163,10 @@ static int WrathRunHostMain(void) {
         @"stage": safeStage,
         @"detail": safeDetail
     }];
+    static const NSUInteger WrathMaximumTranscriptEntries = 128;
+    if (self.entries.count > WrathMaximumTranscriptEntries) {
+        [self.entries removeObjectsInRange:NSMakeRange(0, self.entries.count - WrathMaximumTranscriptEntries)];
+    }
     [self persistTranscript];
     os_log_info(OS_LOG_DEFAULT, "Gate 5 [%{public}lu] %{public}@ - %{public}@",
                 (unsigned long)self.sequence, safeStage, safeDetail);
@@ -253,6 +262,16 @@ static int WrathRunHostMain(void) {
         com_argv = argv.data();
         Sys_ProvideSelfFD();
 
+#ifdef WRATH_IOS_GATE5B
+        if (SDL_SetHintWithPriority(SDL_HINT_TOUCH_MOUSE_EVENTS, "0", SDL_HINT_OVERRIDE) != SDL_TRUE) {
+            self.startingOrActive = NO;
+            [self recordFatalError:@"SDL touch-to-mouse synthesis could not be disabled."];
+            completion(@"Could not establish the Gate 5B touch event contract.");
+            return;
+        }
+        [self recordStage:@"Gate 5B direct touch path selected"
+                   detail:@"SDL touch-to-mouse synthesis disabled; direct finger events own menu input."];
+#endif
         if (SDL_Init(0) < 0) {
             self.startingOrActive = NO;
             NSString *errorText = [NSString stringWithUTF8String:SDL_GetError()] ?: @"Unknown SDL error";

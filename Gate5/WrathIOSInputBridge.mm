@@ -16,7 +16,7 @@
 namespace {
 
 using wrathios::input::LandscapeOrientation;
-using wrathios::input::Point;
+using InputPoint = wrathios::input::Point;
 using wrathios::input::GestureState;
 
 struct InputCounters {
@@ -191,7 +191,7 @@ void startMotionIfNeeded(bool resumed) {
             gGyro.samples = 0;
             return;
         }
-        Point mapped = wrathios::input::mapGyroRotationRate(
+        InputPoint mapped = wrathios::input::mapGyroRotationRate(
             static_cast<LandscapeOrientation>(gOrientation.load()),
             static_cast<float>(motion.rotationRate.x),
             static_cast<float>(motion.rotationRate.y));
@@ -237,7 +237,7 @@ void clearFingerState(bool modeTransition, const char *reason) {
 }
 
 void setMenuPosition(float normalizedX, float normalizedY) {
-    Point logical = wrathios::input::normalizedToLogical(
+    InputPoint logical = wrathios::input::normalizedToLogical(
         normalizedX, normalizedY, gInput.logicalWidth, gInput.logicalHeight);
     gInput.menuX = logical.x;
     gInput.menuY = logical.y;
@@ -308,9 +308,9 @@ extern "C" void WrathIOSInputFingerMotion(long long fingerID, float normalizedX,
         return;
     }
     if (gInput.mode == WrathIOSInputModeMenu) {
-        Point previous = wrathios::input::normalizedToLogical(
+        InputPoint previous = wrathios::input::normalizedToLogical(
             gInput.gesture.previousX, gInput.gesture.previousY, gInput.logicalWidth, gInput.logicalHeight);
-        Point current = wrathios::input::normalizedToLogical(
+        InputPoint current = wrathios::input::normalizedToLogical(
             normalizedX, normalizedY, gInput.logicalWidth, gInput.logicalHeight);
         gInput.gesture.movement += std::hypot(current.x - previous.x, current.y - previous.y);
         gInput.gesture.previousX = normalizedX;
@@ -330,7 +330,7 @@ extern "C" void WrathIOSInputFingerMotion(long long fingerID, float normalizedX,
         return;
     }
     if (gInput.mode == WrathIOSInputModeGameplay) {
-        Point delta = wrathios::input::swipeDelta(
+        InputPoint delta = wrathios::input::swipeDelta(
             gInput.gesture.previousX,
             gInput.gesture.previousY,
             normalizedX,

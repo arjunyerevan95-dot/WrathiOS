@@ -9,7 +9,7 @@ PROJECT="$ROOT_DIR/WrathiOSGate5B.xcodeproj"
 APP_BUNDLE="$DERIVED_DATA/Build/Products/Debug-iphoneos/WrathiOSGate5B.app"
 BINARY="$APP_BUNDLE/WrathiOSGate5B"
 PACKAGE_ROOT="$ROOT_DIR/Derived/gate5b-package"
-IPA="$ARTIFACT_DIR/WrathiOSGate5B-v6-unsigned.ipa"
+IPA="$ARTIFACT_DIR/WrathiOSGate5B-v7-unsigned.ipa"
 
 rm -rf "$ARTIFACT_DIR" "$DERIVED_DATA" "$PROJECT" "$PACKAGE_ROOT"
 mkdir -p "$ARTIFACT_DIR"
@@ -26,6 +26,7 @@ command -v xcodegen >/dev/null 2>&1 || { echo "error: xcodegen is required" >&2;
 
 cd "$ROOT_DIR"
 python3 scripts/test_gate5b_input_contract.py | tee "$ARTIFACT_DIR/input-source-contract.txt"
+bash scripts/test_gate5b_input_math.sh
 WRATH_ENGINE_BUILD_FLAVOR=gate5b python3 scripts/build_gate2_engine_archive.py
 xcodegen generate --spec project-gate5b.yml
 
@@ -57,8 +58,15 @@ required_symbols=(
     '_SDL_GL_CreateContext$'
     '_WrathIOSRuntimeStage$'
     '_WrathIOSRuntimeAbort$'
-    '_WrathIOSMenuPointerReset$'
-    '_WrathIOSMenuPointerEnteredForeground$'
+    '_WrathIOSInputSetMode$'
+    '_WrathIOSInputFingerDown$'
+    '_WrathIOSInputFingerMotion$'
+    '_WrathIOSInputFingerUp$'
+    '_WrathIOSInputConsumeMenuPosition$'
+    '_WrathIOSInputConsumeMenuButtonPhase$'
+    '_WrathIOSInputConsumeGameplayLook$'
+    '_WrathIOSInputReset$'
+    '_WrathIOSInputEnteredForeground$'
     '_OBJC_CLASS_\$_WrathRuntime$'
     '_OBJC_CLASS_\$_WrathDataImporter$'
     '_OBJC_CLASS_\$_WrathImportViewController$'
@@ -71,17 +79,24 @@ for symbol in "${required_symbols[@]}"; do
 done
 
 required_markers=(
-    'Gate 5B direct touch path selected'
-    'Gate 5B touch begin'
-    'Gate 5B drag threshold crossed'
-    'Gate 5B relative movement emitted'
-    'Gate 5B tap click emitted'
-    'Gate 5B touch state reset'
-    'Gate 5B background pointer reset'
+    'Gate 5B mode-specific input bridge selected'
+    'Gate 5B input mode changed'
+    'Gate 5B menu touch began'
+    'Gate 5B menu absolute position updated'
+    'Gate 5B menu tap emitted'
+    'Gate 5B gameplay aim touch began'
+    'Gate 5B gameplay swipe movement emitted'
+    'Gate 5B gameplay aim state reset'
+    'Gate 5B gyro started'
+    'Gate 5B gyro delta applied'
+    'Gate 5B gyro suspended'
+    'Gate 5B gyro baseline reset'
+    'Gate 5B input state reset'
     'Gate 5B runtime returned to foreground'
     'Gate 5B foreground first frame'
-    'relative origin established; cursor unchanged'
-    'release deferred to the next engine frame'
+    'absolute logical cursor positioned under the primary finger'
+    'origin established in the rightmost 65 percent; camera unchanged'
+    'no click or fire event emitted'
     'Launch WRATH'
     'Choose WRATH Folder'
     'Remove Imported Data'
@@ -104,7 +119,7 @@ launch_storyboard="$(/usr/libexec/PlistBuddy -c 'Print :UILaunchStoryboardName' 
 [[ "$bundle_id" == 'com.arjukstudios.wrathios.gate3' ]] || {
     echo "error: unexpected Gate 5B bundle identifier: $bundle_id" >&2; exit 1;
 }
-[[ "$short_version" == '0.0.6' && "$build_version" == '6' ]] || {
+[[ "$short_version" == '0.0.7' && "$build_version" == '7' ]] || {
     echo "error: unexpected Gate 5B version: $short_version ($build_version)" >&2; exit 1;
 }
 [[ "$launch_storyboard" == 'LaunchScreen' ]] || { echo "error: adaptive launch storyboard missing" >&2; exit 1; }
@@ -133,6 +148,11 @@ if invalid:
     raise SystemExit("error: non-system dynamic dependencies: " + ", ".join(invalid))
 print(f"validated {len(paths)} system dynamic dependencies")
 PY
+grep -q '/System/Library/Frameworks/CoreMotion.framework/CoreMotion' \
+    "$ARTIFACT_DIR/dynamic-dependencies.txt" || {
+    echo "error: Core Motion is not linked into the Gate 5B binary" >&2
+    exit 1
+}
 
 python3 - "$APP_BUNDLE" <<'PY' | tee "$ARTIFACT_DIR/commercial-data-audit.txt"
 from pathlib import Path
@@ -179,13 +199,14 @@ shasum -a 256 "$BINARY" "$IPA" > "$ARTIFACT_DIR/SHA256SUMS.txt"
 cp "$BINARY" "$ARTIFACT_DIR/WrathiOSGate5B-arm64"
 cp docs/GATE5B_DEVICE_CHECKLIST.md "$ARTIFACT_DIR/device-test-checklist.md"
 cp docs/GATE5B_MENU_INPUT.md "$ARTIFACT_DIR/input-architecture.md"
+cp Artifacts/gate5b-input-math/summary.txt "$ARTIFACT_DIR/input-math-tests.txt"
 cp Artifacts/engine-patches/report.json "$ARTIFACT_DIR/engine-patch-report.json"
 cp Artifacts/gate5b-engine-archive/report.json "$ARTIFACT_DIR/engine-archive-report.json"
 
 ipa_size="$(stat -f '%z' "$IPA")"
 ipa_sha256="$(shasum -a 256 "$IPA" | awk '{print $1}')"
 cat > "$ARTIFACT_DIR/summary.md" <<EOF
-# Gate 5B deterministic-menu-input device build
+# Gate 5B direct-touch, swipe-look, and gyro device build
 
 - Target: arm64-apple-ios16.3
 - Bundle identifier: $bundle_id (unchanged)
@@ -193,9 +214,11 @@ cat > "$ARTIFACT_DIR/summary.md" <<EOF
 - IPA: $(basename "$IPA")
 - IPA size: $ipa_size bytes
 - IPA SHA-256: $ipa_sha256
-- Input model: single-finger relative touchpad
+- Menu input: direct absolute touch with frame-separated click
+- Gameplay input: right-side relative swipe-look at the authentic mouse-look boundary
+- Gyroscope: Core Motion device rotation, landscape mapped and additive to swipe
 - SDL synthetic touch-to-mouse path: disabled
-- Tap/drag and lifecycle reset contracts: embedded
+- Mode-transition and lifecycle reset contracts: embedded
 - WRATH engine, SDL2, audio, Host_Main, and Gate 4 importer: retained
 - Dynamic dependencies: system-only
 - Adaptive launch storyboard: packaged
@@ -203,8 +226,8 @@ cat > "$ARTIFACT_DIR/summary.md" <<EOF
 - Commercial WRATH data: absent
 - Provisioning profile and code signature: absent
 - ZIP integrity: passed
-- Gameplay virtual controls: absent
-- Physical deterministic-input and lifecycle result: not established by CI
+- Gameplay movement and firing controls: absent
+- Physical menu, swipe, gyro, and lifecycle result: not established by CI
 EOF
 
 cat "$ARTIFACT_DIR/summary.md"

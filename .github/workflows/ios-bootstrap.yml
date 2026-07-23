@@ -174,7 +174,19 @@ jobs:
         if: always()
         run: python3 scripts/test_gate5b_input_contract.py
 
-      - name: Build Gate 5B deterministic menu input
+      - name: Test Gate 5B input coordinate and gyro math
+        if: always()
+        run: bash scripts/test_gate5b_input_math.sh
+
+      - name: Upload Gate 5B input math evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate5b-input-math
+          path: Artifacts/gate5b-input-math
+          if-no-files-found: error
+
+      - name: Build Gate 5B direct touch and gameplay look input
         if: always()
         run: bash scripts/build_gate5b_device_menu.sh
 
@@ -199,7 +211,8 @@ jobs:
           test -s Artifacts/gate5-menu-bootstrap/WrathiOSGate5-v5-unsigned.ipa
           test -s Artifacts/gate5-menu-bootstrap/SHA256SUMS.txt
           test -s Artifacts/gate5-menu-bootstrap/summary.md
-          test -s Artifacts/gate5b-menu-input/WrathiOSGate5B-v6-unsigned.ipa
+          test -s Artifacts/gate5b-input-math/summary.txt
+          test -s Artifacts/gate5b-menu-input/WrathiOSGate5B-v7-unsigned.ipa
           test -s Artifacts/gate5b-menu-input/SHA256SUMS.txt
           test -s Artifacts/gate5b-menu-input/summary.md
           grep -q 'Valid PK3 layout: passed' Artifacts/gate4-data-contract/summary.md
@@ -207,6 +220,8 @@ jobs:
           grep -q 'Runtime engine startup: absent' Artifacts/gate4-device-importer/summary.md
           grep -q 'Host_Main and authentic runtime entry symbols: present' Artifacts/gate5-menu-bootstrap/summary.md
           grep -q 'Commercial WRATH data: absent' Artifacts/gate5-menu-bootstrap/summary.md
-          grep -q 'Input model: single-finger relative touchpad' Artifacts/gate5b-menu-input/summary.md
+          grep -q 'Menu input: direct absolute touch' Artifacts/gate5b-menu-input/summary.md
+          grep -q 'Gameplay input: right-side relative swipe-look' Artifacts/gate5b-menu-input/summary.md
+          grep -q 'Gyroscope: Core Motion' Artifacts/gate5b-menu-input/summary.md
           grep -q 'Commercial WRATH data: absent' Artifacts/gate5b-menu-input/summary.md
           echo "Gate 1-5B durable receipts verified"

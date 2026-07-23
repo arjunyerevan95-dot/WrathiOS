@@ -53,7 +53,7 @@
     (void)application;
     [WrathRuntime.sharedRuntime recordLifecycleEvent:@"Runtime pause requested"];
 #ifdef WRATH_IOS_GATE5B
-    WrathIOSMenuPointerReset("focus loss");
+    WrathIOSInputReset("focus loss");
 #endif
 }
 
@@ -61,7 +61,7 @@
     (void)application;
     [WrathRuntime.sharedRuntime recordLifecycleEvent:@"Runtime entered background"];
 #ifdef WRATH_IOS_GATE5B
-    WrathIOSMenuPointerReset("background");
+    WrathIOSInputReset("background");
 #endif
 }
 
@@ -69,7 +69,7 @@
     (void)application;
 #ifdef WRATH_IOS_GATE5B
     [WrathRuntime.sharedRuntime recordLifecycleEvent:@"Runtime returned to foreground"];
-    WrathIOSMenuPointerEnteredForeground();
+    WrathIOSInputEnteredForeground();
 #else
     [WrathRuntime.sharedRuntime recordLifecycleEvent:@"Runtime foreground recovery entered"];
 #endif

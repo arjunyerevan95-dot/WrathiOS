@@ -1,71 +1,101 @@
-# Gate 5B deterministic menu touch input
+# Gate 5B direct menu touch and gameplay look input
 
-## Source path and root cause
+## Reassessment
 
-At the pinned WRATH revision, SDL UIKit reports each contact as normalized
-`SDL_FINGERDOWN`, `SDL_FINGERMOTION`, and `SDL_FINGERUP` events. The SDL 2.32.10
-default also synthesizes an absolute `SDL_TOUCH_MOUSEID` mouse stream from the
-same primary finger.
+The first Gate 5B candidate correctly disabled SDL's synthesized touch mouse and
+stopped cursor drift, but it replaced one desktop abstraction with another: the
+entire screen became a relative laptop-style touchpad. A tap emitted
+`K_MOUSE1` at the old engine cursor instead of selecting the visible location.
+Gameplay remained on WRATH's upstream fixed 128 by 128 bottom-right virtual aim
+pad, which explains why swipes were accepted only in limited regions.
 
-Gate 5A enabled `DP_MOBILETOUCH` and `vid_touchscreen`. Its `vid_sdl.c` path
-therefore did all of the following at once:
+The revised build removes the project-authored relative menu pointer and bypasses
+the complete upstream Quake touchscreen-area layout under `WRATH_IOS_GATE5B`.
+SDL touch-to-mouse synthesis remains disabled. One project-owned
+`WrathIOSInputBridge` now selects menu, gameplay, or other behavior explicitly.
 
-1. stored the normalized finger stream in `multitouch`;
-2. read SDL's synthesized absolute position through `SDL_GetMouseState` into a
-   second, special `multitouch` slot;
-3. drove the Quake-style menu touch area from those entries; and
-4. assigned the absolute mouse position to `in_windowmouse_x/y` only while the
-   menu touch button area was active.
+## Engine-state boundary
 
-That mixed two ownership models. A new contact could replace the engine-owned
-cursor with an unrelated absolute finger coordinate. Small contact jitter kept
-rewriting the position, and touch-area eligibility controlled whether the
-rewrite happened at all. The synthetic special slot also used the upstream
-`x * 32768 / vid.width` conversion even though `VID_TouchscreenArea` expects a
-normalized 0–1 value. These facts account for the observed anchoring,
-discontinuity, and drift. The high-density 3x drawable is not the cause: SDL
-touch coordinates and `in_windowmouse_x/y` both use logical window dimensions.
+- Menu mode requires no active console and `key_dest` equal to `key_menu` or
+  `key_menu_grabbed`.
+- Gameplay mode requires no active console, `key_dest == key_game`, a connected
+  client with `cls.signon == SIGNONS`, no intermission, no CSQC mouse request,
+  and no Prydon cursor.
+- Console, chat, loading/sign-on, intermission, CSQC cursor, and all other
+  states select other mode.
 
-The authentic menu VM reads `in_windowmouse_x/y`, converting once from logical
-window coordinates into `vid_conwidth/vid_conheight` menu coordinates. That is
-the stable ownership boundary retained by Gate 5B.
+Every transition clears the primary finger, previous coordinate, drag state,
+pending swipe delta, and gyro accumulator. A touch begun in one mode cannot
+continue in another.
 
-## Chosen model
+## Direct menu touch
 
-Gate 5B uses one relative touchpad path, scoped by `WRATH_IOS_GATE5B`:
+SDL reports normalized finger coordinates. The bridge clamps them and converts
+them once into the current logical SDL window:
 
-- `SDL_HINT_TOUCH_MOUSE_EVENTS=0` is set with override priority before SDL
-  initializes, so the UIKit finger does not also become a mouse.
-- The first finger down while `key_dest == key_menu` records only a normalized
-  origin. It never changes the cursor.
-- Matching finger motion is differenced from the previous normalized position,
-  converted once using the current logical `vid.width` and `vid.height`, and
-  added to the engine-owned cursor. Sensitivity is 1.0. The engine cursor is
-  clamped to the logical window.
-- Additional fingers are ignored until the controlling finger is released.
-- Movement accumulating to 1.8% of the shorter logical window dimension marks
-  a drag. On the verified 956 x 440 surface the threshold is 7.92 logical
-  points. A drag never clicks.
-- Finger up below that threshold emits one `K_MOUSE1` down. The next
-  `Sys_SendKeyEvents` call emits its release, giving the menu VM a full engine
-  frame in which to observe the pressed state.
-- The legacy Quake menu touch-area/mouse-state path returns early for
-  `key_menu`, so absolute and relative behavior cannot combine.
+`logical = normalized * (logical dimension - 1)`
 
-This is intentionally menu-only. The existing upstream game touch layout is
-unchanged and is not a Gate 5B acceptance surface.
+The engine patch assigns that result to `in_windowmouse_x/y`. The authentic menu
+VM already performs the only logical-to-virtual conversion in
+`mvm_cmds.c`:
 
-## Lifecycle and evidence boundary
+`virtual = logical * vid_con dimension / vid dimension`
 
-Finger, drag, and button state is cleared on finger up, UIKit focus loss,
-backgrounding, SDL window hide, and SDL focus loss. The background reset
-releases any pending mouse button before suspension. A foreground marker is
-armed from UIKit and recorded at the next engine input/frame boundary; it proves
-only that one frame boundary was reached after return, not full lifecycle
-support.
+No 3x drawable-pixel scale is used. The verified 956 by 440 logical window and
+2868 by 1320 drawable therefore do not require device-specific constants.
 
-Instrumentation records bounded stage/counter summaries for touch begin, first
-relative motion, drag threshold, emitted tap, reset, background reset, return to
-foreground, and first foreground frame. Gesture logging has a 32-stage budget,
-and the persisted runtime transcript retains at most 128 entries. No touch
-coordinates or private paths are recorded.
+Finger-down places the authentic cursor under the finger. Dragging tracks the
+finger absolutely. Motion above 1.2 percent of the shorter logical dimension is
+a drag and does not click on release. A tap queues one `K_MOUSE1` down after the
+absolute position update; the following engine input frame emits the release.
+Additional fingers are ignored.
+
+## Gameplay swipe-look
+
+Gameplay accepts one aim finger only when it begins at normalized X >= 0.35,
+the rightmost 65 percent of the logical surface. The left 35 percent is reserved
+for later movement work and has no effect in this milestone.
+
+Finger-down stores an origin without producing motion. Each finger-motion event
+is differenced from the preceding normalized position and converted once using
+the current logical dimensions. Experimental multipliers are 2.0 horizontally
+and 1.65 vertically. Deltas accumulate until `IN_Move_TouchScreen_Quake` calls
+`WrathIOSInputConsumeGameplayLook`; they are then assigned to `in_mouse_x/y`.
+
+This is WRATH's authentic mouse-look boundary. Existing `CL_Input` continues to
+own sensitivity, acceleration, filtering, inversion, view zoom, pitch drift,
+and final pitch clamps. No frame-time multiplier is added to swipe displacement.
+Aim gestures never emit a mouse button, click, or fire action.
+
+## Gyroscope
+
+`CMMotionManager` supplies fused `CMDeviceMotion.rotationRate` samples at a
+requested 120 Hz. The callback performs only orientation mapping, a 0.015
+radian/second per-axis dead zone, timestamp integration, and a locked
+accumulation. The engine input frame consumes and clears that accumulation.
+
+Core Motion uses portrait-natural device axes, so the bridge maps them into
+screen-relative yaw and pitch:
+
+| Interface orientation | Screen yaw rate | Screen pitch rate |
+| --- | --- | --- |
+| Landscape left | `device x` | `-device y` |
+| Landscape right | `-device x` | `device y` |
+
+Device Z rotation (roll) is ignored. Integrated radians are converted at the
+experimental rate of 900 WRATH mouse units per radian and added to the same
+`in_mouse_x/y` frame delta as swipe input. This intentionally preserves WRATH's
+downstream look behavior rather than fabricating an XInput controller.
+
+Motion starts only in gameplay mode. It stops and discards pending samples in
+menus, other engine states, focus loss, and backgrounding. Entering gameplay,
+changing orientation, foregrounding, or resuming motion establishes a fresh
+timestamp baseline so suspended samples cannot become a camera jump.
+
+## Evidence boundary
+
+Bounded instrumentation reports menu, aim, gyro, mode-transition, and lifecycle
+counters without raw coordinates. CI proves source selection, deterministic
+coordinate formulas, both landscape mappings, symbol linkage, Core Motion
+linkage, packaging, and regression checks. Only a physical device can establish
+touch feel, gyro signs, negligible stationary drift, and lifecycle recovery.

@@ -25,7 +25,7 @@ static NSString * const WrathStagePathsPrepared = @"Runtime path contract prepar
 static NSString * const WrathStageSDLMainReady = @"SDL main readiness established";
 static NSString * const WrathStageSDLInitialized = @"SDL initialized";
 #ifdef WRATH_IOS_GATE5B
-static NSString * const WrathTranscriptVersion = @"0.0.6 (6)";
+static NSString * const WrathTranscriptVersion = @"0.0.7 (7)";
 #else
 static NSString * const WrathTranscriptVersion = @"0.0.5 (5)";
 #endif
@@ -269,8 +269,8 @@ static int WrathRunHostMain(void) {
             completion(@"Could not establish the Gate 5B touch event contract.");
             return;
         }
-        [self recordStage:@"Gate 5B direct touch path selected"
-                   detail:@"SDL touch-to-mouse synthesis disabled; direct finger events own menu input."];
+        [self recordStage:@"Gate 5B mode-specific input bridge selected"
+                   detail:@"SDL touch-to-mouse synthesis disabled; menus use absolute touch and gameplay uses swipe plus gyro look."];
 #endif
         if (SDL_Init(0) < 0) {
             self.startingOrActive = NO;

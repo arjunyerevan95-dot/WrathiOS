@@ -150,8 +150,8 @@ expected_gate5 = {
 }
 expected_gate5b = {
     "CFBundleDisplayName": "WrathiOS G5B",
-    "CFBundleShortVersionString": "0.0.6",
-    "CFBundleVersion": "6",
+    "CFBundleShortVersionString": "0.0.7",
+    "CFBundleVersion": "7",
     "UILaunchStoryboardName": "LaunchScreen",
 }
 for name, plist, expected in (("Gate 3", gate3, expected_gate3), ("Gate 4", gate4, expected_gate4), ("Gate 5", gate5, expected_gate5), ("Gate 5B", gate5b, expected_gate5b)):
@@ -168,6 +168,7 @@ bash -n scripts/build_gate3_device_diagnostic.sh
 bash -n scripts/build_gate4_device_importer.sh
 bash -n scripts/build_gate5_device_menu.sh
 bash -n scripts/build_gate5b_device_menu.sh
+bash -n scripts/test_gate5b_input_math.sh
 bash -n scripts/test_gate4_data_contract.sh
 python3 -m py_compile scripts/materialize_sdl_ios_patches.py scripts/materialize_gate3_platform.py
 python3 -m py_compile scripts/build_gate2_engine_archive.py scripts/materialize_engine_patches.py
@@ -267,7 +268,7 @@ grep -Fq 'WRATH_ENGINE_BUILD_FLAVOR=gate5' scripts/build_gate5_device_menu.sh ||
     exit 1
 }
 grep -Fq 'WRATH_ENGINE_BUILD_FLAVOR=gate5b' scripts/build_gate5b_device_menu.sh || {
-    echo "error: Gate 5B device build does not select the deterministic-input engine archive" >&2
+    echo "error: Gate 5B device build does not select the mode-specific input engine archive" >&2
     exit 1
 }
 

@@ -3,6 +3,9 @@
 
 #import "WrathImportViewController.h"
 #import "WrathRuntime.h"
+#ifdef WRATH_IOS_GATE5B
+#import "WrathRuntimeHooks.h"
+#endif
 
 @implementation Gate5AppDelegate
 
@@ -49,21 +52,34 @@
 - (void)applicationWillResignActive:(UIApplication *)application {
     (void)application;
     [WrathRuntime.sharedRuntime recordLifecycleEvent:@"Runtime pause requested"];
+#ifdef WRATH_IOS_GATE5B
+    WrathIOSInputReset("focus loss");
+#endif
 }
 
 - (void)applicationDidEnterBackground:(UIApplication *)application {
     (void)application;
     [WrathRuntime.sharedRuntime recordLifecycleEvent:@"Runtime entered background"];
+#ifdef WRATH_IOS_GATE5B
+    WrathIOSInputReset("background");
+#endif
 }
 
 - (void)applicationWillEnterForeground:(UIApplication *)application {
     (void)application;
+#ifdef WRATH_IOS_GATE5B
+    [WrathRuntime.sharedRuntime recordLifecycleEvent:@"Runtime returned to foreground"];
+    WrathIOSInputEnteredForeground();
+#else
     [WrathRuntime.sharedRuntime recordLifecycleEvent:@"Runtime foreground recovery entered"];
+#endif
 }
 
 - (void)applicationDidBecomeActive:(UIApplication *)application {
     (void)application;
+#ifndef WRATH_IOS_GATE5B
     [WrathRuntime.sharedRuntime recordLifecycleEvent:@"Runtime foreground recovery passed"];
+#endif
 }
 
 @end

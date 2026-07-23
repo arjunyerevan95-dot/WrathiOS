@@ -32,7 +32,7 @@
     },
     {
       "path": "vid_sdl.c",
-      "reason": "Keep SDL_Joystick and SDL_GameController handles type-correct under SDL2.",
+      "reason": "Keep SDL handles type-correct and route iOS finger events through the mode-specific Gate 5B input bridge.",
       "replacements": [
         {
           "old": "\t\tif (vid_sdljoystick)\n\t\t{\n\t\t\tif (SDL_IsGameController(vid_sdljoystick))\n\t\t\t\tSDL_GameControllerClose(vid_sdljoystick);\n\t\t\telse\n\t\t\t\tSDL_JoystickClose(vid_sdljoystick);\n\t\t}\n\t\tvid_sdlcontroller = NULL;\n\t\tvid_sdljoystick = NULL;",
@@ -41,6 +41,34 @@
         {
           "old": "\t\t\t\tvid_sdljoystick = SDL_GameControllerOpen(sdlindex);\n\t\t\t\tvid_sdlcontroller = vid_sdljoystick;\n\t\t\t\tif (vid_sdljoystick)\n\t\t\t\t{\n\t\t\t\t\tconst char *joystickname = SDL_GameControllerName(vid_sdljoystick);",
           "new": "\t\t\t\tvid_sdlcontroller = SDL_GameControllerOpen(sdlindex);\n\t\t\t\tvid_sdljoystick = vid_sdlcontroller ? SDL_GameControllerGetJoystick(vid_sdlcontroller) : NULL;\n\t\t\t\tif (vid_sdlcontroller)\n\t\t\t\t{\n\t\t\t\t\tconst char *joystickname = SDL_GameControllerName(vid_sdlcontroller);"
+        },
+        {
+          "old": "static void IN_Move_TouchScreen_Quake(void)\n{\n\tint x, y;\n\tfloat move[3], aim[3], click[3];\n\tstatic qboolean oldbuttons[128];\n\tstatic qboolean buttons[128];\n\tkeydest_t keydest = (key_consoleactive & KEY_CONSOLEACTIVE_USER) ? key_console : key_dest;\n\tmemcpy(oldbuttons, buttons, sizeof(oldbuttons));",
+          "new": "static void IN_Move_TouchScreen_Quake(void)\n{\n\tint x, y;\n\tfloat move[3], aim[3], click[3];\n\tstatic qboolean oldbuttons[128];\n\tstatic qboolean buttons[128];\n\tkeydest_t keydest = (key_consoleactive & KEY_CONSOLEACTIVE_USER) ? key_console : key_dest;\n#ifdef WRATH_IOS_GATE5B\n\tfloat wrath_look_x = 0;\n\tfloat wrath_look_y = 0;\n\tmemset(multitouchs, 0, sizeof(multitouchs));\n\tmemset(multitouch, 0, sizeof(multitouch));\n\tmemset(oldbuttons, 0, sizeof(oldbuttons));\n\tmemset(buttons, 0, sizeof(buttons));\n\tif (keydest == key_game)\n\t{\n\t\tWrathIOSInputConsumeGameplayLook(&wrath_look_x, &wrath_look_y);\n\t\tin_mouse_x += wrath_look_x;\n\t\tin_mouse_y += wrath_look_y;\n\t}\n\treturn;\n#endif\n\tmemcpy(oldbuttons, buttons, sizeof(oldbuttons));"
+        },
+        {
+          "old": "// SDL2\nvoid Sys_SendKeyEvents( void )\n{\n\tstatic qboolean sound_active = true;\n\tint keycode;\n\tint i;\n\tint j;\n\tint unicode;\n\tSDL_Event event;\n\n\tVID_EnableJoystick(true);\n\n\twhile( SDL_PollEvent( &event ) )",
+          "new": "// SDL2\nvoid Sys_SendKeyEvents( void )\n{\n\tstatic qboolean sound_active = true;\n\tint keycode;\n\tint i;\n\tint j;\n\tint unicode;\n\tSDL_Event event;\n\n\tVID_EnableJoystick(true);\n#ifdef WRATH_IOS_GATE5B\n\t{\n\t\tWrathIOSInputMode wrath_input_mode = WrathIOSInputModeOther;\n\t\tfloat wrath_menu_x = 0;\n\t\tfloat wrath_menu_y = 0;\n\t\tint wrath_button_phase;\n\t\tif (!key_consoleactive && (key_dest == key_menu || key_dest == key_menu_grabbed))\n\t\t\twrath_input_mode = WrathIOSInputModeMenu;\n\t\telse if (!key_consoleactive && key_dest == key_game && cls.state == ca_connected && cls.signon == SIGNONS && !cl.intermission && !cl.csqc_wantsmousemove && cl_prydoncursor.integer <= 0)\n\t\t\twrath_input_mode = WrathIOSInputModeGameplay;\n\t\tWrathIOSInputSetMode(wrath_input_mode, vid.width, vid.height);\n\t\tif (WrathIOSInputConsumeMenuPosition(&wrath_menu_x, &wrath_menu_y))\n\t\t{\n\t\t\tin_windowmouse_x = bound(0, wrath_menu_x, max(0, vid.width - 1));\n\t\t\tin_windowmouse_y = bound(0, wrath_menu_y, max(0, vid.height - 1));\n\t\t}\n\t\twrath_button_phase = WrathIOSInputConsumeMenuButtonPhase();\n\t\tif (wrath_button_phase != 0)\n\t\t\tKey_Event(K_MOUSE1, 0, wrath_button_phase > 0);\n\t}\n#endif\n\n\twhile( SDL_PollEvent( &event ) )"
+        },
+        {
+          "old": "\t\t\t\t\tcase  SDL_WINDOWEVENT_HIDDEN:\n\t\t\t\t\t\tvid_hidden = true;\n\t\t\t\t\t\tbreak;",
+          "new": "\t\t\t\t\tcase  SDL_WINDOWEVENT_HIDDEN:\n\t\t\t\t\t\tvid_hidden = true;\n#ifdef WRATH_IOS_GATE5B\n\t\t\t\t\t\tWrathIOSInputReset(\"SDL window hidden\");\n#endif\n\t\t\t\t\t\tbreak;"
+        },
+        {
+          "old": "\t\t\t\t\tcase SDL_WINDOWEVENT_FOCUS_LOST:\n\t\t\t\t\t\tvid_hasfocus = false;\n\t\t\t\t\t\tbreak;",
+          "new": "\t\t\t\t\tcase SDL_WINDOWEVENT_FOCUS_LOST:\n\t\t\t\t\t\tvid_hasfocus = false;\n#ifdef WRATH_IOS_GATE5B\n\t\t\t\t\t\tWrathIOSInputReset(\"SDL focus loss\");\n#endif\n\t\t\t\t\t\tbreak;"
+        },
+        {
+          "old": "\t\t\tcase SDL_FINGERDOWN:\n#ifdef DEBUGSDLEVENTS\n\t\t\t\tCon_DPrintf(\"SDL_FINGERDOWN for finger %i\\n\", (int)event.tfinger.fingerId);\n#endif\n\t\t\t\tfor (i = 0;i < MAXFINGERS-1;i++)\n\t\t\t\t{\n\t\t\t\t\tif (!multitouch[i][0])\n\t\t\t\t\t{\n\t\t\t\t\t\tmultitouch[i][0] = event.tfinger.fingerId + 1;\n\t\t\t\t\t\tmultitouch[i][1] = event.tfinger.x;\n\t\t\t\t\t\tmultitouch[i][2] = event.tfinger.y;\n\t\t\t\t\t\t// TODO: use event.tfinger.pressure?\n\t\t\t\t\t\tbreak;\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t\tif (i == MAXFINGERS-1)\n\t\t\t\t\tCon_DPrintf(\"Too many fingers at once!\\n\");\n\t\t\t\tbreak;",
+          "new": "\t\t\tcase SDL_FINGERDOWN:\n#ifdef DEBUGSDLEVENTS\n\t\t\t\tCon_DPrintf(\"SDL_FINGERDOWN for finger %i\\n\", (int)event.tfinger.fingerId);\n#endif\n#ifdef WRATH_IOS_GATE5B\n\t\t\t\tWrathIOSInputFingerDown((long long)event.tfinger.fingerId, event.tfinger.x, event.tfinger.y);\n#else\n\t\t\t\tfor (i = 0;i < MAXFINGERS-1;i++)\n\t\t\t\t{\n\t\t\t\t\tif (!multitouch[i][0])\n\t\t\t\t\t{\n\t\t\t\t\t\tmultitouch[i][0] = event.tfinger.fingerId + 1;\n\t\t\t\t\t\tmultitouch[i][1] = event.tfinger.x;\n\t\t\t\t\t\tmultitouch[i][2] = event.tfinger.y;\n\t\t\t\t\t\t// TODO: use event.tfinger.pressure?\n\t\t\t\t\t\tbreak;\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t\tif (i == MAXFINGERS-1)\n\t\t\t\t\tCon_DPrintf(\"Too many fingers at once!\\n\");\n#endif\n\t\t\t\tbreak;"
+        },
+        {
+          "old": "\t\t\tcase SDL_FINGERUP:\n#ifdef DEBUGSDLEVENTS\n\t\t\t\tCon_DPrintf(\"SDL_FINGERUP for finger %i\\n\", (int)event.tfinger.fingerId);\n#endif\n\t\t\t\tfor (i = 0;i < MAXFINGERS-1;i++)\n\t\t\t\t{\n\t\t\t\t\tif (multitouch[i][0] == event.tfinger.fingerId + 1)\n\t\t\t\t\t{\n\t\t\t\t\t\tmultitouch[i][0] = 0;\n\t\t\t\t\t\tbreak;\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t\tif (i == MAXFINGERS-1)\n\t\t\t\t\tCon_DPrintf(\"No SDL_FINGERDOWN event matches this SDL_FINGERMOTION event\\n\");\n\t\t\t\tbreak;",
+          "new": "\t\t\tcase SDL_FINGERUP:\n#ifdef DEBUGSDLEVENTS\n\t\t\t\tCon_DPrintf(\"SDL_FINGERUP for finger %i\\n\", (int)event.tfinger.fingerId);\n#endif\n#ifdef WRATH_IOS_GATE5B\n\t\t\t\tWrathIOSInputFingerUp((long long)event.tfinger.fingerId, event.tfinger.x, event.tfinger.y);\n#else\n\t\t\t\tfor (i = 0;i < MAXFINGERS-1;i++)\n\t\t\t\t{\n\t\t\t\t\tif (multitouch[i][0] == event.tfinger.fingerId + 1)\n\t\t\t\t\t{\n\t\t\t\t\t\tmultitouch[i][0] = 0;\n\t\t\t\t\t\tbreak;\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t\tif (i == MAXFINGERS-1)\n\t\t\t\t\tCon_DPrintf(\"No SDL_FINGERDOWN event matches this SDL_FINGERMOTION event\\n\");\n#endif\n\t\t\t\tbreak;"
+        },
+        {
+          "old": "\t\t\tcase SDL_FINGERMOTION:\n#ifdef DEBUGSDLEVENTS\n\t\t\t\tCon_DPrintf(\"SDL_FINGERMOTION for finger %i\\n\", (int)event.tfinger.fingerId);\n#endif\n\t\t\t\tfor (i = 0;i < MAXFINGERS-1;i++)\n\t\t\t\t{\n\t\t\t\t\tif (multitouch[i][0] == event.tfinger.fingerId + 1)\n\t\t\t\t\t{\n\t\t\t\t\t\tmultitouch[i][1] = event.tfinger.x;\n\t\t\t\t\t\tmultitouch[i][2] = event.tfinger.y;\n\t\t\t\t\t\tbreak;\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t\tif (i == MAXFINGERS-1)\n\t\t\t\t\tCon_DPrintf(\"No SDL_FINGERDOWN event matches this SDL_FINGERMOTION event\\n\");\n\t\t\t\tbreak;",
+          "new": "\t\t\tcase SDL_FINGERMOTION:\n#ifdef DEBUGSDLEVENTS\n\t\t\t\tCon_DPrintf(\"SDL_FINGERMOTION for finger %i\\n\", (int)event.tfinger.fingerId);\n#endif\n#ifdef WRATH_IOS_GATE5B\n\t\t\t\tWrathIOSInputFingerMotion((long long)event.tfinger.fingerId, event.tfinger.x, event.tfinger.y);\n#else\n\t\t\t\tfor (i = 0;i < MAXFINGERS-1;i++)\n\t\t\t\t{\n\t\t\t\t\tif (multitouch[i][0] == event.tfinger.fingerId + 1)\n\t\t\t\t\t{\n\t\t\t\t\t\tmultitouch[i][1] = event.tfinger.x;\n\t\t\t\t\t\tmultitouch[i][2] = event.tfinger.y;\n\t\t\t\t\t\tbreak;\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t\tif (i == MAXFINGERS-1)\n\t\t\t\t\tCon_DPrintf(\"No SDL_FINGERDOWN event matches this SDL_FINGERMOTION event\\n\");\n#endif\n\t\t\t\tbreak;"
         },
         {
           "old": "\tif (SDL_Init(SDL_INIT_VIDEO) < 0)\n\t\tSys_Error (\"Failed to init SDL video subsystem: %s\", SDL_GetError());",

@@ -9,7 +9,7 @@ PROJECT="$ROOT_DIR/WrathiOSGate5B.xcodeproj"
 APP_BUNDLE="$DERIVED_DATA/Build/Products/Debug-iphoneos/WrathiOSGate5B.app"
 BINARY="$APP_BUNDLE/WrathiOSGate5B"
 PACKAGE_ROOT="$ROOT_DIR/Derived/gate5b-package"
-IPA="$ARTIFACT_DIR/WrathiOSGate5B-v7-unsigned.ipa"
+IPA="$ARTIFACT_DIR/WrathiOSGate5B-v8-unsigned.ipa"
 
 rm -rf "$ARTIFACT_DIR" "$DERIVED_DATA" "$PROJECT" "$PACKAGE_ROOT"
 mkdir -p "$ARTIFACT_DIR"
@@ -56,15 +56,22 @@ required_symbols=(
     '_Host_Main$'
     '_SDL_Init$'
     '_SDL_GL_CreateContext$'
+    '_SDL_StartTextInput$'
+    '_SDL_StopTextInput$'
+    '_MR_WrathIOSProfileTextEntryActive$'
     '_WrathIOSRuntimeStage$'
     '_WrathIOSRuntimeAbort$'
     '_WrathIOSInputSetMode$'
     '_WrathIOSInputFingerDown$'
     '_WrathIOSInputFingerMotion$'
     '_WrathIOSInputFingerUp$'
-    '_WrathIOSInputConsumeMenuPosition$'
+    '_WrathIOSInputBeginFrame$'
+    '_WrathIOSInputGetMenuPosition$'
+    '_WrathIOSInputMarkMenuPositionApplied$'
     '_WrathIOSInputConsumeMenuButtonPhase$'
     '_WrathIOSInputConsumeGameplayLook$'
+    '_WrathIOSInputSetTextEntryActive$'
+    '_WrathIOSInputDismissTextEntry$'
     '_WrathIOSInputReset$'
     '_WrathIOSInputEnteredForeground$'
     '_OBJC_CLASS_\$_WrathRuntime$'
@@ -84,6 +91,9 @@ required_markers=(
     'Gate 5B menu touch began'
     'Gate 5B menu absolute position updated'
     'Gate 5B menu tap emitted'
+    'Gate 5B profile text entry started'
+    'Gate 5B profile text entry stopped'
+    'native Return/Done dismissed the profile keyboard'
     'Gate 5B gameplay aim touch began'
     'Gate 5B gameplay swipe movement emitted'
     'Gate 5B gameplay aim state reset'
@@ -91,6 +101,8 @@ required_markers=(
     'Gate 5B gyro delta applied'
     'Gate 5B gyro suspended'
     'Gate 5B gyro baseline reset'
+    'Gate 5B gyro axis diagnostic'
+    'raw rotation-rate rad/s'
     'Gate 5B input state reset'
     'Gate 5B runtime returned to foreground'
     'Gate 5B foreground first frame'
@@ -119,7 +131,7 @@ launch_storyboard="$(/usr/libexec/PlistBuddy -c 'Print :UILaunchStoryboardName' 
 [[ "$bundle_id" == 'com.arjukstudios.wrathios.gate3' ]] || {
     echo "error: unexpected Gate 5B bundle identifier: $bundle_id" >&2; exit 1;
 }
-[[ "$short_version" == '0.0.7' && "$build_version" == '7' ]] || {
+[[ "$short_version" == '0.0.8' && "$build_version" == '8' ]] || {
     echo "error: unexpected Gate 5B version: $short_version ($build_version)" >&2; exit 1;
 }
 [[ "$launch_storyboard" == 'LaunchScreen' ]] || { echo "error: adaptive launch storyboard missing" >&2; exit 1; }
@@ -206,7 +218,7 @@ cp Artifacts/gate5b-engine-archive/report.json "$ARTIFACT_DIR/engine-archive-rep
 ipa_size="$(stat -f '%z' "$IPA")"
 ipa_sha256="$(shasum -a 256 "$IPA" | awk '{print $1}')"
 cat > "$ARTIFACT_DIR/summary.md" <<EOF
-# Gate 5B direct-touch, swipe-look, and gyro device build
+# Gate 5B persistent direct-touch, profile text, and gyro diagnostic device build
 
 - Target: arm64-apple-ios16.3
 - Bundle identifier: $bundle_id (unchanged)
@@ -214,9 +226,10 @@ cat > "$ARTIFACT_DIR/summary.md" <<EOF
 - IPA: $(basename "$IPA")
 - IPA size: $ipa_size bytes
 - IPA SHA-256: $ipa_sha256
-- Menu input: direct absolute touch with frame-separated click
+- Menu input: persistent authoritative direct touch with position-before-click sequencing
+- Profile text: authentic WRATH field through SDL iOS native text input
 - Gameplay input: right-side relative swipe-look at the authentic mouse-look boundary
-- Gyroscope: Core Motion device rotation, landscape mapped and additive to swipe
+- Gyroscope: Core Motion raw x/y/z diagnostic at 5 Hz with bounded gameplay overlay/transcript
 - SDL synthetic touch-to-mouse path: disabled
 - Mode-transition and lifecycle reset contracts: embedded
 - WRATH engine, SDL2, audio, Host_Main, and Gate 4 importer: retained

@@ -49,8 +49,8 @@ targets:
         PRODUCT_NAME: WrathiOSGate5B
         INFOPLIST_FILE: App/Gate5BInfo.plist
         GENERATE_INFOPLIST_FILE: NO
-        MARKETING_VERSION: 0.0.7
-        CURRENT_PROJECT_VERSION: 7
+        MARKETING_VERSION: 0.0.8
+        CURRENT_PROJECT_VERSION: 8
         CODE_SIGN_STYLE: Automatic
         SDKROOT: iphoneos
         SUPPORTED_PLATFORMS: iphoneos
@@ -75,6 +75,7 @@ targets:
           - WRATH_ENGINE_LINKED=1
           - WRATH_IOS_GATE5=1
           - WRATH_IOS_GATE5B=1
+          - WRATH_IOS_GYRO_DIAGNOSTIC=1
           - __IPHONEOS__=1
         OTHER_LDFLAGS:
           - "$(inherited)"

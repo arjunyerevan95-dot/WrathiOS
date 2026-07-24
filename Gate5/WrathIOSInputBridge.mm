@@ -135,4 +135,501 @@ void updateGyroDiagnosticOverlay(NSString *text) {
         gGyroDiagnosticLabel.font = [UIFont monospacedSystemFontOfSize:10.0
                                                                weight:UIFontWeightSemibold];
         gGyroDiagnosticLabel.textColor = UIColor.whiteColor;
-        gGyroDiagnosticLabel.backgroundColoÛİ÷æÚ$z{-®éÜj×¥Ğ€Ä4(€€€ô4(€€€¥˜É•À€µÄ€ymléÍÁ…”éut­¥¹™¼émléÍÁ…”éut¨œ€ˆ‘ÍÁ•ŒˆìÑ¡•¸4(€€€€€€€•¡¼€‰•ÉÉ½Èè€‘ÍÁ•Œ±•ÑÌa½‘••¸½Ù•ÉİÉ¥Ñ”Ñ¡”½µµ¥ÑÑ•%¹™¼¹Á±¥ÍĞˆ€ø˜È4(€€€€€€€•á¥Ğ€Ä4(€€€™¤4)‘½¹”4(4)É•À€µÄ€%9=A1%MQ}%1èÁÀ½…Ñ”Ñ%¹™¼¹Á±¥ÍĞœÁÉ½©•Ğµ…Ñ”Ğ¹åµ°ñğì4(€€€•¡¼€‰•ÉÉ½Èè…Ñ”€Ğ‘½•Ì¹½Ğ½¹ÍÕµ”¥ÑÌ½µµ¥ÑÑ•%¹™¼¹Á±¥ÍĞˆ€ø˜È4(€€€•á¥Ğ€Ä4)ô4)¥˜É•À€µÄ€ymléÍÁ…”éut­¥¹™¼émléÍÁ…”éut¨œÁÉ½©•Ğµ…Ñ”Ğ¹åµ°ìÑ¡•¸(€€€•¡¼€‰•ÉÉ½Èè…Ñ”€Ğ±•ÑÌa½‘••¸½Ù•ÉİÉ¥Ñ”¥ÑÌ½µµ¥ÑÑ•%¹™¼¹Á±¥ÍĞˆ€ø˜È(€€€•á¥Ğ€Ä)™¤()É•À€µÄ€%9=A1%MQ}%1èÁÀ½…Ñ”Õ%¹™¼¹Á±¥ÍĞœÁÉ½©•Ğµ…Ñ”Ô¹åµ°ñğì(€€€•¡¼€‰•ÉÉ½Èè…Ñ”€Ô‘½•Ì¹½Ğ½¹ÍÕµ”¥ÑÌ½µµ¥ÑÑ•%¹™¼¹Á±¥ÍĞˆ€ø˜È(€€€•á¥Ğ€Ä)ô)¥˜É•À€µÄ€ymléÍÁ…”éut­¥¹™¼émléÍÁ…”éut¨œÁÉ½©•Ğµ…Ñ”Ô¹åµ°ìÑ¡•¸(€€€•¡¼€‰•ÉÉ½Èè…Ñ”€Ô±•ÑÌa½‘••¸½Ù•ÉİÉ¥Ñ”¥ÑÌ½µµ¥ÑÑ•%¹™¼¹Á±¥ÍĞˆ€ø˜È(€€€•á¥Ğ€Ä)™¤()É•À€µÄ€%9=A1%MQ}%1èÁÀ½…Ñ”Õ	%¹™¼¹Á±¥ÍĞœÁÉ½©•Ğµ…Ñ”Õˆ¹åµ°ñğì(€€€•¡¼€‰•ÉÉ½Èè…Ñ”€Õ‘½•Ì¹½Ğ½¹ÍÕµ”¥ÑÌ½µµ¥ÑÑ•%¹™¼¹Á±¥ÍĞˆ€ø˜È(€€€•á¥Ğ€Ä)ô)¥˜É•À€µÄ€ymléÍÁ…”éut­¥¹™¼émléÍÁ…”éut¨œÁÉ½©•Ğµ…Ñ”Õˆ¹åµ°ìÑ¡•¸(€€€•¡¼€‰•ÉÉ½Èè…Ñ”€Õ±•ÑÌa½‘••¸½Ù•ÉİÉ¥Ñ”¥ÑÌ½µµ¥ÑÑ•%¹™¼¹Á±¥ÍĞˆ€ø˜È(€€€•á¥Ğ€Ä)™¤(4)ÁåÑ¡½¸Ì€´€ğğAdœ4)¥µÁ½ÉĞÁ±¥ÍÑ±¥ˆ4)¥µÁ½ÉĞáµ°¹•ÑÉ•”¹±•µ•¹ÑQÉ•”…ÌP4)™É½´Á…Ñ¡±¥ˆ¥µÁ½ÉĞA…Ñ 4(4)İ¥Ñ A…Ñ  ‰ÁÀ½%¹™¼¹Á±¥ÍĞˆ¤¹½Á•¸ ‰Éˆˆ¤…Ì¡…¹‘±”è4(€€€…Ñ”Ì€ôÁ±¥ÍÑ±¥ˆ¹±½…¡¡…¹‘±”¤4)İ¥Ñ A…Ñ  ‰ÁÀ½…Ñ”Ñ%¹™¼¹Á±¥ÍĞˆ¤¹½Á•¸ ‰Éˆˆ¤…Ì¡…¹‘±”è(€€€…Ñ”Ğ€ôÁ±¥ÍÑ±¥ˆ¹±½…¡¡…¹‘±”¤)İ¥Ñ A…Ñ  ‰ÁÀ½…Ñ”Õ%¹™¼¹Á±¥ÍĞˆ¤¹½Á•¸ ‰Éˆˆ¤…Ì¡…¹‘±”è(€€€…Ñ”Ô€ôÁ±¥ÍÑ±¥ˆ¹±½…¡¡…¹‘±”¤)İ¥Ñ A…Ñ  ‰ÁÀ½…Ñ”Õ	%¹™¼¹Á±¥ÍĞˆ¤¹½Á•¸ ‰Éˆˆ¤…Ì¡…¹‘±”è(€€€…Ñ”Õˆ€ôÁ±¥ÍÑ±¥ˆ¹±½…¡¡…¹‘±”¤(4)•áÁ•Ñ•‘}…Ñ”Ì€ôì4(€€€€‰	Õ¹‘±•¥ÍÁ±…å9…µ”ˆè€‰]É…Ñ¡¥=LÌØÈˆ°4(€€€€‰	Õ¹‘±•M¡½ÉÑY•ÉÍ¥½¹MÑÉ¥¹œˆè€ˆÀ¸À¸Èˆ°4(€€€€‰	Õ¹‘±•Y•ÉÍ¥½¸ˆè€ˆÈˆ°4(€€€€‰U%1…Õ¹¡MÑ½Éå‰½…É‘9…µ”ˆè€‰1…Õ¹¡MÉ••¸ˆ°4)ô4)•áÁ•Ñ•‘}…Ñ”Ğ€ôì(€€€€‰	Õ¹‘±•¥ÍÁ±…å9…µ”ˆè€‰]É…Ñ¡¥=L%µÁ½ÉĞˆ°(€€€€‰	Õ¹‘±•M¡½ÉÑY•ÉÍ¥½¹MÑÉ¥¹œˆè€ˆÀ¸À¸Ğˆ°(€€€€‰	Õ¹‘±•Y•ÉÍ¥½¸ˆè€ˆĞˆ°(€€€€‰U%1…Õ¹¡MÑ½Éå‰½…É‘9…µ”ˆè€‰1…Õ¹¡MÉ••¸ˆ°)ô)•áÁ•Ñ•‘}…Ñ”Ô€ôì(€€€€‰	Õ¹‘±•¥ÍÁ±…å9…µ”ˆè€‰]É…Ñ¡¥=LÔˆ°(€€€€‰	Õ¹‘±•M¡½ÉÑY•ÉÍ¥½¹MÑÉ¥¹œˆè€ˆÀ¸À¸Ôˆ°(€€€€‰	Õ¹‘±•Y•ÉÍ¥½¸ˆè€ˆÔˆ°(€€€€‰U%1…Õ¹¡MÑ½Éå‰½…É‘9…µ”ˆè€‰1…Õ¹¡MÉ••¸ˆ°)ô)•áÁ•Ñ•‘}…Ñ”Õˆ€ôì(€€€€‰	Õ¹‘±•¥ÍÁ±…å9…µ”ˆè€‰]É…Ñ¡¥=LÕˆ°(€€€€‰	Õ¹‘±•M¡½ÉÑY•ÉÍ¥½¹MÑÉ¥¹œˆè€ˆÀ¸À¸àˆ°(€€€€‰	Õ¹‘±•Y•ÉÍ¥½¸ˆè€ˆàˆ°(€€€€‰U%1…Õ¹¡MÑ½Éå‰½…É‘9…µ”ˆè€‰1…Õ¹¡MÉ••¸ˆ°)ô)™½È¹…µ”°Á±¥ÍĞ°•áÁ•Ñ•¥¸€  ‰…Ñ”€Ìˆ°…Ñ”Ì°•áÁ•Ñ•‘}…Ñ”Ì¤°€ ‰…Ñ”€Ğˆ°…Ñ”Ğ°•áÁ•Ñ•‘}…Ñ”Ğ¤°€ ‰…Ñ”€Ôˆ°…Ñ”Ô°•áÁ•Ñ•‘}…Ñ”Ô¤°€ ‰…Ñ”€Õˆ°…Ñ”Õˆ°•áÁ•Ñ•‘}…Ñ”Õˆ¤¤è(€€€™½È­•ä°Ù…±Õ”¥¸•áÁ•Ñ•¹¥Ñ•µÌ ¤è4(€€€€€€€¥˜Á±¥ÍĞ¹•Ğ¡­•ä¤€„ôÙ…±Õ”è4(€€€€€€€€€€€É…¥Í”MåÍÑ•µá¥Ğ¡˜‰•ÉÉ½Èèí¹…µ•ôí­•åôµÕÍĞ‰”íÙ…±Õ”…Éô°™½Õ¹íÁ±¥ÍĞ¹•Ğ¡­•ä¤…Éôˆ¤4(4)P¹Á…ÉÍ” ‰ÁÀ½1…Õ¹¡MÉ••¸¹ÍÑ½Éå‰½…Éˆ¤4)ÁÉ¥¹Ğ ‰Ù…±¥‘…Ñ•…Ñ”€ÌÑ¡É½Õ …Ñ”€ÕÁ±¥ÍÑÌÁ±ÕÌ1…Õ¹¡MÉ••¸¹ÍÑ½Éå‰½…Éˆ¤)Ad4(4)‰…Í €µ¸ÍÉ¥ÁÑÌ½‰Õ¥±‘}…Ñ”É}Í‘°¹Í 4)‰…Í €µ¸ÍÉ¥ÁÑÌ½‰Õ¥±‘}…Ñ”Í}‘•Ù¥•}‘¥…¹½ÍÑ¥Œ¹Í 4)‰…Í €µ¸ÍÉ¥ÁÑÌ½‰Õ¥±‘}…Ñ”Ñ}‘•Ù¥•}¥µÁ½ÉÑ•È¹Í )‰…Í €µ¸ÍÉ¥ÁÑÌ½‰Õ¥±‘}…Ñ”Õ}‘•Ù¥•}µ•¹Ô¹Í )‰…Í €µ¸ÍÉ¥ÁÑÌ½‰Õ¥±‘}…Ñ”Õ‰}‘•Ù¥•}µ•¹Ô¹Í )‰…Í €µ¸ÍÉ¥ÁÑÌ½Ñ•ÍÑ}…Ñ”Õ‰}¥¹ÁÕÑ}µ…Ñ ¹Í )‰…Í €µ¸ÍÉ¥ÁÑÌ½Ñ•ÍÑ}…Ñ”Ñ}‘…Ñ…}½¹ÑÉ…Ğ¹Í )ÁåÑ¡½¸Ì€µ´Áå}½µÁ¥±”ÍÉ¥ÁÑÌ½µ…Ñ•É¥…±¥é•}Í‘±}¥½Í}Á…Ñ¡•Ì¹ÁäÍÉ¥ÁÑÌ½µ…Ñ•É¥…±¥é•}…Ñ”Í}Á±…Ñ™½É´¹Áä)ÁåÑ¡½¸Ì€µ´Áå}½µÁ¥±”ÍÉ¥ÁÑÌ½‰Õ¥±‘}…Ñ”É}•¹¥¹•}…É¡¥Ù”¹ÁäÍÉ¥ÁÑÌ½µ…Ñ•É¥…±¥é•}•¹¥¹•}Á…Ñ¡•Ì¹Áä)ÁåÑ¡½¸ÌÍÉ¥ÁÑÌ½Ñ•ÍÑ}…Ñ”Õ‰}¥¹ÁÕÑ}½¹ÑÉ…Ğ¹Áä)ÁåÑ¡½¸ÌÍÉ¥ÁÑÌ½µ…Ñ•É¥…±¥é•}…Ñ”Í}Á±…Ñ™½É´¹Áä4(4)É•À€µÄ€]É…Ñ¡…Ñ”Í1…Õ¹¡½Õ¹ÑXÈœ•É¥Ù•½…Ñ”ÌµÁ±…Ñ™½É´½]É…Ñ¡É…Á¡¥Í¥…¹½ÍÑ¥Œ¹µ´ñğì4(€€€•¡¼€‰•ÉÉ½Èè…Ñ”€Ì‘•É¥Ù•½Õ¹Ñ•È¹…µ•ÍÁ…”İ…Ì¹½Ğµ…Ñ•É¥…±¥é•ˆ€ø˜È4(€€€•á¥Ğ€Ä4)ô4)É•À€µÄ€!½ÍĞÍ•¹”èœ•É¥Ù•½…Ñ”ÌµÁ±…Ñ™½É´½]É…Ñ¡É…Á¡¥Í¥…¹½ÍÑ¥Œ¹µ´ñğì4(€€€•¡¼€‰•ÉÉ½Èè…Ñ”€ÌU%-¥Ğ•½µ•ÑÉäÑ•±•µ•ÑÉäİ…Ì¹½Ğµ…Ñ•É¥…±¥é•ˆ€ø˜È4(€€€•á¥Ğ€Ä4)ô4(4)ÁåÑ¡½¸ÌÍÉ¥ÁÑÌ½Ù…±¥‘…Ñ•}•¹¥¹•}µ…¹¥™•ÍĞ¹Áä()…Ñ”Ñ}Í½ÕÉ”ô‰…Ñ”Ğ½]É…Ñ¡%µÁ½ÉÑY¥•İ½¹ÑÉ½±±•È¹µ´ˆ)™½ÈÑ¥Ñ±”¥¸€‰¡½½Í”]IQ ½±‘•Èˆ€‰I•µ½Ù”%µÁ½ÉÑ•…Ñ„ˆì‘¼(€€€É•À€µÄ€ˆ‘Ñ¥Ñ±”ˆ€ˆ‘…Ñ”Ñ}Í½ÕÉ”ˆñğì(€€€€€€€•¡¼€‰•ÉÉ½Èè…Ñ”€ĞÍ½ÕÉ”¥Ìµ¥ÍÍ¥¹œ…Ñ¥½¸Ñ¥Ñ±”è€‘Ñ¥Ñ±”ˆ€ø˜È(€€€€€€€•á¥Ğ€Ä(€€€ô)‘½¹”()É•ÅÕ¥É•‘}…Ñ”Ñ}ÍÑ…ÑÕÍ•Ìô (€€€€‰9¼¥µÁ½ÉÑ•‘…Ñ„ˆ(€€€€‰%¹Ù…±¥™½±‘•ÈÉ•©•Ñ•ˆ(€€€€‰M½ÕÉ”‘…Ñ„Ù…±¥‘…Ñ¥½¸Á…ÍÍ•ˆ(€€€€‰½Áä¥¸ÁÉ½É•ÍÌˆ(€€€€‰A½ÍĞµ½ÁäÙ…±¥‘…Ñ¥½¸Á…ÍÍ•ˆ(€€€€‰%µÁ½ÉÑ•‘…Ñ„…Ù…¥±…‰±”…™Ñ•ÈÉ•±…Õ¹ ˆ(€€€€‰%µÁ½ÉÑ•‘…Ñ„É•µ½Ù•ˆ(¤)™½ÈÍÑ…ÑÕÌ¥¸€ˆ‘íÉ•ÅÕ¥É•‘}…Ñ”Ñ}ÍÑ…ÑÕÍ•Ímuôˆì‘¼(€€€É•À€µÄ€ˆ‘ÍÑ…ÑÕÌˆ…Ñ”Ğ½]É…Ñ¡%µÁ½ÉÑY¥•İ½¹ÑÉ½±±•È¹µ´…Ñ”Ğ½]É…Ñ¡…Ñ…%µÁ½ÉÑ•È¹µ´ñğì(€€€€€€€•¡¼€‰•ÉÉ½Èè…Ñ”€ĞÍ½ÕÉ”¥Ìµ¥ÍÍ¥¹œ…•ÁÑ…¹”ÍÑ…ÑÕÌè€‘ÍÑ…ÑÕÌˆ€ø˜È(€€€€€€€•á¥Ğ€Ä(€€€ô)‘½¹”()É•À€µÄ€½¹™¥ÕÉ…Ñ¥½¹UÁ‘…Ñ•!…¹‘±•Èœ€ˆ‘…Ñ”Ñ}Í½ÕÉ”ˆñğì(€€€•¡¼€‰•ÉÉ½Èè…Ñ”€Ğ‰ÕÑÑ½¹Ì‘¼¹½Ğ‘•™¥¹”½¹™¥ÕÉ…Ñ¥½¸ÍÑ…Ñ”¡…¹‘±¥¹œˆ€ø˜È(€€€•á¥Ğ€Ä)ô)É•À€µÄ€‰…Í•½É•É½Õ¹‘½±½Èœ€ˆ‘…Ñ”Ñ}Í½ÕÉ”ˆñğì(€€€•¡¼€‰•ÉÉ½Èè…Ñ”€Ğ‰ÕÑÑ½¹Ì‘¼¹½Ğ‘•™¥¹”É•…‘…‰±”½¹™¥ÕÉ…Ñ¥½¸™½É•É½Õ¹½±½ÉÌˆ€ø˜È(€€€•á¥Ğ€Ä)ô)¥˜É•À€µÄ€Í•±™p¸¡¡½½Í•	ÕÑÑ½¹ñÉ•µ½Ù•	ÕÑÑ½¸¥p¹½¹™¥ÕÉ…Ñ¥½¹p¸¡Ñ¥Ñ±•ñ‰…Í•½É•É½Õ¹‘½±½Éñ½É¹•ÉMÑå±”¥mléÍÁ…”éut¨ôœ€ˆ‘…Ñ”Ñ}Í½ÕÉ”ˆìÑ¡•¸(€€€•¡¼€‰•ÉÉ½Èè…Ñ”€ĞµÕÑ…Ñ•Ì…¸…±É•…‘äµ…ÍÍ¥¹•‰ÕÑÑ½¸½¹™¥ÕÉ…Ñ¥½¸İ¥Ñ¡½ÕĞÉ•…ÁÁ±å¥¹œ¥Ğˆ€ø˜È(€€€•á¥Ğ€Ä)™¤()É•ÅÕ¥É•‘}…Ñ”Õ}ÍÑ…•Ìô (€€€€‰%µÁ½ÉÑ•‘…Ñ„‘•Ñ•Ñ•ˆ(€€€€‰%µÁ½ÉÑ•‘…Ñ„Ù…±¥‘…Ñ¥½¸Á…ÍÍ•ˆ(€€€€‰IÕ¹Ñ¥µ”Á…Ñ ½¹ÑÉ…ĞÁÉ•Á…É•ˆ(€€€€‰M0µ…¥¸É•…‘¥¹•ÍÌ•ÍÑ…‰±¥Í¡•ˆ(€€€€‰M0¥¹¥Ñ¥…±¥é•ˆ(€€€€‰Y¥‘•¼ÍÕ‰ÍåÍÑ•´¥¹¥Ñ¥…±¥é•ˆ(€€€€‰1L½¹Ñ•áĞÉ•…Ñ•ˆ(€€€€‰]IQ ™¥±•ÍåÍÑ•´¥¹¥Ñ¥…±¥é…Ñ¥½¸•¹Ñ•É•ˆ(€€€€‰­ÀÄÁ…­…”‘¥Í½Ù•Éä•¹Ñ•É•ˆ(€€€€‰EÕ…­•Y4±½…‘¥¹œ•¹Ñ•É•ˆ(€€€€‰µ•¹Ô¹‘…Ğ±½…‘¥¹œ•¹Ñ•É•ˆ(€€€€‰5…¥¸µ•¹ÔÉ•…¡•ˆ(€€€€‰Õ‘¥¼¥¹¥Ñ¥…±¥é…Ñ¥½¸•¹Ñ•É•ˆ(€€€€‰Õ‘¥¼¥¹¥Ñ¥…±¥é…Ñ¥½¸Á…ÍÍ•ˆ(€€€€‰Õ‘¥¼¥¹¥Ñ¥…±¥é…Ñ¥½¸™…¥±•ˆ(¤)™½ÈÍÑ…”¥¸€ˆ‘íÉ•ÅÕ¥É•‘}…Ñ”Õ}ÍÑ…•Ímuôˆì‘¼(€€€É•À€µÄ€ˆ‘ÍÑ…”ˆ…Ñ”Ô½]É…Ñ¡IÕ¹Ñ¥µ”¹µ´½¹™¥œ½•¹¥¹”½¥½Í}Í½ÕÉ•}Á…Ñ¡•Ì¹©Í½¸ñğì(€€€€€€€•¡¼€‰•ÉÉ½Èè…Ñ”€ÔÍ½ÕÉ”¥Ìµ¥ÍÍ¥¹œÉÕ¹Ñ¥µ”ÍÑ…”è€‘ÍÑ…”ˆ€ø˜È(€€€€€€€•á¥Ğ€Ä(€€€ô)‘½¹”()É•À€µÄ€1…Õ¹ ]IQ œ…Ñ”Ğ½]É…Ñ¡%µÁ½ÉÑY¥•İ½¹ÑÉ½±±•È¹µ´ñğì(€€€•¡¼€‰•ÉÉ½Èè…Ñ”€Ô±…Õ¹ …Ñ¥½¸¥Ìµ¥ÍÍ¥¹œˆ€ø˜È(€€€•á¥Ğ€Ä)ô)É•À€µÄ€M1}¥A¡½¹•M•ÑÙ•¹ÑAÕµÀ¡M1}QIU¤œ…Ñ”Ô½]É…Ñ¡IÕ¹Ñ¥µ”¹µ´ñğì(€€€•¡¼€‰•ÉÉ½Èè…Ñ”€Ô‘½•Ì¹½Ğ•¹…‰±”M0ÌU%-¥Ğ•Ù•¹ĞÁÕµÀ…É½Õ¹!½ÍÑ}5…¥¸ˆ€ø˜È(€€€•á¥Ğ€Ä)ô)É•À€µÄ€!½ÍÑ}5…¥¸ ¤ìœ…Ñ”Ô½]É…Ñ¡IÕ¹Ñ¥µ”¹µ´ñğì(€€€•¡¼€‰•ÉÉ½Èè…Ñ”€Ô‘½•Ì¹½Ğ¥¹Ù½­”Ñ¡”…ÕÑ¡•¹Ñ¥Œ]IQ ÉÕ¹Ñ¥µ”ˆ€ø˜È(€€€•á¥Ğ€Ä)ô)É•À€µÄ€œñÁÉ¥Ù…Ñ”µÁ…Ñ øœ…Ñ”Ô½]É…Ñ¡IÕ¹Ñ¥µ”¹µ´ñğì(€€€•¡¼€‰•ÉÉ½Èè…Ñ”€ÔÁÉ¥Ù…Ñ”µÁ…Ñ Í…¹¥Ñ¥é•Èµ…É­•È¥Ìµ¥ÍÍ¥¹œˆ€ø˜È(€€€•á¥Ğ€Ä)ô)É•À€µÄ€]IQ!}9%9}	U%1}1Y=Hõ…Ñ”ÔœÍÉ¥ÁÑÌ½‰Õ¥±‘}…Ñ”Õ}‘•Ù¥•}µ•¹Ô¹Í ñğì(€€€•¡¼€‰•ÉÉ½Èè…Ñ”€Ô‘•Ù¥”‰Õ¥±‘½•Ì¹½ĞÍ•±•ĞÑ¡”¥¹ÍÑÉÕµ•¹Ñ••¹¥¹”…É¡¥Ù”ˆ€ø˜È(€€€•á¥Ğ€Ä)ô)É•À€µÄ€]IQ!}9%9}	U%1}1Y=Hõ…Ñ”ÕˆœÍÉ¥ÁÑÌ½‰Õ¥±‘}…Ñ”Õ‰}‘•Ù¥•}µ•¹Ô¹Í ñğì(€€€•¡¼€‰•ÉÉ½Èè…Ñ”€Õ‘•Ù¥”‰Õ¥±‘½•Ì¹½ĞÍ•±•ĞÑ¡”µ½‘”µÍÁ•¥™¥Œ¥¹ÁÕĞ•¹¥¹”…É¡¥Ù”ˆ€ø˜È(€€€•á¥Ğ€Ä)ô()•¡¼€‰É•Á½Í¥Ñ½Éä¡•­ÌÁ…ÍÍ•ˆ
+        gGyroDiagnosticLabel.backgroundColor = [UIColor colorWithWhite:0.0 alpha:0.62];
+        gGyroDiagnosticLabel.layer.cornerRadius = 5.0;
+        gGyroDiagnosticLabel.layer.masksToBounds = YES;
+        gGyroDiagnosticLabel.textAlignment = NSTextAlignmentCenter;
+    }
+    if (gGyroDiagnosticLabel.superview != window) {
+        [gGyroDiagnosticLabel removeFromSuperview];
+        [window addSubview:gGyroDiagnosticLabel];
+    }
+    const CGFloat width = std::min<CGFloat>(460.0, window.bounds.size.width - 24.0);
+    gGyroDiagnosticLabel.frame = CGRectMake(12.0, window.safeAreaInsets.top + 6.0, width, 38.0);
+    gGyroDiagnosticLabel.text = text;
+    gGyroDiagnosticLabel.hidden = NO;
+}
+
+void hideGyroDiagnosticOverlay() {
+    gGyroDiagnosticLabel.hidden = YES;
+}
+#else
+void hideGyroDiagnosticOverlay() {
+}
+#endif
+
+void report(const char *stage, const char *reason) {
+    if (gInput.stageBudget == 0) {
+        return;
+    }
+    gInput.stageBudget -= 1;
+    char detail[512];
+    std::snprintf(detail,
+                  sizeof(detail),
+                  "menu begins=%u moves=%u taps=%u resets=%u; aim begins=%u moves=%u deltas=%u resets=%u; "
+                  "gyro starts=%u samples=%u deltas=%u suspends=%u resumes=%u baselines=%u diagnostics=%u; "
+                  "text starts=%u stops=%u; %s",
+                  gInput.counters.menuBegins,
+                  gInput.counters.menuAbsoluteMoves,
+                  gInput.counters.menuTaps,
+                  gInput.counters.menuResets,
+                  gInput.counters.aimBegins,
+                  gInput.counters.swipeEvents,
+                  gInput.counters.swipeDeltas,
+                  gInput.counters.aimResets,
+                  gInput.counters.gyroStarts,
+                  gInput.counters.gyroSamples,
+                  gInput.counters.gyroDeltas,
+                  gInput.counters.gyroSuspends,
+                  gInput.counters.gyroResumes,
+                  gInput.counters.gyroBaselines,
+                  gInput.counters.gyroDiagnostics,
+                  gInput.counters.textStarts,
+                  gInput.counters.textStops,
+                  reason != nullptr ? reason : "event recorded");
+    WrathIOSRuntimeStage(stage, detail);
+}
+
+bool isMenuMode(WrathIOSInputMode mode) {
+    return mode == WrathIOSInputModeMenu || mode == WrathIOSInputModeMenuText;
+}
+
+void setTextInputActive(bool active, const char *reason) {
+    if (active == gInput.textEntryActive) {
+        return;
+    }
+    if (active) {
+        SDL_StartTextInput();
+        gInput.counters.textStarts += 1;
+        report("Gate 5B profile text entry started",
+               reason != nullptr ? reason : "authentic New Profile field selected");
+    } else {
+        SDL_StopTextInput();
+        gInput.counters.textStops += 1;
+        report("Gate 5B profile text entry stopped",
+               reason != nullptr ? reason : "left authentic New Profile field");
+    }
+    gInput.textEntryActive = active;
+}
+
+LandscapeOrientation currentLandscapeOrientation() {
+    UIInterfaceOrientation orientation = UIInterfaceOrientationUnknown;
+    for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
+        if (![scene isKindOfClass:UIWindowScene.class]) {
+            continue;
+        }
+        UIWindowScene *windowScene = (UIWindowScene *)scene;
+        if (windowScene.activationState == UISceneActivationStateForegroundActive ||
+            windowScene.activationState == UISceneActivationStateForegroundInactive) {
+            orientation = windowScene.interfaceOrientation;
+            break;
+        }
+    }
+    if (orientation == UIInterfaceOrientationUnknown) {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+        orientation = UIApplication.sharedApplication.statusBarOrientation;
+#pragma clang diagnostic pop
+    }
+    if (orientation == UIInterfaceOrientationLandscapeLeft) {
+        return LandscapeOrientation::left;
+    }
+    if (orientation == UIInterfaceOrientationLandscapeRight) {
+        return LandscapeOrientation::right;
+    }
+    return LandscapeOrientation::unknown;
+}
+
+void clearGyroAccumulator() {
+    std::lock_guard<std::mutex> lock(gGyroMutex);
+    gGyro = {};
+    gInput.counters.gyroBaselines += 1;
+}
+
+void refreshOrientation() {
+    LandscapeOrientation orientation = currentLandscapeOrientation();
+    int oldValue = gOrientation.exchange(static_cast<int>(orientation));
+    if (oldValue != static_cast<int>(orientation)) {
+        clearGyroAccumulator();
+        report("Gate 5B gyro baseline reset", "landscape orientation changed; pending gyro input discarded");
+    }
+}
+
+float removeDeadZone(float value) {
+    return std::fabs(value) < wrathios::input::kGyroDeadZoneRadiansPerSecond ? 0.0f : value;
+}
+
+void startMotionIfNeeded(bool resumed) {
+    if (gMotionRunning) {
+        return;
+    }
+    if (gMotionManager == nil) {
+        gMotionManager = [[CMMotionManager alloc] init];
+        gMotionQueue = [[NSOperationQueue alloc] init];
+        gMotionQueue.name = @"com.arjukstudios.wrathios.gyro";
+        gMotionQueue.qualityOfService = NSQualityOfServiceUserInteractive;
+        gMotionManager.deviceMotionUpdateInterval = 1.0 / 120.0;
+    }
+    if (!gMotionManager.deviceMotionAvailable) {
+        report("Gate 5B gyro unavailable", "Core Motion device-motion data is unavailable on this device");
+        return;
+    }
+    clearGyroAccumulator();
+    gGameplayMotionEnabled.store(true);
+    [gMotionManager startDeviceMotionUpdatesUsingReferenceFrame:CMAttitudeReferenceFrameXArbitraryZVertical
+                                                        toQueue:gMotionQueue
+                                                    withHandler:^(CMDeviceMotion *motion, NSError *error) {
+        if (error != nil || motion == nil || !gGameplayMotionEnabled.load()) {
+            return;
+        }
+        const double timestamp = motion.timestamp;
+        std::lock_guard<std::mutex> lock(gGyroMutex);
+        if (gGyro.lastTimestamp == 0.0) {
+            gGyro.lastTimestamp = timestamp;
+            return;
+        }
+        const double deltaTime = timestamp - gGyro.lastTimestamp;
+        gGyro.lastTimestamp = timestamp;
+        if (deltaTime <= 0.0 || deltaTime > 0.1) {
+            gGyro.yawRadians = 0.0f;
+            gGyro.pitchRadians = 0.0f;
+            gGyro.samples = 0;
+            return;
+        }
+        InputPoint mapped = wrathios::input::mapGyroRotationRate(
+            static_cast<LandscapeOrientation>(gOrientation.load()),
+            static_cast<float>(motion.rotationRate.x),
+            static_cast<float>(motion.rotationRate.y),
+            static_cast<float>(motion.rotationRate.z));
+        mapped.x = removeDeadZone(mapped.x);
+        mapped.y = removeDeadZone(mapped.y);
+        gGyro.rawX = static_cast<float>(motion.rotationRate.x);
+        gGyro.rawY = static_cast<float>(motion.rotationRate.y);
+        gGyro.rawZ = static_cast<float>(motion.rotationRate.z);
+        gGyro.mappedYaw = mapped.x;
+        gGyro.mappedPitch = mapped.y;
+        gGyro.snapshotTimestamp = timestamp;
+        gGyro.yawRadians += mapped.x * static_cast<float>(deltaTime);
+        gGyro.pitchRadians += mapped.y * static_cast<float>(deltaTime);
+        gGyro.samples += 1;
+    }];
+    gMotionRunning = true;
+    gInput.counters.gyroStarts += 1;
+    if (resumed) {
+        gInput.counters.gyroResumes += 1;
+    }
+    report(resumed ? "Gate 5B gyro resumed" : "Gate 5B gyro started",
+           "Core Motion device-motion updates running at 120 Hz; gameplay gate enabled");
+}
+
+void stopMotion(const char *reason) {
+    gGameplayMotionEnabled.store(false);
+    if (gMotionRunning) {
+        [gMotionManager stopDeviceMotionUpdates];
+        gMotionRunning = false;
+        gInput.counters.gyroSuspends += 1;
+        report("Gate 5B gyro suspended", reason);
+    }
+    clearGyroAccumulator();
+    hideGyroDiagnosticOverlay();
+}
+
+void clearFingerState(bool modeTransition, const char *reason) {
+    if (gInput.gesture.active) {
+        if (isMenuMode(gInput.mode)) {
+            gInput.counters.menuResets += 1;
+        } else if (gInput.mode == WrathIOSInputModeGameplay) {
+            gInput.counters.aimResets += 1;
+        }
+    }
+    wrathios::input::resetGestureState(gInput.gesture);
+    (void)modeTransition;
+    report("Gate 5B input state reset", reason);
+}
+
+void setMenuPosition(float normalizedX, float normalizedY) {
+    InputPoint logical = wrathios::input::normalizedToLogical(
+        normalizedX, normalizedY, gInput.logicalWidth, gInput.logicalHeight);
+    wrathios::input::updateMenuCursor(gInput.menuCursor, logical);
+}
+
+} // namespace
+
+extern "C" void WrathIOSInputBeginFrame(void) {
+    wrathios::input::beginMenuFrame(gInput.menuCursor);
+}
+
+extern "C" void WrathIOSInputSetMode(WrathIOSInputMode mode, int logicalWidth, int logicalHeight) {
+    gInput.logicalWidth = std::max(0, logicalWidth);
+    gInput.logicalHeight = std::max(0, logicalHeight);
+    refreshOrientation();
+
+    if (gInput.mode != mode) {
+        WrathIOSInputMode oldMode = gInput.mode;
+        const bool oldWasMenu = isMenuMode(oldMode);
+        const bool newIsMenu = isMenuMode(mode);
+        clearFingerState(true, "engine input mode transition");
+        if (oldMode == WrathIOSInputModeGameplay) {
+            stopMotion("left gameplay input state");
+        }
+        if (!newIsMenu) {
+            setTextInputActive(false, "left menu text-entry state");
+        }
+        if (oldWasMenu != newIsMenu) {
+            if (oldWasMenu &&
+                gInput.menuCursor.buttonPhase == wrathios::input::MenuButtonPhase::down) {
+                gInput.forcedMenuButtonRelease = true;
+            }
+            wrathios::input::resetMenuCursor(gInput.menuCursor);
+        }
+        if (mode == WrathIOSInputModeMenuText && oldMode != WrathIOSInputModeMenuText) {
+            gInput.textEntryDismissed = false;
+        } else if (mode != WrathIOSInputModeMenuText) {
+            gInput.textEntryDismissed = false;
+        }
+        gInput.mode = mode;
+        char reason[96];
+        std::snprintf(reason, sizeof(reason), "%s to %s", modeName(oldMode), modeName(mode));
+        report("Gate 5B input mode changed", reason);
+        if (mode == WrathIOSInputModeGameplay) {
+            startMotionIfNeeded(false);
+        }
+    } else if (mode == WrathIOSInputModeGameplay && !gMotionRunning) {
+        startMotionIfNeeded(true);
+    }
+
+    if (gInput.foregroundPending) {
+        gInput.foregroundPending = false;
+        report("Gate 5B foreground first frame", "first engine input frame after UIKit foreground notification");
+    }
+}
+
+extern "C" void WrathIOSInputFingerDown(long long fingerID, float normalizedX, float normalizedY) {
+    if (gInput.gesture.active) {
+        return;
+    }
+    if (isMenuMode(gInput.mode)) {
+        gInput.gesture.active = true;
+        gInput.gesture.fingerID = fingerID;
+        gInput.gesture.previousX = normalizedX;
+        gInput.gesture.previousY = normalizedY;
+        gInput.gesture.movement = 0.0f;
+        gInput.gesture.drag = false;
+        gInput.gesture.movementReported = false;
+        setMenuPosition(normalizedX, normalizedY);
+        gInput.counters.menuBegins += 1;
+        report("Gate 5B menu touch began", "absolute logical cursor positioned under the primary finger");
+        return;
+    }
+    if (gInput.mode == WrathIOSInputModeGameplay &&
+        wrathios::input::isGameplayLookZone(normalizedX)) {
+        gInput.gesture.active = true;
+        gInput.gesture.fingerID = fingerID;
+        gInput.gesture.previousX = normalizedX;
+        gInput.gesture.previousY = normalizedY;
+        gInput.gesture.movementReported = false;
+        gInput.counters.aimBegins += 1;
+        report("Gate 5B gameplay aim touch began", "origin established in the rightmost 65 percent; camera unchanged");
+    }
+}
+
+extern "C" void WrathIOSInputFingerMotion(long long fingerID, float normalizedX, float normalizedY) {
+    if (!gInput.gesture.active || gInput.gesture.fingerID != fingerID) {
+        return;
+    }
+    if (isMenuMode(gInput.mode)) {
+        InputPoint previous = wrathios::input::normalizedToLogical(
+            gInput.gesture.previousX, gInput.gesture.previousY, gInput.logicalWidth, gInput.logicalHeight);
+        InputPoint current = wrathios::input::normalizedToLogical(
+            normalizedX, normalizedY, gInput.logicalWidth, gInput.logicalHeight);
+        gInput.gesture.movement += std::hypot(current.x - previous.x, current.y - previous.y);
+        gInput.gesture.previousX = normalizedX;
+        gInput.gesture.previousY = normalizedY;
+        setMenuPosition(normalizedX, normalizedY);
+        gInput.counters.menuAbsoluteMoves += 1;
+        const float threshold = wrathios::input::kMenuTapThresholdFraction *
+            static_cast<float>(std::min(gInput.logicalWidth, gInput.logicalHeight));
+        if (gInput.gesture.movement >= threshold) {
+            gInput.gesture.drag = true;
+        }
+        if (!gInput.gesture.movementReported) {
+            gInput.gesture.movementReported = true;
+            report("Gate 5B menu absolute position updated",
+                   "normalized touch converted once to logical window coordinates");
+        }
+        return;
+    }
+    if (gInput.mode == WrathIOSInputModeGameplay) {
+        InputPoint delta = wrathios::input::swipeDelta(
+            gInput.gesture.previousX,
+            gInput.gesture.previousY,
+            normalizedX,
+            normalizedY,
+            gInput.logicalWidth,
+            gInput.logicalHeight);
+        gInput.gesture.previousX = normalizedX;
+        gInput.gesture.previousY = normalizedY;
+        if (delta.x == 0.0f && delta.y == 0.0f) {
+            return;
+        }
+        gInput.gesture.swipeX += delta.x;
+        gInput.gesture.swipeY += delta.y;
+        gInput.counters.swipeEvents += 1;
+        if (!gInput.gesture.movementReported) {
+            gInput.gesture.movementReported = true;
+            report("Gate 5B gameplay swipe movement emitted",
+                   "finger displacement accumulated as frame-independent WRATH mouse-look delta");
+        }
+    }
+}
+
+extern "C" void WrathIOSInputFingerUp(long long fingerID, float normalizedX, float normalizedY) {
+    if (!gInput.gesture.active || gInput.gesture.fingerID != fingerID) {
+        return;
+    }
+    if (isMenuMode(gInput.mode)) {
+        setMenuPosition(normalizedX, normalizedY);
+        if (!gInput.gesture.drag && wrathios::input::queueMenuTap(gInput.menuCursor)) {
+            gInput.counters.menuTaps += 1;
+            report("Gate 5B menu tap emitted",
+                   "persistent absolute cursor is applied and drawn before frame-separated K_MOUSE1 press/release");
+        }
+        gInput.counters.menuResets += 1;
+    } else if (gInput.mode == WrathIOSInputModeGameplay) {
+        gInput.counters.aimResets += 1;
+        report("Gate 5B gameplay aim state reset", "finger up; no click or fire event emitted");
+    }
+    wrathios::input::resetGestureState(gInput.gesture);
+}
+
+extern "C" int WrathIOSInputGetMenuPosition(float *logicalX, float *logicalY) {
+    if (!isMenuMode(gInput.mode) || logicalX == nullptr || logicalY == nullptr) {
+        return 0;
+    }
+    InputPoint logical = {};
+    if (!wrathios::input::getMenuCursor(gInput.menuCursor, logical)) {
+        return 0;
+    }
+    *logicalX = logical.x;
+    *logicalY = logical.y;
+    return 1;
+}
+
+extern "C" void WrathIOSInputMarkMenuPositionApplied(void) {
+    wrathios::input::markMenuCursorApplied(gInput.menuCursor);
+}
+
+extern "C" int WrathIOSInputConsumeMenuButtonPhase(void) {
+    if (gInput.forcedMenuButtonRelease) {
+        gInput.forcedMenuButtonRelease = false;
+        return -1;
+    }
+    if (!isMenuMode(gInput.mode)) {
+        return 0;
+    }
+    return wrathios::input::consumeMenuButtonPhase(gInput.menuCursor);
+}
+
+extern "C" void WrathIOSInputConsumeGameplayLook(float *mouseDeltaX, float *mouseDeltaY) {
+    if (mouseDeltaX == nullptr || mouseDeltaY == nullptr) {
+        return;
+    }
+    *mouseDeltaX = 0.0f;
+    *mouseDeltaY = 0.0f;
+    if (gInput.mode != WrathIOSInputModeGameplay) {
+        return;
+    }
+
+    *mouseDeltaX += gInput.gesture.swipeX;
+    *mouseDeltaY += gInput.gesture.swipeY;
+    if (gInput.gesture.swipeX != 0.0f || gInput.gesture.swipeY != 0.0f) {
+        gInput.counters.swipeDeltas += 1;
+    }
+    gInput.gesture.swipeX = 0.0f;
+    gInput.gesture.swipeY = 0.0f;
+
+    GyroAccumulator accumulated;
+    {
+        std::lock_guard<std::mutex> lock(gGyroMutex);
+        accumulated = gGyro;
+        gGyro.yawRadians = 0.0f;
+        gGyro.pitchRadians = 0.0f;
+        gGyro.samples = 0;
+    }
+    if (accumulated.samples > 0) {
+        gInput.counters.gyroSamples += accumulated.samples;
+        *mouseDeltaX += -accumulated.yawRadians * wrathios::input::kGyroMouseUnitsPerRadian;
+        *mouseDeltaY += accumulated.pitchRadians * wrathios::input::kGyroMouseUnitsPerRadian;
+        if (accumulated.yawRadians != 0.0f || accumulated.pitchRadians != 0.0f) {
+            gInput.counters.gyroDeltas += 1;
+            if (gInput.counters.gyroDeltas == 1) {
+                report("Gate 5B gyro delta applied",
+                       "landscape-mapped rotation integrated and added at the WRATH mouse-look boundary");
+            }
+        }
+        if (accumulated.snapshotTimestamp - gLastDiagnosticTimestamp >= 0.2 &&
+            gInput.counters.gyroDiagnostics < 24) {
+            gLastDiagnosticTimestamp = accumulated.snapshotTimestamp;
+            gInput.counters.gyroDiagnostics += 1;
+            char snapshot[256];
+            std::snprintf(snapshot,
+                          sizeof(snapshot),
+                          "raw rotation-rate rad/s x=%+.3f y=%+.3f z=%+.3f; "
+                          "v7 baseline mapped yaw=%+.3f pitch=%+.3f; orientation=%s; snapshot %u/24",
+                          accumulated.rawX,
+                          accumulated.rawY,
+                          accumulated.rawZ,
+                          accumulated.mappedYaw,
+                          accumulated.mappedPitch,
+                          orientationName(static_cast<LandscapeOrientation>(gOrientation.load())),
+                          gInput.counters.gyroDiagnostics);
+            WrathIOSRuntimeStage("Gate 5B gyro axis diagnostic", snapshot);
+#if WRATH_IOS_GYRO_DIAGNOSTIC
+            NSString *overlay = [NSString stringWithFormat:
+                @"RAW x=%+.3f  y=%+.3f  z=%+.3f\nBASELINE yaw=%+.3f  pitch=%+.3f  %@",
+                accumulated.rawX,
+                accumulated.rawY,
+                accumulated.rawZ,
+                accumulated.mappedYaw,
+                accumulated.mappedPitch,
+                [NSString stringWithUTF8String:
+                    orientationName(static_cast<LandscapeOrientation>(gOrientation.load()))]];
+            updateGyroDiagnosticOverlay(overlay);
+#endif
+        }
+    }
+}
+
+extern "C" void WrathIOSInputSetTextEntryActive(int active) {
+    setTextInputActive(active != 0 &&
+                           gInput.mode == WrathIOSInputModeMenuText &&
+                           !gInput.textEntryDismissed,
+                       active ? "authentic WRATH New Profile field selected"
+                              : "authentic WRATH profile field no longer active");
+}
+
+extern "C" void WrathIOSInputDismissTextEntry(void) {
+    if (gInput.mode != WrathIOSInputModeMenuText) {
+        return;
+    }
+    gInput.textEntryDismissed = true;
+    setTextInputActive(false, "native Return/Done dismissed the profile keyboard");
+}
+
+extern "C" void WrathIOSInputReset(const char *reason) {
+    clearFingerState(false, reason != nullptr ? reason : "external reset");
+    if (gInput.menuCursor.buttonPhase == wrathios::input::MenuButtonPhase::down) {
+        gInput.forcedMenuButtonRelease = true;
+    }
+    wrathios::input::resetMenuCursor(gInput.menuCursor);
+    gInput.textEntryDismissed = false;
+    setTextInputActive(false, reason != nullptr ? reason : "external reset");
+    stopMotion(reason != nullptr ? reason : "external reset");
+}
+
+extern "C" void WrathIOSInputEnteredForeground(void) {
+    gInput.foregroundPending = true;
+    clearGyroAccumulator();
+    report("Gate 5B runtime returned to foreground",
+           "pending touches and gyro history remain cleared until the next engine frame");
+}

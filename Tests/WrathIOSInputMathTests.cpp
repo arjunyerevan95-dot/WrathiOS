@@ -31,17 +31,54 @@ int main() {
     assert(near(swipe.x, 191.2f));
     assert(near(swipe.y, -72.6f));
 
-    Point left = mapGyroRotationRate(LandscapeOrientation::left, 2.0f, 3.0f);
+    Point left = mapGyroRotationRate(LandscapeOrientation::left, 2.0f, 3.0f, 7.0f);
     assert(near(left.x, 2.0f));
     assert(near(left.y, -3.0f));
 
-    Point right = mapGyroRotationRate(LandscapeOrientation::right, 2.0f, 3.0f);
+    Point right = mapGyroRotationRate(LandscapeOrientation::right, 2.0f, 3.0f, 7.0f);
     assert(near(right.x, -2.0f));
     assert(near(right.y, 3.0f));
 
-    Point unknown = mapGyroRotationRate(LandscapeOrientation::unknown, 2.0f, 3.0f);
+    Point unknown = mapGyroRotationRate(LandscapeOrientation::unknown, 2.0f, 3.0f, 7.0f);
     assert(near(unknown.x, 0.0f));
     assert(near(unknown.y, 0.0f));
+
+    MenuCursorState menu = {};
+    beginMenuFrame(menu);
+    updateMenuCursor(menu, {120.0f, 80.0f});
+    Point authoritative = {};
+    assert(getMenuCursor(menu, authoritative));
+    assert(near(authoritative.x, 120.0f));
+    assert(near(authoritative.y, 80.0f));
+    markMenuCursorApplied(menu);
+    assert(queueMenuTap(menu));
+    assert(consumeMenuButtonPhase(menu) == 0);
+
+    beginMenuFrame(menu);
+    assert(getMenuCursor(menu, authoritative));
+    assert(near(authoritative.x, 120.0f));
+    assert(near(authoritative.y, 80.0f));
+    markMenuCursorApplied(menu);
+    assert(consumeMenuButtonPhase(menu) == 0);
+
+    beginMenuFrame(menu);
+    assert(getMenuCursor(menu, authoritative));
+    markMenuCursorApplied(menu);
+    assert(consumeMenuButtonPhase(menu) == 1);
+    assert(consumeMenuButtonPhase(menu) == 0);
+
+    beginMenuFrame(menu);
+    assert(consumeMenuButtonPhase(menu) == -1);
+    assert(getMenuCursor(menu, authoritative));
+    assert(near(authoritative.x, 120.0f));
+    assert(near(authoritative.y, 80.0f));
+
+    // Finger-up does not erase the authoritative cursor; only an explicit
+    // mode/lifecycle reset does.
+    assert(menu.valid);
+    resetMenuCursor(menu);
+    assert(!getMenuCursor(menu, authoritative));
+    assert(menu.buttonPhase == MenuButtonPhase::idle);
 
     GestureState gesture = {true, 42, 0.2f, 0.3f, 12.0f, true, true, 9.0f, -4.0f};
     resetGestureState(gesture);

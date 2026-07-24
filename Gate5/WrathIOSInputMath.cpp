@@ -44,7 +44,11 @@ Point swipeDelta(float previousX,
     };
 }
 
-Point mapGyroRotationRate(LandscapeOrientation orientation, float deviceRateX, float deviceRateY) {
+Point mapGyroRotationRate(LandscapeOrientation orientation,
+                          float deviceRateX,
+                          float deviceRateY,
+                          float deviceRateZ) {
+    (void)deviceRateZ;
     switch (orientation) {
         case LandscapeOrientation::left:
             return {deviceRateX, -deviceRateY};
@@ -53,6 +57,63 @@ Point mapGyroRotationRate(LandscapeOrientation orientation, float deviceRateX, f
         case LandscapeOrientation::unknown:
             return {0.0f, 0.0f};
     }
+}
+
+void beginMenuFrame(MenuCursorState &state) {
+    state.frame += 1;
+}
+
+void updateMenuCursor(MenuCursorState &state, Point logical) {
+    state.valid = true;
+    state.logical = logical;
+    state.positionGeneration += 1;
+}
+
+bool getMenuCursor(const MenuCursorState &state, Point &logical) {
+    if (!state.valid) {
+        return false;
+    }
+    logical = state.logical;
+    return true;
+}
+
+void markMenuCursorApplied(MenuCursorState &state) {
+    if (state.valid) {
+        state.appliedGeneration = state.positionGeneration;
+    }
+}
+
+bool queueMenuTap(MenuCursorState &state) {
+    if (!state.valid || state.buttonPhase != MenuButtonPhase::idle) {
+        return false;
+    }
+    state.clickGeneration = state.positionGeneration;
+    // Finger events are polled after the per-frame cursor application. Leave
+    // one complete menu draw between applying the position and button down.
+    state.earliestDownFrame = state.frame + 2;
+    state.buttonPhase = MenuButtonPhase::waitingForPosition;
+    return true;
+}
+
+int consumeMenuButtonPhase(MenuCursorState &state) {
+    if (state.buttonPhase == MenuButtonPhase::waitingForPosition) {
+        if (state.appliedGeneration < state.clickGeneration ||
+            state.frame < state.earliestDownFrame) {
+            return 0;
+        }
+        state.buttonPhase = MenuButtonPhase::down;
+        state.downFrame = state.frame;
+        return 1;
+    }
+    if (state.buttonPhase == MenuButtonPhase::down && state.frame > state.downFrame) {
+        state.buttonPhase = MenuButtonPhase::idle;
+        return -1;
+    }
+    return 0;
+}
+
+void resetMenuCursor(MenuCursorState &state) {
+    state = {};
 }
 
 void resetGestureState(GestureState &state) {

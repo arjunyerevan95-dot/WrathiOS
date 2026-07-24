@@ -1,49 +1,49 @@
-# Gate 5B revised physical-device checklist
+# Gate 5B Revision 2 physical-device checklist
 
-Install `WrathiOSGate5B-v7-unsigned.ipa` over the current app. Do not uninstall:
-the unchanged bundle identifier must preserve the imported data.
+Install `WrathiOSGate5B-v8-unsigned.ipa` over the current app. Do not uninstall
+or reimport data.
 
 ## Menu
 
-1. Confirm the launcher detects the existing licensed import and launch WRATH.
-2. Tap **Begin** directly. Confirm it activates without locating the cursor.
-3. Return to the main menu and tap **Options** directly.
-4. Tap one visible option directly, then tap **Depart** or Back directly.
-5. Confirm each tap activates the item under the finger exactly once.
-6. Drag across menu entries and lift. Confirm the authentic cursor follows but
-   no item activates accidentally.
-7. Hold still in the menu and confirm the cursor does not drift.
+1. Launch WRATH and tap **Options** directly. Confirm Options—not Begin—opens.
+2. Return and tap **Begin** directly.
+3. Confirm the cursor remains at the last touched coordinate.
+4. Wait ten seconds without touching; confirm it does not snap to center.
+5. Drag the cursor to several positions and confirm it remains at the final
+   position without a release click.
 
-## Gameplay look
+## Profile text
 
-8. Start the first playable scene only for camera-input testing.
-9. Touch the right-side aim zone without moving. Confirm no camera jump.
-10. Swipe horizontally and confirm the camera turns horizontally.
-11. Swipe vertically and confirm the camera looks up and down.
-12. Hold the finger still and confirm camera motion stops.
-13. Lift and touch elsewhere in the right zone. Confirm no jump.
-14. Touch and swipe in the left reserved 35 percent. Confirm it does not rotate
-    the camera.
-15. Confirm aim gestures do not fire or activate another action.
+6. Open **New Profile** and select the authentic name field.
+7. Confirm the standard landscape iOS keyboard appears.
+8. Enter a short letters/numbers name, test Backspace, then use the authentic
+   Accept control to proceed. WRATH QC does not permit spaces in this field.
 
-## Gyroscope
+## Gyro raw-axis diagnostic
 
-16. Hold the phone still and describe any visible drift.
-17. Rotate left and right; confirm yaw follows predictably.
-18. Tilt up and down; confirm pitch follows predictably.
-19. If practical, repeat in both landscape orientations and report any reversed
-    axis.
-20. Combine a swipe with phone rotation and describe whether both inputs add
-    smoothly or fight each other.
+9. Enter the first playable scene only to test camera input.
+10. Read or screenshot the small `RAW x/y/z` and `BASELINE yaw/pitch` overlay.
+11. Perform each motion separately and report the dominant signed raw axis:
+    rotate left/right, tilt the top edge forward/back, and roll
+    clockwise/counterclockwise.
+12. If practical, repeat after rotating to the other supported landscape
+    orientation. Do not interpret the v7 baseline labels as an accepted final
+    mapping.
+
+## Preserved swipe-look
+
+13. On the rightmost 65 percent, touch without moving; confirm no camera jump.
+14. Swipe horizontally and vertically, hold still, then lift and retouch.
+15. Confirm the left reserved 35 percent does not aim and aim gestures do not
+    click or fire.
 
 ## Lifecycle
 
-21. While in gameplay, background the app for three seconds and return.
-22. Confirm there is no stuck swipe, menu click, or accumulated gyro jump.
-23. Note whether GL output, animation, audio, touch, and motion input resume.
-24. Capture one menu screenshot and one gameplay screenshot. Provide a short
-    qualitative report for direct taps, swipe sensitivity, gyro signs/drift,
-    combined input, and foreground recovery.
+16. Background the app for three seconds and return.
+17. Confirm the keyboard is not stuck, no menu button is held, a new swipe is
+    required, and no suspended gyro delta is applied.
+18. Note GL, animation, audio, keyboard, touch, and motion behavior.
 
-Do not test movement, firing, combat, weapons, inventory, or other gameplay
-controls.
+Return one menu screenshot, one keyboard screenshot, the raw-axis overlay
+screenshots/values for the isolated motions, and a concise touch/swipe/lifecycle
+description. Do not test movement or combat.

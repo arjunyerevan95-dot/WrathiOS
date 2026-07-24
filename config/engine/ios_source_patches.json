@@ -11,6 +11,10 @@
           "new": "static int M_InputEvent (int type, float key, float ascii)"
         },
         {
+          "old": "void MR_SetRouting (qboolean forceold);\n",
+          "new": "void MR_SetRouting (qboolean forceold);\n\n#ifdef WRATH_IOS_GATE5B\nqboolean MR_WrathIOSProfileTextEntryActive(void)\n{\n\tprvm_prog_t *prog = MVM_prog;\n\tddef_t *menu_current;\n\tddef_t *menu_createprofile;\n\tddef_t *ui_selected;\n\tddef_t *partner;\n\tprvm_int_t current_entity;\n\tprvm_int_t profile_entity;\n\tprvm_int_t selected_entity;\n\tprvm_int_t field_entity;\n\n\tif (!prog->loaded)\n\t\treturn false;\n\tmenu_current = PRVM_ED_FindGlobal(prog, \"menu_current\");\n\tmenu_createprofile = PRVM_ED_FindGlobal(prog, \"menu_createprofile\");\n\tui_selected = PRVM_ED_FindGlobal(prog, \"ui_selected\");\n\tpartner = PRVM_ED_FindField(prog, \"partner\");\n\tif (!menu_current || !menu_createprofile || !ui_selected || !partner)\n\t\treturn false;\n\tcurrent_entity = PRVM_GLOBALFIELDEDICT(menu_current->ofs);\n\tprofile_entity = PRVM_GLOBALFIELDEDICT(menu_createprofile->ofs);\n\tselected_entity = PRVM_GLOBALFIELDEDICT(ui_selected->ofs);\n\tif (profile_entity <= 0 || current_entity != profile_entity)\n\t\treturn false;\n\tfield_entity = PRVM_EDICTFIELDEDICT(PRVM_PROG_TO_EDICT(profile_entity), partner->ofs);\n\treturn field_entity > 0 && selected_entity == field_entity;\n}\n#endif\n"
+        },
+        {
           "old": "\tPRVM_Prog_Load(prog, menu_progs.string, NULL, 0, m_numrequiredfunc, m_required_func, m_numrequiredfields, m_required_fields, m_numrequiredglobals, m_required_globals);",
           "new": "#ifdef WRATH_IOS_GATE5\n\tWrathIOSRuntimeStage(\"QuakeC VM loading entered\", \"Menu VM initialization entered.\");\n\tWrathIOSRuntimeStage(\"menu.dat loading entered\", \"Loading the authentic WRATH menu program.\");\n#endif\n\tPRVM_Prog_Load(prog, menu_progs.string, NULL, 0, m_numrequiredfunc, m_required_func, m_numrequiredfields, m_required_fields, m_numrequiredglobals, m_required_globals);\n#ifdef WRATH_IOS_GATE5\n\tWrathIOSRuntimeStage(\"menu.dat loading passed\", \"The authentic WRATH menu program loaded.\");\n#endif"
         },
@@ -48,7 +52,11 @@
         },
         {
           "old": "// SDL2\nvoid Sys_SendKeyEvents( void )\n{\n\tstatic qboolean sound_active = true;\n\tint keycode;\n\tint i;\n\tint j;\n\tint unicode;\n\tSDL_Event event;\n\n\tVID_EnableJoystick(true);\n\n\twhile( SDL_PollEvent( &event ) )",
-          "new": "// SDL2\nvoid Sys_SendKeyEvents( void )\n{\n\tstatic qboolean sound_active = true;\n\tint keycode;\n\tint i;\n\tint j;\n\tint unicode;\n\tSDL_Event event;\n\n\tVID_EnableJoystick(true);\n#ifdef WRATH_IOS_GATE5B\n\t{\n\t\tWrathIOSInputMode wrath_input_mode = WrathIOSInputModeOther;\n\t\tfloat wrath_menu_x = 0;\n\t\tfloat wrath_menu_y = 0;\n\t\tint wrath_button_phase;\n\t\tif (!key_consoleactive && (key_dest == key_menu || key_dest == key_menu_grabbed))\n\t\t\twrath_input_mode = WrathIOSInputModeMenu;\n\t\telse if (!key_consoleactive && key_dest == key_game && cls.state == ca_connected && cls.signon == SIGNONS && !cl.intermission && !cl.csqc_wantsmousemove && cl_prydoncursor.integer <= 0)\n\t\t\twrath_input_mode = WrathIOSInputModeGameplay;\n\t\tWrathIOSInputSetMode(wrath_input_mode, vid.width, vid.height);\n\t\tif (WrathIOSInputConsumeMenuPosition(&wrath_menu_x, &wrath_menu_y))\n\t\t{\n\t\t\tin_windowmouse_x = bound(0, wrath_menu_x, max(0, vid.width - 1));\n\t\t\tin_windowmouse_y = bound(0, wrath_menu_y, max(0, vid.height - 1));\n\t\t}\n\t\twrath_button_phase = WrathIOSInputConsumeMenuButtonPhase();\n\t\tif (wrath_button_phase != 0)\n\t\t\tKey_Event(K_MOUSE1, 0, wrath_button_phase > 0);\n\t}\n#endif\n\n\twhile( SDL_PollEvent( &event ) )"
+          "new": "// SDL2\n#ifdef WRATH_IOS_GATE5B\nqboolean MR_WrathIOSProfileTextEntryActive(void);\n#endif\nvoid Sys_SendKeyEvents( void )\n{\n\tstatic qboolean sound_active = true;\n\tint keycode;\n\tint i;\n\tint j;\n\tint unicode;\n\tSDL_Event event;\n\n\tVID_EnableJoystick(true);\n#ifdef WRATH_IOS_GATE5B\n\t{\n\t\tWrathIOSInputMode wrath_input_mode = WrathIOSInputModeOther;\n\t\tqboolean wrath_text_entry_active = false;\n\t\tfloat wrath_menu_x = 0;\n\t\tfloat wrath_menu_y = 0;\n\t\tint wrath_button_phase;\n\t\tWrathIOSInputBeginFrame();\n\t\tif (!key_consoleactive && (key_dest == key_menu || key_dest == key_menu_grabbed))\n\t\t{\n\t\t\twrath_text_entry_active = MR_WrathIOSProfileTextEntryActive();\n\t\t\twrath_input_mode = wrath_text_entry_active ? WrathIOSInputModeMenuText : WrathIOSInputModeMenu;\n\t\t}\n\t\telse if (!key_consoleactive && key_dest == key_game && cls.state == ca_connected && cls.signon == SIGNONS && !cl.intermission && !cl.csqc_wantsmousemove && cl_prydoncursor.integer <= 0)\n\t\t\twrath_input_mode = WrathIOSInputModeGameplay;\n\t\tWrathIOSInputSetMode(wrath_input_mode, vid.width, vid.height);\n\t\tWrathIOSInputSetTextEntryActive(wrath_text_entry_active);\n\t\tif (WrathIOSInputGetMenuPosition(&wrath_menu_x, &wrath_menu_y))\n\t\t{\n\t\t\tin_windowmouse_x = bound(0, wrath_menu_x, max(0, vid.width - 1));\n\t\t\tin_windowmouse_y = bound(0, wrath_menu_y, max(0, vid.height - 1));\n\t\t\tWrathIOSInputMarkMenuPositionApplied();\n\t\t}\n\t\twrath_button_phase = WrathIOSInputConsumeMenuButtonPhase();\n\t\tif (wrath_button_phase != 0)\n\t\t\tKey_Event(K_MOUSE1, 0, wrath_button_phase > 0);\n\t}\n#endif\n\n\twhile( SDL_PollEvent( &event ) )"
+        },
+        {
+          "old": "\t\t\t\tkeycode = MapKey(event.key.keysym.sym);\n\t\t\t\tif (!VID_JoyBlockEmulatedKeys(keycode))\n\t\t\t\t\tKey_Event(keycode, 0, (event.key.state == SDL_PRESSED));\n\t\t\t\tbreak;",
+          "new": "\t\t\t\tkeycode = MapKey(event.key.keysym.sym);\n\t\t\t\tif (!VID_JoyBlockEmulatedKeys(keycode))\n\t\t\t\t\tKey_Event(keycode, 0, (event.key.state == SDL_PRESSED));\n#ifdef WRATH_IOS_GATE5B\n\t\t\t\tif (event.type == SDL_KEYDOWN && (event.key.keysym.sym == SDLK_RETURN || event.key.keysym.sym == SDLK_KP_ENTER))\n\t\t\t\t\tWrathIOSInputDismissTextEntry();\n#endif\n\t\t\t\tbreak;"
         },
         {
           "old": "\t\t\t\t\tcase  SDL_WINDOWEVENT_HIDDEN:\n\t\t\t\t\t\tvid_hidden = true;\n\t\t\t\t\t\tbreak;",
@@ -81,6 +89,16 @@
         {
           "old": "\tif (context == NULL)\n\t{\n\t\tCon_Printf(\"Failed to initialize OpenGL context: %s\\n\", SDL_GetError());\n\t\tVID_Shutdown();\n\t\treturn false;\n\t}\n#endif",
           "new": "\tif (context == NULL)\n\t{\n\t\tCon_Printf(\"Failed to initialize OpenGL context: %s\\n\", SDL_GetError());\n\t\tVID_Shutdown();\n\t\treturn false;\n\t}\n#ifdef WRATH_IOS_GATE5\n\tWrathIOSRuntimeStage(\"GLES context created\", \"OpenGL ES 2 context creation passed.\");\n#endif\n#endif"
+        }
+      ]
+    },
+    {
+      "path": "vid_shared.c",
+      "reason": "Prevent upstream touchscreen video initialization from replacing Gate 5B's authoritative persistent menu cursor with the window center.",
+      "replacements": [
+        {
+          "old": "\t\tif (vid_touchscreen.integer)\n\t\t{\n\t\t\tin_windowmouse_x = vid_width.value / 2.f;\n\t\t\tin_windowmouse_y = vid_height.value / 2.f;\n\t\t}\n",
+          "new": "#ifndef WRATH_IOS_GATE5B\n\t\tif (vid_touchscreen.integer)\n\t\t{\n\t\t\tin_windowmouse_x = vid_width.value / 2.f;\n\t\t\tin_windowmouse_y = vid_height.value / 2.f;\n\t\t}\n#endif\n"
         }
       ]
     },

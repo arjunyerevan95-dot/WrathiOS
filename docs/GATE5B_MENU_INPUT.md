@@ -1,101 +1,101 @@
-# Gate 5B direct menu touch and gameplay look input
+# Gate 5B Revision 2 input architecture
 
-## Reassessment
+## Physical-device reassessment
 
-The first Gate 5B candidate correctly disabled SDL's synthesized touch mouse and
-stopped cursor drift, but it replaced one desktop abstraction with another: the
-entire screen became a relative laptop-style touchpad. A tap emitted
-`K_MOUSE1` at the old engine cursor instead of selecting the visible location.
-Gameplay remained on WRATH's upstream fixed 128 by 128 bottom-right virtual aim
-pad, which explains why swipes were accepted only in limited regions.
+The v7 direct-touch bridge converted finger coordinates correctly, but
+`WrathIOSInputConsumeMenuPosition` cleared the coordinate after one engine
+frame. Upstream `vid_shared.c` also initialized `in_windowmouse_x/y` to the
+video center whenever touchscreen video mode was established. The result was
+one transient absolute update followed by the shared center-ish coordinate.
 
-The revised build removes the project-authored relative menu pointer and bypasses
-the complete upstream Quake touchscreen-area layout under `WRATH_IOS_GATE5B`.
-SDL touch-to-mouse synthesis remains disabled. One project-owned
-`WrathIOSInputBridge` now selects menu, gameplay, or other behavior explicitly.
+`Sys_SendKeyEvents` applies bridge state before polling the current frame's SDL
+finger events. A tap discovered during polling therefore cannot safely click
+immediately: the menu VM has not yet drawn and updated `ui_hover` at that new
+coordinate. Revision 2 makes the cursor persistent and uses an explicit
+position/draw/down/up sequence.
 
-## Engine-state boundary
+## Persistent menu ownership
 
-- Menu mode requires no active console and `key_dest` equal to `key_menu` or
-  `key_menu_grabbed`.
-- Gameplay mode requires no active console, `key_dest == key_game`, a connected
-  client with `cls.signon == SIGNONS`, no intermission, no CSQC mouse request,
-  and no Prydon cursor.
-- Console, chat, loading/sign-on, intermission, CSQC cursor, and all other
-  states select other mode.
-
-Every transition clears the primary finger, previous coordinate, drag state,
-pending swipe delta, and gyro accumulator. A touch begun in one mode cannot
-continue in another.
-
-## Direct menu touch
-
-SDL reports normalized finger coordinates. The bridge clamps them and converts
-them once into the current logical SDL window:
-
-`logical = normalized * (logical dimension - 1)`
-
-The engine patch assigns that result to `in_windowmouse_x/y`. The authentic menu
-VM already performs the only logical-to-virtual conversion in
-`mvm_cmds.c`:
+`MenuCursorState` owns the last valid logical-window coordinate while the
+engine is in menu or menu-text mode. Reading the coordinate never consumes it.
+Every menu input frame reapplies it to `in_windowmouse_x/y`; the menu VM retains
+its existing logical-to-virtual conversion:
 
 `virtual = logical * vid_con dimension / vid dimension`
 
-No 3x drawable-pixel scale is used. The verified 956 by 440 logical window and
-2868 by 1320 drawable therefore do not require device-specific constants.
+No drawable-pixel scale is used. The upstream touchscreen center initialization
+is bypassed only under `WRATH_IOS_GATE5B`. The existing Gate 5B touchscreen
+branch continues to bypass SDL mouse polling, mouse warping, the 128 by 128
+legacy touch areas, and the multitouch mouse-button path. SDL synthesized
+touch-to-mouse events remain disabled.
 
-Finger-down places the authentic cursor under the finger. Dragging tracks the
-finger absolutely. Motion above 1.2 percent of the shorter logical dimension is
-a drag and does not click on release. A tap queues one `K_MOUSE1` down after the
-absolute position update; the following engine input frame emits the release.
-Additional fingers are ignored.
+A tap captured in frame N queues the coordinate generation. Frame N+1 reapplies
+the coordinate and lets the authentic menu draw/update hover. Frame N+2 sends
+`K_MOUSE1` down, and frame N+3 sends button up. Finger-up preserves the last
+coordinate. Dragging updates it absolutely and suppresses a click after the
+1.2-percent movement threshold.
 
-## Gameplay swipe-look
+## Authentic profile-name text entry
 
-Gameplay accepts one aim finger only when it begins at normalized X >= 0.35,
-the rightmost 65 percent of the logical surface. The left 35 percent is reserved
-for later movement work and has no effect in this milestone.
+Pinned WRATH menu QC already owns the field and accepts alphanumeric Unicode
+key events plus Backspace. It tries to open a keyboard only through the
+Steam-specific `steam_openkeyboard` command, so a non-Steam iOS build never
+requests one.
 
-Finger-down stores an origin without producing motion. Each finger-motion event
-is differenced from the preceding normalized position and converted once using
-the current logical dimensions. Experimental multipliers are 2.0 horizontally
-and 1.65 vertically. Deltas accumulate until `IN_Move_TouchScreen_Quake` calls
-`WrathIOSInputConsumeGameplayLook`; they are then assigned to `in_mouse_x/y`.
+The engine-side `MR_WrathIOSProfileTextEntryActive` query reads the loaded menu
+VM's actual `menu_current`, `menu_createprofile`, `ui_selected`, and `partner`
+entity globals. Text mode is selected only when the authentic New Profile
+screen is current and its authentic field is selected. No screen coordinate,
+artwork name, fake UIKit text field, or replacement `menu.dat` is involved.
 
-This is WRATH's authentic mouse-look boundary. Existing `CL_Input` continues to
-own sensitivity, acceleration, filtering, inversion, view zoom, pitch drift,
-and final pitch clamps. No frame-time multiplier is added to swipe displacement.
-Aim gestures never emit a mouse button, click, or fire action.
+Text mode calls SDL's native iOS `SDL_StartTextInput`. Existing
+`SDL_TEXTINPUT` decoding delivers `K_TEXT` to the menu VM; existing key events
+provide Backspace and Return. Because the authentic field does not bind Return,
+Gate 5B treats the native Return/Done key as keyboard dismissal after delivering
+the key event; the authentic Accept control still submits the profile. SDL text
+input also stops when the field/menu is left, gameplay begins, focus is lost,
+or the app backgrounds. WRATH QC intentionally accepts only letters and numbers
+and limits profile names to 16 characters.
 
-## Gyroscope
+## Mode separation
 
-`CMMotionManager` supplies fused `CMDeviceMotion.rotationRate` samples at a
-requested 120 Hz. The callback performs only orientation mapping, a 0.015
-radian/second per-axis dead zone, timestamp integration, and a locked
-accumulation. The engine input frame consumes and clears that accumulation.
+- Menu: persistent direct touch and frame-sequenced click; no gyro or swipe.
+- Menu text: the same direct touch plus SDL native text input; no gyro or
+  gameplay swipe.
+- Gameplay: rightmost-65-percent relative swipe-look plus gyro; no cursor
+  writes, menu clicks, or fire.
+- Other/loading/inactive: touch, click, text, swipe, and gyro state reset.
 
-Core Motion uses portrait-natural device axes, so the bridge maps them into
-screen-relative yaw and pitch:
+Transitions between the two menu modes preserve the cursor coordinate but
+cancel a pending click. Transitions out of the menu family reset cursor
+ownership. Gameplay and lifecycle transitions clear pending look deltas and
+Core Motion history.
 
-| Interface orientation | Screen yaw rate | Screen pitch rate |
-| --- | --- | --- |
-| Landscape left | `device x` | `-device y` |
-| Landscape right | `-device x` | `device y` |
+## Gyro diagnosis boundary
 
-Device Z rotation (roll) is ignored. Integrated radians are converted at the
-experimental rate of 900 WRATH mouse units per radian and added to the same
-`in_mouse_x/y` frame delta as swipe input. This intentionally preserves WRATH's
-downstream look behavior rather than fabricating an XInput controller.
+The v7 mapping uses device X for yaw and device Y for pitch (with
+landscape-specific signs). Physical evidence showed forward/back tilt producing
+horizontal motion, so that mapping is not accepted. The available report does
+not establish which remaining raw axis and signs correspond to deliberate yaw
+in both physical landscape orientations.
 
-Motion starts only in gameplay mode. It stops and discards pending samples in
-menus, other engine states, focus loss, and backgrounding. Entering gameplay,
-changing orientation, foregrounding, or resuming motion establishes a fresh
-timestamp baseline so suspended samples cannot become a camera jump.
+The v8 diagnostic candidate therefore records bounded 5 Hz snapshots of raw
+Core Motion rotation-rate X/Y/Z plus the v7 baseline mapped yaw/pitch. Up to 24
+snapshots are written to the sanitized transcript and shown in a small,
+non-interactive gameplay-only overlay compiled with
+`WRATH_IOS_GYRO_DIAGNOSTIC`. The overlay is hidden whenever gameplay motion is
+suspended. Core Motion continues to use bias-corrected
+`CMDeviceMotion.rotationRate` at 120 Hz; no high-rate transcript is produced.
+
+This build deliberately does not claim a corrected final axis mapping. The
+isolated left/right, forward/back, and roll device test in both landscape
+orientations must identify the physical axes before the mapping is changed.
+Swipe-look is otherwise unchanged.
 
 ## Evidence boundary
 
-Bounded instrumentation reports menu, aim, gyro, mode-transition, and lifecycle
-counters without raw coordinates. CI proves source selection, deterministic
-coordinate formulas, both landscape mappings, symbol linkage, Core Motion
-linkage, packaging, and regression checks. Only a physical device can establish
-touch feel, gyro signs, negligible stationary drift, and lifecycle recovery.
+Host tests prove persistent cursor state, position-before-click ordering,
+explicit reset behavior, normalized/logical/virtual coordinate math, the
+right-side aim zone, baseline landscape transform math, and mode-gated text and
+gyro source contracts. CI cannot prove UIKit keyboard presentation, touch hit
+quality, physical gyro axes, stationary drift, or foreground recovery.

@@ -223,7 +223,7 @@ jobs:
           grep -q 'Host_Main and authentic runtime entry symbols: present' Artifacts/gate5-menu-bootstrap/summary.md
           grep -q 'Commercial WRATH data: absent' Artifacts/gate5-menu-bootstrap/summary.md
           grep -q 'Input bridge contract: gate5b-r4-input-contract-v1' Artifacts/gate5b-menu-input/summary.md
-          grep -q 'Profile text: authentic WRATH field with SDL text events and narrow UIKit first-responder fallback' Artifacts/gate5b-menu-input/summary.md
+          grep -q 'Profile text: active-screen structural focus detector with SDL text events and narrow UIKit first-responder fallback' Artifacts/gate5b-menu-input/summary.md
           grep -q 'Gameplay input: right-side relative swipe-look' Artifacts/gate5b-menu-input/summary.md
           grep -q 'Gyroscope: Core Motion' Artifacts/gate5b-menu-input/summary.md
           grep -q 'Commercial WRATH data: absent' Artifacts/gate5b-menu-input/summary.md

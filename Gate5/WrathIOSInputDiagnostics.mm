@@ -305,7 +305,7 @@ void updateOverlayNow() {
          "text screen=%d field=%d text=%d accept=%d focus=%d SDL=%d responder=%d\n"
          "backend=%s events=%u chars=%u reason=%s\n"
          "gyro diagnostic-only running=%d %@ raw X=%+.3f Y=%+.3f Z=%+.3f dominant=%s\n"
-         "mapping=disabled-awaiting-device-axes samples=%u ignored=%u applied=%u reset=%s",
+         "mapping=disabled-awaiting-device-axes samples=%u menu-ignored=%u gameplay-applied=%u reset=%s",
         version,
         WrathInputContractVersion,
         modeName(gDiagnostic.mode),

@@ -457,6 +457,12 @@ extern "C" void WrathIOSDiagnosticsSetMotionRunning(int running) {
     updateOverlay();
 }
 
+extern "C" const char *WrathIOSInputDiagnosticContractMarker(void) {
+    // Keep launcher provenance observable to a plain Mach-O strings audit;
+    // NSString literals alone may be emitted as non-ASCII constant objects.
+    return "GATE 5B REVISION 3";
+}
+
 extern "C" void WrathIOSInputTraceEngineState(int keyDest, int consoleActive, int textRequested) {
     gDiagnostic.keyDest = keyDest;
     gDiagnostic.consoleActive = consoleActive;

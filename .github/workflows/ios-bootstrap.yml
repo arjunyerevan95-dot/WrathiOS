@@ -188,6 +188,8 @@ jobs:
 
       - name: Build Gate 5B R3 runtime-observable input diagnostic
         if: always()
+        env:
+          WRATH_BUILD_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
         run: bash scripts/build_gate5b_device_menu.sh
 
       - name: Upload Gate 5B input evidence and IPA

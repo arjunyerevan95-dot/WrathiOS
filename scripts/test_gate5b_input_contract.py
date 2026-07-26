@@ -161,6 +161,7 @@ def main() -> int:
         "gyroMenuSamplesIgnored",
         "gyroGameplaySamplesApplied",
         "WrathIOSDiagnosticsSetMotionRunning",
+        "WrathIOSInputDiagnosticContractMarker",
         "candidate(unverified)",
         "orientationName()",
         "WrathIOSRuntimeStage(\"Gate 5B R3 menu detector\"",
@@ -185,6 +186,7 @@ def main() -> int:
         "WrathIOSInputTraceSDLTextEvent",
         "WrathIOSInputTraceGyro",
         "WrathIOSDiagnosticsSetMotionRunning",
+        "WrathIOSInputDiagnosticContractMarker",
     ):
         require(bridge_header, marker, "WrathIOSInputBridge.h")
 

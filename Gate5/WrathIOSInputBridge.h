@@ -71,6 +71,7 @@ void WrathIOSDiagnosticsStoredTouch(float x, float y);
 void WrathIOSDiagnosticsReset(const char *reason);
 void WrathIOSDiagnosticsRequestTextEntry(int active);
 void WrathIOSDiagnosticsSetMotionRunning(int running);
+const char *WrathIOSInputDiagnosticContractMarker(void);
 
 #ifdef __cplusplus
 }

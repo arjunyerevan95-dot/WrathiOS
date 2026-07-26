@@ -29,7 +29,8 @@ python3 scripts/test_gate5b_input_contract.py | tee "$ARTIFACT_DIR/input-source-
 bash scripts/test_gate5b_input_math.sh
 WRATH_ENGINE_BUILD_FLAVOR=gate5b python3 scripts/build_gate2_engine_archive.py
 xcodegen generate --spec project-gate5b.yml
-build_head="$(git rev-parse --short=12 HEAD)"
+build_head="${WRATH_BUILD_HEAD:-$(git rev-parse HEAD)}"
+build_head="${build_head:0:12}"
 
 set -o pipefail
 xcodebuild \
@@ -85,6 +86,7 @@ required_symbols=(
     '_WrathIOSInputTraceSDLTextEvent$'
     '_WrathIOSInputTraceGyro$'
     '_WrathIOSDiagnosticsSetMotionRunning$'
+    '_WrathIOSInputDiagnosticContractMarker$'
     '_OBJC_CLASS_\$_WrathRuntime$'
     '_OBJC_CLASS_\$_WrathDataImporter$'
     '_OBJC_CLASS_\$_WrathImportViewController$'

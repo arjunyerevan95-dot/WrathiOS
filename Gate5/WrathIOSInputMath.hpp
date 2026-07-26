@@ -11,6 +11,7 @@ constexpr float kSwipeSensitivityX = 2.0f;
 constexpr float kSwipeSensitivityY = 1.65f;
 constexpr float kGyroDeadZoneRadiansPerSecond = 0.015f;
 constexpr float kGyroMouseUnitsPerRadian = 900.0f;
+constexpr bool kGyroApplicationEnabled = false;
 
 enum class LandscapeOrientation {
     unknown = 0,
@@ -47,6 +48,7 @@ struct MenuCursorState {
     std::uint64_t frame;
     std::uint64_t positionGeneration;
     std::uint64_t appliedGeneration;
+    std::uint64_t hoverGeneration;
     std::uint64_t clickGeneration;
     std::uint64_t earliestDownFrame;
     std::uint64_t downFrame;
@@ -62,14 +64,11 @@ Point swipeDelta(float previousX,
                  float currentY,
                  int logicalWidth,
                  int logicalHeight);
-Point mapGyroRotationRate(LandscapeOrientation orientation,
-                          float deviceRateX,
-                          float deviceRateY,
-                          float deviceRateZ);
 void beginMenuFrame(MenuCursorState &state);
 void updateMenuCursor(MenuCursorState &state, Point logical);
 bool getMenuCursor(const MenuCursorState &state, Point &logical);
 void markMenuCursorApplied(MenuCursorState &state);
+void markMenuHoverUpdated(MenuCursorState &state);
 bool queueMenuTap(MenuCursorState &state);
 int consumeMenuButtonPhase(MenuCursorState &state);
 void resetMenuCursor(MenuCursorState &state);

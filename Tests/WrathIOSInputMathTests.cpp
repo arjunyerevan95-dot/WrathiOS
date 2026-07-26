@@ -31,17 +31,9 @@ int main() {
     assert(near(swipe.x, 191.2f));
     assert(near(swipe.y, -72.6f));
 
-    Point left = mapGyroRotationRate(LandscapeOrientation::left, 2.0f, 3.0f, 7.0f);
-    assert(near(left.x, 2.0f));
-    assert(near(left.y, -3.0f));
-
-    Point right = mapGyroRotationRate(LandscapeOrientation::right, 2.0f, 3.0f, 7.0f);
-    assert(near(right.x, -2.0f));
-    assert(near(right.y, 3.0f));
-
-    Point unknown = mapGyroRotationRate(LandscapeOrientation::unknown, 2.0f, 3.0f, 7.0f);
-    assert(near(unknown.x, 0.0f));
-    assert(near(unknown.y, 0.0f));
+    // No physical-axis transform is accepted yet. Raw diagnostics must be
+    // returned from a device before this gate can enable gyro application.
+    assert(!kGyroApplicationEnabled);
 
     MenuCursorState menu = {};
     beginMenuFrame(menu);
@@ -59,7 +51,10 @@ int main() {
     assert(near(authoritative.x, 120.0f));
     assert(near(authoritative.y, 80.0f));
     markMenuCursorApplied(menu);
+    // An applied QC global alone cannot authorize a click. The authentic menu
+    // draw must consume it and recompute hover first.
     assert(consumeMenuButtonPhase(menu) == 0);
+    markMenuHoverUpdated(menu);
 
     beginMenuFrame(menu);
     assert(getMenuCursor(menu, authoritative));

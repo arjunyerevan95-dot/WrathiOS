@@ -21,6 +21,7 @@ typedef enum WrathIOSCursorWriter {
     WrathIOSCursorWriterMenuTransitionInit = 5,
     WrathIOSCursorWriterLegacyTouch = 6,
     WrathIOSCursorWriterMenuVMBuiltin = 7,
+    WrathIOSCursorWriterMenuQCGlobal = 8,
 } WrathIOSCursorWriter;
 
 void WrathIOSInputBeginFrame(void);
@@ -30,6 +31,7 @@ void WrathIOSInputFingerMotion(long long fingerID, float normalizedX, float norm
 void WrathIOSInputFingerUp(long long fingerID, float normalizedX, float normalizedY);
 int WrathIOSInputGetMenuPosition(float *logicalX, float *logicalY);
 void WrathIOSInputMarkMenuPositionApplied(void);
+void WrathIOSInputMarkMenuHoverUpdated(void);
 int WrathIOSInputConsumeMenuButtonPhase(void);
 void WrathIOSInputConsumeGameplayLook(float *mouseDeltaX, float *mouseDeltaY);
 void WrathIOSInputSetTextEntryActive(int active);
@@ -37,7 +39,7 @@ void WrathIOSInputDismissTextEntry(void);
 void WrathIOSInputReset(const char *reason);
 void WrathIOSInputEnteredForeground(void);
 
-// Gate 5B Revision 3 runtime-observable diagnostics. These calls are narrow
+// Gate 5B Revision 4 runtime-observable diagnostics. These calls are narrow
 // instrumentation boundaries used by the derived engine sources.
 void WrathIOSInputTraceEngineState(int keyDest, int consoleActive, int textRequested);
 void WrathIOSInputTraceCursorWrite(WrathIOSCursorWriter writer, float x, float y);
@@ -47,6 +49,10 @@ void WrathIOSInputTraceMenuVMRead(float engineX,
                                   float virtualX,
                                   float virtualY,
                                   int usedBridgeCoordinate);
+void WrathIOSInputTraceMenuQCPointerApplied(float logicalX,
+                                            float logicalY,
+                                            float virtualX,
+                                            float virtualY);
 void WrathIOSInputTraceMenuState(int menuIdentifier,
                                  int selectedIdentifier,
                                  int hoverIdentifier,
@@ -54,7 +60,10 @@ void WrathIOSInputTraceMenuState(int menuIdentifier,
                                  float menuCursorY,
                                  int profileFieldDetector,
                                  int profileIdentifier,
-                                 int profileFieldIdentifier);
+                                 int profileFieldIdentifier,
+                                 int profileTextIdentifier,
+                                 int profileAcceptIdentifier,
+                                 int profileScreenActive);
 void WrathIOSInputTraceButtonPhase(int phase);
 void WrathIOSInputTraceSDLTextEvent(void);
 void WrathIOSInputTraceGyro(float rawX,

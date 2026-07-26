@@ -1,52 +1,58 @@
-# Gate 5B Revision 3 physical-device checklist
+# Gate 5B Revision 4 physical-device checklist
 
-Install `WrathiOSGate5B-v9-unsigned.ipa` over the current app. Do not uninstall
-or reimport data. CI proves that the diagnostic code and packaging contracts
-compiled; it does not prove cursor, keyboard, or gyro behavior on hardware.
+Install `WrathiOSGate5B-v10-unsigned.ipa` over the current app. Do not
+uninstall or reimport data. CI confirms only that the diagnostic and packaging
+contracts compiled; pointer, keyboard, and physical sensor behavior remain
+device-unverified.
 
-## Launcher provenance
+## Build provenance
 
-1. Confirm the launcher visibly says **Gate 5B Revision 3**, **0.0.9 (9)**,
-   shows a branch-head marker, and shows
-   `gate5b-r3-input-contract-v1`.
+1. Confirm the launcher says **Gate 5B Revision 4**, **0.0.10 (10)**, shows a
+   branch-head marker, and shows `gate5b-r4-input-contract-v1`.
 
-## Runtime cursor trace
+## Menu pointer and hit target
 
-2. Launch WRATH and confirm the noninteractive diagnostic overlay appears.
+2. Launch WRATH and confirm the diagnostic overlay appears.
 3. Tap **Options** directly.
-4. Capture or transcribe the overlay values for:
-   stored touch, applied cursor, final cursor, VM cursor, final writer,
-   menu/selected/hover identifiers, and the position-wait/down/up sequences.
-5. Confirm whether Options or Begin activates.
-6. Wait ten seconds. If the cursor moves, capture the final writer and writer
-   generation after the movement.
-7. Drag to several positions and report whether the authentic cursor follows
-   and remains at the last position.
+4. Capture the overlay values for stored logical, engine logical, menu builtin,
+   QC mouse/draw, hover, selected, last writer, and click sequence.
+5. Confirm Options opens rather than Begin.
+6. Drag the authentic cursor elsewhere and wait ten seconds.
+7. Confirm the cursor stays at its last position and does not snap back.
+8. Return and tap **Begin** directly.
 
-## Profile keyboard
+## Profile text
 
-8. Open **New Profile** and tap the authentic name field.
-9. Capture detector, text-requested, SDL-active, responder, keyboard backend,
-   selected/hover, and field identifiers.
-10. If the keyboard appears, enter a short letters/numbers name, test
-    Backspace, and press Done. Confirm the authentic WRATH field changes.
+9. On New Profile, tap the authentic field.
+10. Capture profile-screen, field/text/Accept identifiers, focus detector,
+    SDL-active, first-responder, backend, event count, and keyboard reason.
+11. Confirm the native keyboard appears.
+12. Enter a short name containing letters and numbers.
+13. Test Backspace.
+14. Dismiss with Done if desired, tap the authentic Accept item, and confirm
+    profile creation proceeds.
 
-## Pre-gameplay raw gyro axes
+## Raw gyro axes
 
-11. While still in the menu/profile screen, hold the phone still and capture
-    raw X/Y/Z plus candidate yaw/pitch.
-12. Perform each motion separately and report the dominant signed raw axis:
-    steering-like left/right rotation, top-edge forward/back tilt, and
-    clockwise/counterclockwise roll.
-13. Repeat in the other landscape orientation if practical.
-14. Confirm the authentic menu cursor does not move during any gyro motion.
+15. Without requiring gameplay, hold the phone still and note raw X/Y/Z,
+    dominant axis, and landscape orientation.
+16. Rotate left/right as if steering; report dominant raw axis and signs.
+17. Tilt the top edge forward/back; report dominant raw axis and signs.
+18. Roll clockwise/counterclockwise around the screen normal; report dominant
+    raw axis and signs.
+19. Repeat in the other landscape orientation if practical.
+20. Confirm the authentic menu cursor does not move during any motion.
+21. Confirm the overlay says
+    `mapping=disabled-awaiting-device-axes` and gameplay-applied remains zero.
 
-## Lifecycle
+## Gameplay swipe and lifecycle
 
-15. Background for three seconds and return.
-16. Confirm no button is held, the keyboard is not stuck, and no gyro motion
-    moves the menu cursor.
-17. Note GL, animation, and audio behavior.
+22. Only if profile creation succeeds, enter the first scene.
+23. Test right-side horizontal and vertical swipe-look, hold still, then lift
+    and retouch; confirm there is no jump.
+24. Confirm the left 35% does not aim. Do not assess gyro aiming in this build.
+25. Background for three seconds and return.
+26. Confirm no keyboard, click, swipe, or motion state is stuck; note GL,
+    animation, and audio behavior.
 
-Gameplay is optional only if profile creation succeeds. Do not test movement,
-combat, or other controls in this diagnostic pass.
+Do not test movement, combat, firing, or other controls.

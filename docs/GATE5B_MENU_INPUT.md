@@ -1,88 +1,98 @@
-# Gate 5B Revision 3 runtime-observable input architecture
+# Gate 5B Revision 4 input architecture
 
-## Why Revision 2 was insufficient
+## Authentic menu pointer call graph
 
-Revision 2 proved only that project symbols were present. Physical hardware
-showed that WRATH's authentic cursor still returned to a center-ish coordinate,
-every initial tap activated Begin, SDL text-input activation did not display a
-keyboard, and the candidate gyro mapping was wrong.
+The pinned WRATH menu QC source establishes this path:
 
-The missing boundary was the menu VM builtin `getmousepos()`. WRATH QC copies
-that result into `ui_mouseposition` every draw, recomputes `ui_hover`, and
-routes `K_MOUSE1` through the resulting selected element. Writing only
-`in_windowmouse_x/y` was therefore insufficient evidence of the coordinate
-actually consumed by the menu VM.
+1. SDL finger events are polled by `Sys_SendKeyEvents`.
+2. The project bridge converts normalized finger coordinates once into logical
+   SDL-window coordinates and retains the last value.
+3. `VM_M_getmousepos` converts logical coordinates into the engine console
+   coordinate space with
+   `logical * vid_con dimension / vid dimension`.
+4. QC `getpointerpos()` calls that `getmousepos` builtin.
+5. `m_draw()` assigns the returned vector to the QC global
+   `ui_mouseposition`.
+6. `UI_RenderElements()` compares `ui_mouseposition` with authentic element
+   bounds, writes `ui_hover`, and the menu draws `gfx/cursor` at
+   `ui_mouseposition`.
+7. On `K_MOUSE1`, `UI_CheckClick()` performs the same authentic element-bound
+   traversal using `ui_mouseposition`, writes `ui_selected`, and invokes the
+   selected element's real `m_click` callback.
 
-## Cursor ownership and ordering
+The R3 overlay called a value such as `(390,105)` a “menu VM writer” after a
+logical value such as `(515,105)`. That was not a competing writer: it was the
+expected logical-to-console conversion. The real defect was timing.
 
-The Gate 5B bridge retains the latest direct-touch coordinate in logical video
-space. The R3 derived `VM_M_getmousepos` path returns that persistent coordinate
-directly, converted once with the authentic engine formula:
+## Authoritative hit testing and click order
 
-`virtual = logical * vid_con dimension / vid dimension`
+`Key_Event(K_MOUSE1)` runs during `Sys_SendKeyEvents`, before the next menu
+draw. R3 applied the direct coordinate to `in_windowmouse_x/y`, but the QC
+global `ui_mouseposition` still held the prior drawn position when
+`UI_CheckClick()` ran. The stale center position selected Begin.
 
-The old one-shot path remains absent. SDL touch-to-mouse synthesis and the
-legacy touchscreen mouse-area path remain bypassed. The touchscreen video
-center initializer remains disabled under `WRATH_IOS_GATE5B`.
+R4 writes the converted position to the authentic QC `ui_mouseposition`
+global through `MR_WrathIOSApplyMenuPointer` before a pending mouse-button
+phase can be consumed. The bridge marks a position generation applied only
+after this write. Button down is therefore gated on the exact coordinate used
+by `UI_CheckClick`; button up remains on a later frame. No item rectangles,
+fake cursor, generic confirm event, or menu command substitution is used.
 
-Runtime instrumentation records:
+The persistent bridge value still feeds `VM_M_getmousepos` on every draw, so
+hover and authentic cursor rendering use the same coordinate. The overlay
+labels logical, engine, builtin, QC-global, draw, hover, selected, and click
+sequence values separately.
 
-- finger receipt and stored logical coordinate;
-- application to `in_windowmouse_x/y`;
-- final lower-level coordinate and last writer;
-- coordinate returned by `VM_M_getmousepos`;
-- menu VM `ui_mouseposition`, `ui_hover`, and `ui_selected`;
-- position-wait, button-down, and button-up sequence numbers.
+## Authentic profile-field focus and keyboard
 
-The click state machine still requires a new position to be applied and drawn
-before down, with up on a later frame. CI tests this deterministic state
-machine, but device evidence is authoritative.
+The pinned QC creates the New Profile editor as follows:
 
-## Profile text and UIKit fallback
+- `menu_current` is the active New Profile screen;
+- `menu_current.partner` is the selectable/clickable field box;
+- the field's `partner` is the visible authentic text entity;
+- the field's `partner2` is the authentic Accept entity;
+- `ui_selected == menu_current.partner` is the edit-focus condition;
+- the screen's `option_input` consumes `K_TEXT`, Backspace, and other keys.
 
-The detector reads the authentic menu VM's `menu_current`,
-`menu_createprofile`, `ui_selected`, `ui_hover`, `ui_mouseposition`, and the
-profile field reached through `partner`. The overlay shows the sanitized
-numeric identifiers and detector result.
+R3 also required the separately named `menu_createprofile` global. On device
+that symbol was not discoverable, so the detector returned false despite a
+valid active screen. R4 detects the source-defined active-screen structure and
+focus state instead. It does not use artwork coordinates.
 
-R3 still calls SDL text input and displays `SDL_IsTextInputActive()`. Repeated
-hardware evidence showed that this flag did not create a usable responder
-under the custom UIKit/`Host_Main` launch architecture, so R3 also creates one
-project-owned, nearly invisible `UITextField` only while the authentic profile
-field is selected. It becomes first responder on the UIKit main thread and
-pushes:
+When that authentic field has focus, text input is requested on the UIKit main
+thread. SDL text input is started, and a narrow project-owned hidden
+`UITextField` becomes first responder because prior devices showed that
+SDL's active flag alone did not present a keyboard under the custom
+UIKit/`Host_Main` ownership model. The responder pushes Unicode as
+`SDL_TEXTINPUT`, Backspace as SDL key events, and Done as Return. WRATH's
+existing SDL decoder delivers `K_TEXT`/ASCII to the menu VM. The authentic
+field remains the only visible editor.
 
-- Unicode through `SDL_TEXTINPUT`;
-- Backspace through SDL key down/up;
-- Done through Return down/up.
+The responder resigns and is removed on field/menu exit, gameplay, focus loss,
+or backgrounding. The overlay reports structural detector values, backend,
+first-responder result, text-event count, accepted character count, and the
+last show/hide reason.
 
-WRATH's existing SDL event decoder then sends authentic `K_TEXT` and key events
-to the menu VM. The fallback neither draws a profile form nor owns profile
-text. It resigns and is removed on field/menu exit, gameplay, focus loss, or
-backgrounding.
+## Raw Core Motion diagnostic
 
-## Pre-gameplay Core Motion diagnosis
+The previously enabled landscape transform is known wrong: physical
+forward/back tilt produced horizontal movement. R4 therefore samples Core
+Motion for diagnostics but applies exactly zero gyro input to
+`in_mouse_x/y`, including in gameplay.
 
-Core Motion sampling now starts with the runtime rather than waiting for
-gameplay. A 5 Hz overlay shows raw rotation-rate X/Y/Z, physical landscape
-orientation, and the current candidate yaw/pitch mapping. The 120 Hz callback
-does not write high-frequency logs.
+Raw rotation-rate X/Y/Z, dominant axis, interface orientation, samples
+ignored, and samples applied are visible at roughly 5 Hz in the menu. The
+engine callback remains lightweight and no per-sample transcript is written.
+Physical isolated yaw, pitch, and roll evidence in both landscape
+orientations is required before a new transform is enabled.
 
-Sampling and applying are separate. In menu and menu-text modes, samples update
-diagnostics only: the gyro accumulator is cleared and no value is injected
-into `in_mouse_x/y`. Counters distinguish samples observed, menu samples
-ignored, and gameplay samples applied.
+Right-side swipe-look remains unchanged: the rightmost 65% produces relative
+look deltas, the left 35% is reserved, finger-down only establishes an origin,
+and gameplay touches never click or fire.
 
-The existing axis transform is deliberately labeled unverified. Physical
-isolated-axis evidence must be returned before another mapping is accepted.
+## Evidence boundary
 
-## Preserved boundaries
-
-Gameplay right-side swipe-look remains unchanged and no movement or firing
-controls were added. The renderer, audio, filesystem, runtime ownership,
-engine/QC pins, dependency pins, bundle identifier, and imported app container
-remain unchanged.
-
-CI proves compilation, deterministic state tests, markers, framework linkage,
-and artifact audits. It cannot prove cursor persistence, keyboard visibility,
-physical gyro axes, stationary drift, or lifecycle recovery.
+CI proves source contracts, deterministic state tests, compilation, linkage,
+and packaging. It cannot prove physical hit testing, keyboard presentation,
+sensor axes, or lifecycle recovery. R4 is an evidence-producing partial
+candidate until those device checks pass.

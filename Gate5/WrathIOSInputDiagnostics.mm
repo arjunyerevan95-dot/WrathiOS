@@ -14,7 +14,7 @@
 
 namespace {
 
-static NSString * const WrathInputContractVersion = @"gate5b-r3-input-contract-v1";
+static NSString * const WrathInputContractVersion = @"gate5b-r4-input-contract-v1";
 
 struct DiagnosticState {
     WrathIOSInputMode mode = WrathIOSInputModeOther;
@@ -29,6 +29,9 @@ struct DiagnosticState {
     int hoverIdentifier = 0;
     int profileIdentifier = 0;
     int profileFieldIdentifier = 0;
+    int profileTextIdentifier = 0;
+    int profileAcceptIdentifier = 0;
+    int profileScreenActive = 0;
     int profileFieldDetector = 0;
     float storedX = 0.0f;
     float storedY = 0.0f;
@@ -38,6 +41,10 @@ struct DiagnosticState {
     float finalY = 0.0f;
     float menuVMX = 0.0f;
     float menuVMY = 0.0f;
+    float menuQCX = 0.0f;
+    float menuQCY = 0.0f;
+    float cursorDrawX = 0.0f;
+    float cursorDrawY = 0.0f;
     float rawX = 0.0f;
     float rawY = 0.0f;
     float rawZ = 0.0f;
@@ -57,8 +64,10 @@ struct DiagnosticState {
     unsigned int gyroMenuSamplesIgnored = 0;
     unsigned int gyroGameplaySamplesApplied = 0;
     unsigned int textEvents = 0;
+    unsigned int acceptedCharacters = 0;
     char lastReset[48] = "startup";
     char keyboardBackend[32] = "inactive";
+    char keyboardReason[64] = "not requested";
 };
 
 DiagnosticState gDiagnostic;
@@ -99,6 +108,8 @@ const char *writerName(WrathIOSCursorWriter writer) {
             return "legacy-touch";
         case WrathIOSCursorWriterMenuVMBuiltin:
             return "menu-vm-builtin";
+        case WrathIOSCursorWriterMenuQCGlobal:
+            return "menu-qc-global";
         case WrathIOSCursorWriterUnknown:
             return "unknown";
     }
@@ -204,6 +215,7 @@ void pushText(NSString *text) {
         std::memcpy(event.text.text, bytes + offset, count);
         event.text.text[count] = '\0';
         SDL_PushEvent(&event);
+        gDiagnostic.acceptedCharacters += 1;
         offset += count;
     }
 }
@@ -277,16 +289,23 @@ void updateOverlayNow() {
     NSString *version = [NSString stringWithFormat:@"%@ (%@)",
         [NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleShortVersionString"] ?: @"?",
         [NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleVersion"] ?: @"?"];
+    const float rawAbsX = std::abs(gDiagnostic.rawX);
+    const float rawAbsY = std::abs(gDiagnostic.rawY);
+    const float rawAbsZ = std::abs(gDiagnostic.rawZ);
+    const float dominantMagnitude = std::max(rawAbsX, std::max(rawAbsY, rawAbsZ));
+    const char *dominantAxis = dominantMagnitude < 0.01f ? "-" :
+                               rawAbsX >= rawAbsY && rawAbsX >= rawAbsZ ? "X" :
+                               rawAbsY >= rawAbsZ ? "Y" : "Z";
     NSString *text = [NSString stringWithFormat:
-        @"G5B R3 %@  %@\n"
+        @"G5B R4 %@  %@\n"
          "mode=%s key_dest=%d console=%d menu=%d sel=%d hover=%d\n"
-         "text requested=%d SDL-active=%d responder=%d backend=%s detector=%d field=%d/%d events=%u\n"
-         "touch stored=(%.0f,%.0f) applied=(%.0f,%.0f) final=(%.0f,%.0f) VM=(%.0f,%.0f)\n"
-         "writer=%s gen=%llu phase=%s frame=%llu\n"
-         "seq finger=%llu stored=%llu applied=%llu hover=%llu down=%llu up=%llu reset=%s\n"
-         "motion running=%d orientation=%@ raw x=%+.3f y=%+.3f z=%+.3f\n"
-         "candidate(unverified) yaw=%+.3f pitch=%+.3f\n"
-         "gyro samples=%u menu-ignored=%u gameplay-applied=%u",
+         "pointer logical=(%.0f,%.0f) engine=(%.0f,%.0f) builtin=(%.0f,%.0f)\n"
+         "QC mouse/draw=(%.0f,%.0f)/(%.0f,%.0f) writer=%s phase=%s\n"
+         "seq touch=%llu stored=%llu QC=%llu hover=%llu down=%llu up=%llu frame=%llu\n"
+         "text screen=%d field=%d text=%d accept=%d focus=%d SDL=%d responder=%d\n"
+         "backend=%s events=%u chars=%u reason=%s\n"
+         "gyro diagnostic-only running=%d %@ raw X=%+.3f Y=%+.3f Z=%+.3f dominant=%s\n"
+         "mapping=disabled-awaiting-device-axes samples=%u ignored=%u applied=%u reset=%s",
         version,
         WrathInputContractVersion,
         modeName(gDiagnostic.mode),
@@ -295,48 +314,51 @@ void updateOverlayNow() {
         gDiagnostic.menuIdentifier,
         gDiagnostic.selectedIdentifier,
         gDiagnostic.hoverIdentifier,
-        gDiagnostic.textRequested,
-        gDiagnostic.sdlTextActive,
-        gDiagnostic.firstResponder,
-        gDiagnostic.keyboardBackend,
-        gDiagnostic.profileFieldDetector,
-        gDiagnostic.profileIdentifier,
-        gDiagnostic.profileFieldIdentifier,
-        gDiagnostic.textEvents,
         gDiagnostic.storedX,
         gDiagnostic.storedY,
-        gDiagnostic.appliedX,
-        gDiagnostic.appliedY,
         gDiagnostic.finalX,
         gDiagnostic.finalY,
         gDiagnostic.menuVMX,
         gDiagnostic.menuVMY,
+        gDiagnostic.menuQCX,
+        gDiagnostic.menuQCY,
+        gDiagnostic.cursorDrawX,
+        gDiagnostic.cursorDrawY,
         writerName(gDiagnostic.writer),
-        gDiagnostic.writerGeneration,
         phaseName(gDiagnostic.buttonPhase),
-        gDiagnostic.frame,
         gDiagnostic.fingerSequence,
         gDiagnostic.storedSequence,
         gDiagnostic.appliedSequence,
         gDiagnostic.hoverSequence,
         gDiagnostic.downSequence,
         gDiagnostic.upSequence,
-        gDiagnostic.lastReset,
+        gDiagnostic.frame,
+        gDiagnostic.profileScreenActive,
+        gDiagnostic.profileFieldIdentifier,
+        gDiagnostic.profileTextIdentifier,
+        gDiagnostic.profileAcceptIdentifier,
+        gDiagnostic.profileFieldDetector,
+        gDiagnostic.sdlTextActive,
+        gDiagnostic.firstResponder,
+        gDiagnostic.keyboardBackend,
+        gDiagnostic.textEvents,
+        gDiagnostic.acceptedCharacters,
+        gDiagnostic.keyboardReason,
         gDiagnostic.motionRunning,
         orientationName(),
         gDiagnostic.rawX,
         gDiagnostic.rawY,
         gDiagnostic.rawZ,
-        gDiagnostic.mappedYaw,
-        gDiagnostic.mappedPitch,
+        dominantAxis,
         gDiagnostic.gyroSamplesObserved,
         gDiagnostic.gyroMenuSamplesIgnored,
-        gDiagnostic.gyroGameplaySamplesApplied];
+        gDiagnostic.gyroGameplaySamplesApplied,
+        gDiagnostic.lastReset];
     const CGFloat width = std::min<CGFloat>(650.0, window.bounds.size.width - 16.0);
     gDiagnosticOverlay.frame = CGRectMake(8.0,
                                           window.safeAreaInsets.top + 4.0,
                                           width,
-                                          142.0);
+                                          154.0);
     gDiagnosticOverlay.text = text;
     gDiagnosticOverlay.hidden = NO;
     [window bringSubviewToFront:gDiagnosticOverlay];
@@ -360,6 +382,10 @@ void stopKeyboardOnMain() {
     gDiagnostic.sdlTextActive = SDL_IsTextInputActive() ? 1 : 0;
     gDiagnostic.firstResponder = 0;
     std::snprintf(gDiagnostic.keyboardBackend, sizeof(gDiagnostic.keyboardBackend), "%s", "inactive");
+    std::snprintf(gDiagnostic.keyboardReason,
+                  sizeof(gDiagnostic.keyboardReason),
+                  "%s",
+                  "field/menu/lifecycle exit");
     updateOverlayNow();
 }
 
@@ -372,7 +398,7 @@ void startKeyboardOnMain(unsigned long long generation) {
 
     // Repeated physical-device evidence showed that SDL's text-active flag did
     // not produce a visible responder under the custom Host_Main/UIKit launch
-    // architecture. The R3 diagnostic therefore uses a narrow responder whose
+    // architecture. The R4 diagnostic therefore uses a narrow responder whose
     // only job is to feed SDL_TEXTINPUT and authentic key events back to WRATH.
     UIWindow *window = foregroundWindow();
     if (window != nil) {
@@ -396,18 +422,27 @@ void startKeyboardOnMain(unsigned long long generation) {
                       sizeof(gDiagnostic.keyboardBackend),
                       "%s",
                       "UIKit fallback");
+        std::snprintf(gDiagnostic.keyboardReason,
+                      sizeof(gDiagnostic.keyboardReason),
+                      "%s",
+                      gDiagnostic.firstResponder ? "authentic field focused"
+                                                 : "becomeFirstResponder failed");
         char detail[192];
         std::snprintf(detail,
                       sizeof(detail),
                       "detector=true; SDL-active=%d; UIKit fallback first-responder=%d",
                       gDiagnostic.sdlTextActive,
                       gDiagnostic.firstResponder);
-        WrathIOSRuntimeStage("Gate 5B R3 keyboard backend", detail);
+        WrathIOSRuntimeStage("Gate 5B R4 keyboard backend", detail);
     } else {
         std::snprintf(gDiagnostic.keyboardBackend,
                       sizeof(gDiagnostic.keyboardBackend),
                       "%s",
                       "SDL native text input");
+        std::snprintf(gDiagnostic.keyboardReason,
+                      sizeof(gDiagnostic.keyboardReason),
+                      "%s",
+                      "active scene window unavailable");
     }
     updateOverlayNow();
 }
@@ -460,7 +495,7 @@ extern "C" void WrathIOSDiagnosticsSetMotionRunning(int running) {
 extern "C" const char *WrathIOSInputDiagnosticContractMarker(void) {
     // Keep launcher provenance observable to a plain Mach-O strings audit;
     // NSString literals alone may be emitted as non-ASCII constant objects.
-    return "GATE 5B REVISION 3";
+    return "GATE 5B REVISION 4";
 }
 
 extern "C" void WrathIOSInputTraceEngineState(int keyDest, int consoleActive, int textRequested) {
@@ -508,10 +543,21 @@ extern "C" void WrathIOSInputTraceMenuVMRead(float engineX,
     gDiagnostic.finalY = engineY;
     gDiagnostic.menuVMX = virtualX;
     gDiagnostic.menuVMY = virtualY;
-    if (usedBridgeCoordinate) {
-        gDiagnostic.writer = WrathIOSCursorWriterMenuVMBuiltin;
-        gDiagnostic.writerGeneration += 1;
-    }
+    (void)usedBridgeCoordinate;
+    updateOverlay();
+}
+
+extern "C" void WrathIOSInputTraceMenuQCPointerApplied(float logicalX,
+                                                        float logicalY,
+                                                        float virtualX,
+                                                        float virtualY) {
+    gDiagnostic.appliedX = logicalX;
+    gDiagnostic.appliedY = logicalY;
+    gDiagnostic.menuQCX = virtualX;
+    gDiagnostic.menuQCY = virtualY;
+    gDiagnostic.writer = WrathIOSCursorWriterMenuQCGlobal;
+    gDiagnostic.writerGeneration += 1;
+    gDiagnostic.appliedSequence = ++gDiagnostic.fingerSequence;
     updateOverlay();
 }
 
@@ -522,15 +568,23 @@ extern "C" void WrathIOSInputTraceMenuState(int menuIdentifier,
                                              float menuCursorY,
                                              int profileFieldDetector,
                                              int profileIdentifier,
-                                             int profileFieldIdentifier) {
+                                             int profileFieldIdentifier,
+                                             int profileTextIdentifier,
+                                             int profileAcceptIdentifier,
+                                             int profileScreenActive) {
     gDiagnostic.menuIdentifier = menuIdentifier;
     gDiagnostic.selectedIdentifier = selectedIdentifier;
     gDiagnostic.hoverIdentifier = hoverIdentifier;
-    gDiagnostic.menuVMX = menuCursorX;
-    gDiagnostic.menuVMY = menuCursorY;
+    gDiagnostic.menuQCX = menuCursorX;
+    gDiagnostic.menuQCY = menuCursorY;
+    gDiagnostic.cursorDrawX = menuCursorX;
+    gDiagnostic.cursorDrawY = menuCursorY;
     gDiagnostic.profileFieldDetector = profileFieldDetector;
     gDiagnostic.profileIdentifier = profileIdentifier;
     gDiagnostic.profileFieldIdentifier = profileFieldIdentifier;
+    gDiagnostic.profileTextIdentifier = profileTextIdentifier;
+    gDiagnostic.profileAcceptIdentifier = profileAcceptIdentifier;
+    gDiagnostic.profileScreenActive = profileScreenActive;
     gDiagnostic.hoverSequence = ++gDiagnostic.fingerSequence;
     if (gTranscriptBudget > 0 &&
         (gLastTranscriptMenuIdentifier != menuIdentifier ||
@@ -541,14 +595,16 @@ extern "C" void WrathIOSInputTraceMenuState(int menuIdentifier,
         char detail[224];
         std::snprintf(detail,
                       sizeof(detail),
-                      "menu=%d selected=%d hover=%d detector=%d profile=%d field=%d",
+                      "menu=%d selected=%d hover=%d screen=%d focus=%d field=%d text=%d accept=%d",
                       menuIdentifier,
                       selectedIdentifier,
                       hoverIdentifier,
+                      profileScreenActive,
                       profileFieldDetector,
-                      profileIdentifier,
-                      profileFieldIdentifier);
-        WrathIOSRuntimeStage("Gate 5B R3 menu detector", detail);
+                      profileFieldIdentifier,
+                      profileTextIdentifier,
+                      profileAcceptIdentifier);
+        WrathIOSRuntimeStage("Gate 5B R4 menu detector", detail);
     }
     updateOverlay();
 }

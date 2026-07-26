@@ -44,21 +44,6 @@ Point swipeDelta(float previousX,
     };
 }
 
-Point mapGyroRotationRate(LandscapeOrientation orientation,
-                          float deviceRateX,
-                          float deviceRateY,
-                          float deviceRateZ) {
-    (void)deviceRateZ;
-    switch (orientation) {
-        case LandscapeOrientation::left:
-            return {deviceRateX, -deviceRateY};
-        case LandscapeOrientation::right:
-            return {-deviceRateX, deviceRateY};
-        case LandscapeOrientation::unknown:
-            return {0.0f, 0.0f};
-    }
-}
-
 void beginMenuFrame(MenuCursorState &state) {
     state.frame += 1;
 }
@@ -83,6 +68,12 @@ void markMenuCursorApplied(MenuCursorState &state) {
     }
 }
 
+void markMenuHoverUpdated(MenuCursorState &state) {
+    if (state.valid && state.appliedGeneration == state.positionGeneration) {
+        state.hoverGeneration = state.positionGeneration;
+    }
+}
+
 bool queueMenuTap(MenuCursorState &state) {
     if (!state.valid || state.buttonPhase != MenuButtonPhase::idle) {
         return false;
@@ -98,6 +89,7 @@ bool queueMenuTap(MenuCursorState &state) {
 int consumeMenuButtonPhase(MenuCursorState &state) {
     if (state.buttonPhase == MenuButtonPhase::waitingForPosition) {
         if (state.appliedGeneration < state.clickGeneration ||
+            state.hoverGeneration < state.clickGeneration ||
             state.frame < state.earliestDownFrame) {
             return 0;
         }

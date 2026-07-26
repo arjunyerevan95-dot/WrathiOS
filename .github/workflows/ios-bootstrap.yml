@@ -186,7 +186,7 @@ jobs:
           path: Artifacts/gate5b-input-math
           if-no-files-found: error
 
-      - name: Build Gate 5B R3 runtime-observable input diagnostic
+      - name: Build Gate 5B R4 authoritative-menu and input diagnostic
         if: always()
         env:
           WRATH_BUILD_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -214,7 +214,7 @@ jobs:
           test -s Artifacts/gate5-menu-bootstrap/SHA256SUMS.txt
           test -s Artifacts/gate5-menu-bootstrap/summary.md
           test -s Artifacts/gate5b-input-math/summary.txt
-          test -s Artifacts/gate5b-menu-input/WrathiOSGate5B-v9-unsigned.ipa
+          test -s Artifacts/gate5b-menu-input/WrathiOSGate5B-v10-unsigned.ipa
           test -s Artifacts/gate5b-menu-input/SHA256SUMS.txt
           test -s Artifacts/gate5b-menu-input/summary.md
           grep -q 'Valid PK3 layout: passed' Artifacts/gate4-data-contract/summary.md
@@ -222,7 +222,7 @@ jobs:
           grep -q 'Runtime engine startup: absent' Artifacts/gate4-device-importer/summary.md
           grep -q 'Host_Main and authentic runtime entry symbols: present' Artifacts/gate5-menu-bootstrap/summary.md
           grep -q 'Commercial WRATH data: absent' Artifacts/gate5-menu-bootstrap/summary.md
-          grep -q 'Input bridge contract: gate5b-r3-input-contract-v1' Artifacts/gate5b-menu-input/summary.md
+          grep -q 'Input bridge contract: gate5b-r4-input-contract-v1' Artifacts/gate5b-menu-input/summary.md
           grep -q 'Profile text: authentic WRATH field with SDL text events and narrow UIKit first-responder fallback' Artifacts/gate5b-menu-input/summary.md
           grep -q 'Gameplay input: right-side relative swipe-look' Artifacts/gate5b-menu-input/summary.md
           grep -q 'Gyroscope: Core Motion' Artifacts/gate5b-menu-input/summary.md

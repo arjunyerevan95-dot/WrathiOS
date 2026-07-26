@@ -74,9 +74,7 @@ std::mutex gGyroMutex;
 GyroAccumulator gGyro;
 std::atomic<int> gOrientation(static_cast<int>(LandscapeOrientation::unknown));
 std::atomic<bool> gMotionSamplingEnabled(false);
-std::atomic<bool> gGameplayMotionEnabled(false);
 bool gMotionRunning = false;
-double gLastDiagnosticTimestamp = 0.0;
 
 const char *modeName(WrathIOSInputMode mode) {
     switch (mode) {
@@ -88,18 +86,6 @@ const char *modeName(WrathIOSInputMode mode) {
             return "gameplay";
         case WrathIOSInputModeOther:
             return "other";
-    }
-    return "unknown";
-}
-
-const char *orientationName(LandscapeOrientation orientation) {
-    switch (orientation) {
-        case LandscapeOrientation::left:
-            return "landscape-left";
-        case LandscapeOrientation::right:
-            return "landscape-right";
-        case LandscapeOrientation::unknown:
-            return "unknown";
     }
     return "unknown";
 }
@@ -201,10 +187,6 @@ void refreshOrientation() {
     }
 }
 
-float removeDeadZone(float value) {
-    return std::fabs(value) < wrathios::input::kGyroDeadZoneRadiansPerSecond ? 0.0f : value;
-}
-
 void startMotionIfNeeded(bool resumed) {
     if (gMotionRunning) {
         return;
@@ -229,14 +211,12 @@ void startMotionIfNeeded(bool resumed) {
             return;
         }
         const double timestamp = motion.timestamp;
-        InputPoint mapped = wrathios::input::mapGyroRotationRate(
-            static_cast<LandscapeOrientation>(gOrientation.load()),
-            static_cast<float>(motion.rotationRate.x),
-            static_cast<float>(motion.rotationRate.y),
-            static_cast<float>(motion.rotationRate.z));
-        mapped.x = removeDeadZone(mapped.x);
-        mapped.y = removeDeadZone(mapped.y);
-        const bool applyToGameplay = gGameplayMotionEnabled.load();
+        // Revision 4 deliberately samples without applying a candidate axis
+        // transform. Physical evidence proved the prior landscape mapping
+        // wrong, and raw X/Y/Z evidence is required before another mapping is
+        // allowed to steer the camera.
+        InputPoint mapped = {0.0f, 0.0f};
+        const bool applyToGameplay = wrathios::input::kGyroApplicationEnabled;
         bool publishDiagnostic = false;
         {
             std::lock_guard<std::mutex> lock(gGyroMutex);
@@ -279,12 +259,11 @@ void startMotionIfNeeded(bool resumed) {
         gInput.counters.gyroResumes += 1;
     }
     report(resumed ? "Gate 5B gyro resumed" : "Gate 5B gyro started",
-           "Core Motion samples at 120 Hz; the 5 Hz overlay is diagnostic-only outside gameplay");
+           "Core Motion samples at 120 Hz; Physical evidence proved the prior landscape mapping wrong, so application is disabled and the 5 Hz overlay is diagnostic-only");
 }
 
 void stopMotion(const char *reason) {
     gMotionSamplingEnabled.store(false);
-    gGameplayMotionEnabled.store(false);
     if (gMotionRunning) {
         [gMotionManager stopDeviceMotionUpdates];
         gMotionRunning = false;
@@ -332,7 +311,6 @@ extern "C" void WrathIOSInputSetMode(WrathIOSInputMode mode, int logicalWidth, i
         const bool oldWasMenu = isMenuMode(oldMode);
         const bool newIsMenu = isMenuMode(mode);
         clearFingerState(true, "engine input mode transition");
-        gGameplayMotionEnabled.store(false);
         clearGyroAccumulator();
         if (!newIsMenu) {
             setTextInputActive(false, "left menu text-entry state");
@@ -356,12 +334,10 @@ extern "C" void WrathIOSInputSetMode(WrathIOSInputMode mode, int logicalWidth, i
         if (!gMotionRunning) {
             startMotionIfNeeded(false);
         }
-        gGameplayMotionEnabled.store(mode == WrathIOSInputModeGameplay);
     } else {
         if (!gMotionRunning) {
             startMotionIfNeeded(true);
         }
-        gGameplayMotionEnabled.store(mode == WrathIOSInputModeGameplay);
     }
     WrathIOSDiagnosticsSetMode(mode);
 
@@ -484,12 +460,10 @@ extern "C" int WrathIOSInputGetMenuPosition(float *logicalX, float *logicalY) {
 
 extern "C" void WrathIOSInputMarkMenuPositionApplied(void) {
     wrathios::input::markMenuCursorApplied(gInput.menuCursor);
-    InputPoint logical = {};
-    if (wrathios::input::getMenuCursor(gInput.menuCursor, logical)) {
-        WrathIOSInputTraceCursorWrite(WrathIOSCursorWriterBridgeDirectTouch,
-                                      logical.x,
-                                      logical.y);
-    }
+}
+
+extern "C" void WrathIOSInputMarkMenuHoverUpdated(void) {
+    wrathios::input::markMenuHoverUpdated(gInput.menuCursor);
 }
 
 extern "C" int WrathIOSInputConsumeMenuButtonPhase(void) {
@@ -533,43 +507,14 @@ extern "C" void WrathIOSInputConsumeGameplayLook(float *mouseDeltaX, float *mous
     gInput.gesture.swipeX = 0.0f;
     gInput.gesture.swipeY = 0.0f;
 
-    GyroAccumulator accumulated;
+    // Swipe-look remains active, but physical-axis evidence is still pending.
+    // Consume and discard any motion accumulator defensively so no old or
+    // background sample can leak into authentic in_mouse_x/y.
     {
         std::lock_guard<std::mutex> lock(gGyroMutex);
-        accumulated = gGyro;
         gGyro.yawRadians = 0.0f;
         gGyro.pitchRadians = 0.0f;
         gGyro.samples = 0;
-    }
-    if (accumulated.samples > 0) {
-        gInput.counters.gyroSamples += accumulated.samples;
-        *mouseDeltaX += -accumulated.yawRadians * wrathios::input::kGyroMouseUnitsPerRadian;
-        *mouseDeltaY += accumulated.pitchRadians * wrathios::input::kGyroMouseUnitsPerRadian;
-        if (accumulated.yawRadians != 0.0f || accumulated.pitchRadians != 0.0f) {
-            gInput.counters.gyroDeltas += 1;
-            if (gInput.counters.gyroDeltas == 1) {
-                report("Gate 5B gyro delta applied",
-                       "landscape-mapped rotation integrated and added at the WRATH mouse-look boundary");
-            }
-        }
-        if (accumulated.snapshotTimestamp - gLastDiagnosticTimestamp >= 0.2 &&
-            gInput.counters.gyroDiagnostics < 24) {
-            gLastDiagnosticTimestamp = accumulated.snapshotTimestamp;
-            gInput.counters.gyroDiagnostics += 1;
-            char snapshot[256];
-            std::snprintf(snapshot,
-                          sizeof(snapshot),
-                          "raw rotation-rate rad/s x=%+.3f y=%+.3f z=%+.3f; "
-                          "unverified candidate mapped yaw=%+.3f pitch=%+.3f; orientation=%s; snapshot %u/24",
-                          accumulated.rawX,
-                          accumulated.rawY,
-                          accumulated.rawZ,
-                          accumulated.mappedYaw,
-                          accumulated.mappedPitch,
-                          orientationName(static_cast<LandscapeOrientation>(gOrientation.load())),
-                          gInput.counters.gyroDiagnostics);
-            WrathIOSRuntimeStage("Gate 5B gyro axis diagnostic", snapshot);
-        }
     }
 }
 

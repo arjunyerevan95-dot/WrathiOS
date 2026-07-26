@@ -9,7 +9,7 @@ static NSString * const WrathChooseFolderTitle = @"Choose WRATH Folder";
 static NSString * const WrathRemoveDataTitle = @"Remove Imported Data";
 static NSString * const WrathLaunchTitle = @"Launch WRATH";
 #ifdef WRATH_IOS_GATE5B
-static NSString * const WrathGate5BR3Contract = @"gate5b-r3-input-contract-v1";
+static NSString * const WrathGate5BR4Contract = @"gate5b-r4-input-contract-v1";
 #endif
 
 static NSString * const WrathStatusNoData = @"No imported data";
@@ -47,10 +47,10 @@ static NSString * const WrathStatusRemoved = @"Imported data removed";
         NSString *buildVersion = [NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleVersion"] ?: @"unknown";
         NSString *head = [NSBundle.mainBundle objectForInfoDictionaryKey:@"WrathBuildHead"] ?: @"unknown";
         eyebrow.text = [NSString stringWithFormat:
-            @"GATE 5B REVISION 3 · INPUT DIAGNOSTICS\n"
+            @"GATE 5B REVISION 4 · INPUT DIAGNOSTICS\n"
              "%@ (%@) · branch head: %@\n"
              "input bridge contract: %@",
-            shortVersion, buildVersion, head, WrathGate5BR3Contract];
+            shortVersion, buildVersion, head, WrathGate5BR4Contract];
     } else {
         eyebrow.text = @"GATE 4 · LICENSED DATA IMPORT";
     }
@@ -170,7 +170,7 @@ static NSString * const WrathStatusRemoved = @"Imported data removed";
     self.boundaryLabel = boundary;
 #ifdef WRATH_IOS_GATE5B
     boundary.text = self.runtimeLaunchHandler != nil
-        ? @"Gate 5B R3 starts WRATH only after Launch WRATH. Its removable overlay traces cursor ownership, profile text activation, and raw Core Motion axes."
+        ? @"Gate 5B R4 starts WRATH only after Launch WRATH. Direct menu hit testing and profile text entry are device-unverified; gyro is diagnostic-only until physical axes are known."
         : @"Gate 4 validates and copies data only. The WRATH engine, filesystem, menu, audio, and gameplay remain disabled in this build.";
 #else
     boundary.text = self.runtimeLaunchHandler != nil

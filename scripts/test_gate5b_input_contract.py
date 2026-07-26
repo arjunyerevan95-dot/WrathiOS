@@ -34,6 +34,12 @@ def main() -> int:
         if patch["path"] == "menu.c"
         for replacement in patch["replacements"]
     )
+    mvm_patch = "\n".join(
+        replacement["new"]
+        for patch in spec["patches"]
+        if patch["path"] == "mvm_cmds.c"
+        for replacement in patch["replacements"]
+    )
     shared_video_patch = "\n".join(
         replacement["new"]
         for patch in spec["patches"]
@@ -41,11 +47,14 @@ def main() -> int:
         for replacement in patch["replacements"]
     )
     bridge = (ROOT / "Gate5/WrathIOSInputBridge.mm").read_text(encoding="utf-8")
+    diagnostics = (ROOT / "Gate5/WrathIOSInputDiagnostics.mm").read_text(encoding="utf-8")
     bridge_header = (ROOT / "Gate5/WrathIOSInputBridge.h").read_text(encoding="utf-8")
     math_header = (ROOT / "Gate5/WrathIOSInputMath.hpp").read_text(encoding="utf-8")
     runtime = (ROOT / "Gate5/WrathRuntime.mm").read_text(encoding="utf-8")
     delegate = (ROOT / "Gate5/AppDelegate.mm").read_text(encoding="utf-8")
     project = (ROOT / "project-gate5b.yml").read_text(encoding="utf-8")
+    launcher = (ROOT / "Gate4/WrathImportViewController.mm").read_text(encoding="utf-8")
+    plist = (ROOT / "App/Gate5BInfo.plist").read_text(encoding="utf-8")
 
     for marker in (
         "WrathIOSInputModeMenu",
@@ -62,6 +71,9 @@ def main() -> int:
         "WrathIOSInputMarkMenuPositionApplied",
         "in_windowmouse_x = bound",
         "WrathIOSInputSetTextEntryActive",
+        "WrathIOSInputTraceEngineState",
+        "WrathIOSInputTraceCursorFinal",
+        "WrathIOSInputTraceSDLTextEvent",
         "WrathIOSInputDismissTextEntry",
         "SDLK_RETURN",
         "WrathIOSInputConsumeMenuButtonPhase",
@@ -120,17 +132,41 @@ def main() -> int:
         "Gate 5B gyro baseline reset",
         "Gate 5B gyro axis diagnostic",
         "raw rotation-rate rad/s",
-        "WRATH_IOS_GYRO_DIAGNOSTIC",
         "Gate 5B profile text entry started",
         "Gate 5B profile text entry stopped",
-        "SDL_StartTextInput",
-        "SDL_StopTextInput",
         "native Return/Done dismissed the profile keyboard",
         "Gate 5B input mode changed",
         "Gate 5B foreground first frame",
         "resetGestureState(gInput.gesture)",
     ):
         require(bridge, marker, "WrathIOSInputBridge.mm")
+
+    for marker in (
+        "WrathIOSProfileKeyboardField",
+        "UITextFieldDelegate",
+        "becomeFirstResponder",
+        "SDL_StartTextInput",
+        "SDL_StopTextInput",
+        "SDL_IsTextInputActive",
+        "SDL_TEXTINPUT",
+        "SDLK_BACKSPACE",
+        "SDLK_RETURN",
+        "deleteBackward",
+        "hasText",
+        "UIKit fallback",
+        "SDL native text input",
+        "gate5b-r3-input-contract-v1",
+        "bridge-direct-touch",
+        "menu-vm-builtin",
+        "gyroMenuSamplesIgnored",
+        "gyroGameplaySamplesApplied",
+        "WrathIOSDiagnosticsSetMotionRunning",
+        "candidate(unverified)",
+        "orientationName()",
+        "WrathIOSRuntimeStage(\"Gate 5B R3 menu detector\"",
+        "userInteractionEnabled = NO",
+    ):
+        require(diagnostics, marker, "WrathIOSInputDiagnostics.mm")
 
     for marker in (
         "WrathIOSInputSetMode",
@@ -142,6 +178,13 @@ def main() -> int:
         "WrathIOSInputDismissTextEntry",
         "WrathIOSInputReset",
         "WrathIOSInputEnteredForeground",
+        "WrathIOSInputTraceCursorWrite",
+        "WrathIOSInputTraceCursorFinal",
+        "WrathIOSInputTraceMenuVMRead",
+        "WrathIOSInputTraceMenuState",
+        "WrathIOSInputTraceSDLTextEvent",
+        "WrathIOSInputTraceGyro",
+        "WrathIOSDiagnosticsSetMotionRunning",
     ):
         require(bridge_header, marker, "WrathIOSInputBridge.h")
 
@@ -153,14 +196,28 @@ def main() -> int:
         'PRVM_ED_FindGlobal(prog, "menu_createprofile")',
         'PRVM_ED_FindGlobal(prog, "ui_selected")',
         'PRVM_ED_FindField(prog, "partner")',
-        "selected_entity == field_entity",
+        "*selected_entity == *field_entity",
+        "MR_WrathIOSRecordMenuDiagnosticState",
+        'PRVM_ED_FindGlobal(prog, "ui_hover")',
+        'PRVM_ED_FindGlobal(prog, "ui_mouseposition")',
+        "WrathIOSInputTraceMenuState",
     ):
         require(menu_patch, marker, "Gate 5B authentic profile-field state patch")
+
+    for marker in (
+        "VM_M_getmousepos",
+        "WrathIOSInputGetMenuPosition",
+        "WrathIOSInputTraceMenuVMRead",
+        "wrath_virtual_x",
+        "wrath_virtual_y",
+        "return;",
+    ):
+        require(mvm_patch, marker, "Gate 5B menu-VM cursor boundary patch")
 
     require(shared_video_patch, "#ifndef WRATH_IOS_GATE5B", "Gate 5B center-reset bypass")
     require(shared_video_patch, "in_windowmouse_x = vid_width.value / 2.f", "Gate 5B center-reset bypass")
 
-    require(runtime, 'WrathTranscriptVersion = @"0.0.8 (8)"', "WrathRuntime.mm")
+    require(runtime, 'WrathTranscriptVersion = @"0.0.9 (9)"', "WrathRuntime.mm")
     require(delegate, 'WrathIOSInputReset("background")', "AppDelegate.mm")
     require(delegate, 'WrathIOSInputReset("focus loss")', "AppDelegate.mm")
     require(delegate, "WrathIOSInputEnteredForeground()", "AppDelegate.mm")
@@ -168,10 +225,16 @@ def main() -> int:
     require(project, "CoreMotion.framework", "project-gate5b.yml")
     require(project, "WRATH_IOS_GYRO_DIAGNOSTIC=1", "project-gate5b.yml")
     require(project, "com.arjukstudios.wrathios.gate3", "project-gate5b.yml")
-    require(project, "MARKETING_VERSION: 0.0.8", "project-gate5b.yml")
-    require(project, "CURRENT_PROJECT_VERSION: 8", "project-gate5b.yml")
+    require(project, "MARKETING_VERSION: 0.0.9", "project-gate5b.yml")
+    require(project, "CURRENT_PROJECT_VERSION: 9", "project-gate5b.yml")
+    require(project, "WRATH_GIT_HEAD_SHORT: unknown", "project-gate5b.yml")
+    require(plist, "<string>0.0.9</string>", "Gate5BInfo.plist")
+    require(plist, "<string>9</string>", "Gate5BInfo.plist")
+    require(plist, "<key>WrathBuildHead</key>", "Gate5BInfo.plist")
+    require(launcher, "GATE 5B REVISION 3", "Gate 5B launcher provenance")
+    require(launcher, "gate5b-r3-input-contract-v1", "Gate 5B launcher provenance")
 
-    combined = patched_text + menu_patch + shared_video_patch + bridge + runtime + delegate
+    combined = patched_text + menu_patch + mvm_patch + shared_video_patch + bridge + diagnostics + runtime + delegate
     for marker in (
         "WrathIOSMenuPointer",
         "WRATH_IOS_MENU_POINTER_SENSITIVITY",
@@ -185,11 +248,13 @@ def main() -> int:
     forbid(bridge, "Key_Event(", "project-owned input bridge")
     forbid(bridge, "fire button", "project-owned input bridge")
     forbid(bridge, "movement joystick", "project-owned input bridge")
+    forbid(diagnostics, "movement joystick", "project-owned diagnostics")
+    forbid(diagnostics, "fire button", "project-owned diagnostics")
 
-    print("Gate 5B persistent absolute menu-cursor ownership contract: passed")
-    print("Gate 5B position-before-click frame sequencing contract: passed")
-    print("Gate 5B authentic New Profile SDL text-input contract: passed")
-    print("Gate 5B bounded raw-axis diagnostic contract: passed")
+    print("Gate 5B R3 menu-VM cursor ownership instrumentation: compiled contract passed; device-unverified")
+    print("Gate 5B R3 position/hover/down/up sequence instrumentation: compiled contract passed; device-unverified")
+    print("Gate 5B R3 SDL plus narrow UIKit profile keyboard bridge: compiled contract passed; device-unverified")
+    print("Gate 5B R3 pre-gameplay raw-axis diagnostic contract: passed; physical axes device-unverified")
     print("Gate 5B right-side gameplay swipe-look source contract: passed")
     print("Gate 5B Core Motion gyro source contract: passed")
     print("menu/gameplay/other mutual-exclusion and reset contract: passed")

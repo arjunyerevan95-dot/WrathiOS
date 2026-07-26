@@ -1,101 +1,88 @@
-# Gate 5B Revision 2 input architecture
+# Gate 5B Revision 3 runtime-observable input architecture
 
-## Physical-device reassessment
+## Why Revision 2 was insufficient
 
-The v7 direct-touch bridge converted finger coordinates correctly, but
-`WrathIOSInputConsumeMenuPosition` cleared the coordinate after one engine
-frame. Upstream `vid_shared.c` also initialized `in_windowmouse_x/y` to the
-video center whenever touchscreen video mode was established. The result was
-one transient absolute update followed by the shared center-ish coordinate.
+Revision 2 proved only that project symbols were present. Physical hardware
+showed that WRATH's authentic cursor still returned to a center-ish coordinate,
+every initial tap activated Begin, SDL text-input activation did not display a
+keyboard, and the candidate gyro mapping was wrong.
 
-`Sys_SendKeyEvents` applies bridge state before polling the current frame's SDL
-finger events. A tap discovered during polling therefore cannot safely click
-immediately: the menu VM has not yet drawn and updated `ui_hover` at that new
-coordinate. Revision 2 makes the cursor persistent and uses an explicit
-position/draw/down/up sequence.
+The missing boundary was the menu VM builtin `getmousepos()`. WRATH QC copies
+that result into `ui_mouseposition` every draw, recomputes `ui_hover`, and
+routes `K_MOUSE1` through the resulting selected element. Writing only
+`in_windowmouse_x/y` was therefore insufficient evidence of the coordinate
+actually consumed by the menu VM.
 
-## Persistent menu ownership
+## Cursor ownership and ordering
 
-`MenuCursorState` owns the last valid logical-window coordinate while the
-engine is in menu or menu-text mode. Reading the coordinate never consumes it.
-Every menu input frame reapplies it to `in_windowmouse_x/y`; the menu VM retains
-its existing logical-to-virtual conversion:
+The Gate 5B bridge retains the latest direct-touch coordinate in logical video
+space. The R3 derived `VM_M_getmousepos` path returns that persistent coordinate
+directly, converted once with the authentic engine formula:
 
 `virtual = logical * vid_con dimension / vid dimension`
 
-No drawable-pixel scale is used. The upstream touchscreen center initialization
-is bypassed only under `WRATH_IOS_GATE5B`. The existing Gate 5B touchscreen
-branch continues to bypass SDL mouse polling, mouse warping, the 128 by 128
-legacy touch areas, and the multitouch mouse-button path. SDL synthesized
-touch-to-mouse events remain disabled.
+The old one-shot path remains absent. SDL touch-to-mouse synthesis and the
+legacy touchscreen mouse-area path remain bypassed. The touchscreen video
+center initializer remains disabled under `WRATH_IOS_GATE5B`.
 
-A tap captured in frame N queues the coordinate generation. Frame N+1 reapplies
-the coordinate and lets the authentic menu draw/update hover. Frame N+2 sends
-`K_MOUSE1` down, and frame N+3 sends button up. Finger-up preserves the last
-coordinate. Dragging updates it absolutely and suppresses a click after the
-1.2-percent movement threshold.
+Runtime instrumentation records:
 
-## Authentic profile-name text entry
+- finger receipt and stored logical coordinate;
+- application to `in_windowmouse_x/y`;
+- final lower-level coordinate and last writer;
+- coordinate returned by `VM_M_getmousepos`;
+- menu VM `ui_mouseposition`, `ui_hover`, and `ui_selected`;
+- position-wait, button-down, and button-up sequence numbers.
 
-Pinned WRATH menu QC already owns the field and accepts alphanumeric Unicode
-key events plus Backspace. It tries to open a keyboard only through the
-Steam-specific `steam_openkeyboard` command, so a non-Steam iOS build never
-requests one.
+The click state machine still requires a new position to be applied and drawn
+before down, with up on a later frame. CI tests this deterministic state
+machine, but device evidence is authoritative.
 
-The engine-side `MR_WrathIOSProfileTextEntryActive` query reads the loaded menu
-VM's actual `menu_current`, `menu_createprofile`, `ui_selected`, and `partner`
-entity globals. Text mode is selected only when the authentic New Profile
-screen is current and its authentic field is selected. No screen coordinate,
-artwork name, fake UIKit text field, or replacement `menu.dat` is involved.
+## Profile text and UIKit fallback
 
-Text mode calls SDL's native iOS `SDL_StartTextInput`. Existing
-`SDL_TEXTINPUT` decoding delivers `K_TEXT` to the menu VM; existing key events
-provide Backspace and Return. Because the authentic field does not bind Return,
-Gate 5B treats the native Return/Done key as keyboard dismissal after delivering
-the key event; the authentic Accept control still submits the profile. SDL text
-input also stops when the field/menu is left, gameplay begins, focus is lost,
-or the app backgrounds. WRATH QC intentionally accepts only letters and numbers
-and limits profile names to 16 characters.
+The detector reads the authentic menu VM's `menu_current`,
+`menu_createprofile`, `ui_selected`, `ui_hover`, `ui_mouseposition`, and the
+profile field reached through `partner`. The overlay shows the sanitized
+numeric identifiers and detector result.
 
-## Mode separation
+R3 still calls SDL text input and displays `SDL_IsTextInputActive()`. Repeated
+hardware evidence showed that this flag did not create a usable responder
+under the custom UIKit/`Host_Main` launch architecture, so R3 also creates one
+project-owned, nearly invisible `UITextField` only while the authentic profile
+field is selected. It becomes first responder on the UIKit main thread and
+pushes:
 
-- Menu: persistent direct touch and frame-sequenced click; no gyro or swipe.
-- Menu text: the same direct touch plus SDL native text input; no gyro or
-  gameplay swipe.
-- Gameplay: rightmost-65-percent relative swipe-look plus gyro; no cursor
-  writes, menu clicks, or fire.
-- Other/loading/inactive: touch, click, text, swipe, and gyro state reset.
+- Unicode through `SDL_TEXTINPUT`;
+- Backspace through SDL key down/up;
+- Done through Return down/up.
 
-Transitions between the two menu modes preserve the cursor coordinate but
-cancel a pending click. Transitions out of the menu family reset cursor
-ownership. Gameplay and lifecycle transitions clear pending look deltas and
-Core Motion history.
+WRATH's existing SDL event decoder then sends authentic `K_TEXT` and key events
+to the menu VM. The fallback neither draws a profile form nor owns profile
+text. It resigns and is removed on field/menu exit, gameplay, focus loss, or
+backgrounding.
 
-## Gyro diagnosis boundary
+## Pre-gameplay Core Motion diagnosis
 
-The v7 mapping uses device X for yaw and device Y for pitch (with
-landscape-specific signs). Physical evidence showed forward/back tilt producing
-horizontal motion, so that mapping is not accepted. The available report does
-not establish which remaining raw axis and signs correspond to deliberate yaw
-in both physical landscape orientations.
+Core Motion sampling now starts with the runtime rather than waiting for
+gameplay. A 5 Hz overlay shows raw rotation-rate X/Y/Z, physical landscape
+orientation, and the current candidate yaw/pitch mapping. The 120 Hz callback
+does not write high-frequency logs.
 
-The v8 diagnostic candidate therefore records bounded 5 Hz snapshots of raw
-Core Motion rotation-rate X/Y/Z plus the v7 baseline mapped yaw/pitch. Up to 24
-snapshots are written to the sanitized transcript and shown in a small,
-non-interactive gameplay-only overlay compiled with
-`WRATH_IOS_GYRO_DIAGNOSTIC`. The overlay is hidden whenever gameplay motion is
-suspended. Core Motion continues to use bias-corrected
-`CMDeviceMotion.rotationRate` at 120 Hz; no high-rate transcript is produced.
+Sampling and applying are separate. In menu and menu-text modes, samples update
+diagnostics only: the gyro accumulator is cleared and no value is injected
+into `in_mouse_x/y`. Counters distinguish samples observed, menu samples
+ignored, and gameplay samples applied.
 
-This build deliberately does not claim a corrected final axis mapping. The
-isolated left/right, forward/back, and roll device test in both landscape
-orientations must identify the physical axes before the mapping is changed.
-Swipe-look is otherwise unchanged.
+The existing axis transform is deliberately labeled unverified. Physical
+isolated-axis evidence must be returned before another mapping is accepted.
 
-## Evidence boundary
+## Preserved boundaries
 
-Host tests prove persistent cursor state, position-before-click ordering,
-explicit reset behavior, normalized/logical/virtual coordinate math, the
-right-side aim zone, baseline landscape transform math, and mode-gated text and
-gyro source contracts. CI cannot prove UIKit keyboard presentation, touch hit
-quality, physical gyro axes, stationary drift, or foreground recovery.
+Gameplay right-side swipe-look remains unchanged and no movement or firing
+controls were added. The renderer, audio, filesystem, runtime ownership,
+engine/QC pins, dependency pins, bundle identifier, and imported app container
+remain unchanged.
+
+CI proves compilation, deterministic state tests, markers, framework linkage,
+and artifact audits. It cannot prove cursor persistence, keyboard visibility,
+physical gyro axes, stationary drift, or lifecycle recovery.

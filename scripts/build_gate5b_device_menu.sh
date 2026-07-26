@@ -9,7 +9,7 @@ PROJECT="$ROOT_DIR/WrathiOSGate5B.xcodeproj"
 APP_BUNDLE="$DERIVED_DATA/Build/Products/Debug-iphoneos/WrathiOSGate5B.app"
 BINARY="$APP_BUNDLE/WrathiOSGate5B"
 PACKAGE_ROOT="$ROOT_DIR/Derived/gate5b-package"
-IPA="$ARTIFACT_DIR/WrathiOSGate5B-v8-unsigned.ipa"
+IPA="$ARTIFACT_DIR/WrathiOSGate5B-v9-unsigned.ipa"
 
 rm -rf "$ARTIFACT_DIR" "$DERIVED_DATA" "$PROJECT" "$PACKAGE_ROOT"
 mkdir -p "$ARTIFACT_DIR"
@@ -29,6 +29,7 @@ python3 scripts/test_gate5b_input_contract.py | tee "$ARTIFACT_DIR/input-source-
 bash scripts/test_gate5b_input_math.sh
 WRATH_ENGINE_BUILD_FLAVOR=gate5b python3 scripts/build_gate2_engine_archive.py
 xcodegen generate --spec project-gate5b.yml
+build_head="$(git rev-parse --short=12 HEAD)"
 
 set -o pipefail
 xcodebuild \
@@ -38,6 +39,7 @@ xcodebuild \
     -sdk iphoneos \
     -destination 'generic/platform=iOS' \
     -derivedDataPath "$DERIVED_DATA" \
+    WRATH_GIT_HEAD_SHORT="$build_head" \
     CODE_SIGNING_ALLOWED=NO \
     build 2>&1 | tee "$LOG"
 
@@ -58,6 +60,7 @@ required_symbols=(
     '_SDL_GL_CreateContext$'
     '_SDL_StartTextInput$'
     '_SDL_StopTextInput$'
+    '_SDL_IsTextInputActive$'
     '_MR_WrathIOSProfileTextEntryActive$'
     '_WrathIOSRuntimeStage$'
     '_WrathIOSRuntimeAbort$'
@@ -74,6 +77,14 @@ required_symbols=(
     '_WrathIOSInputDismissTextEntry$'
     '_WrathIOSInputReset$'
     '_WrathIOSInputEnteredForeground$'
+    '_WrathIOSInputTraceCursorWrite$'
+    '_WrathIOSInputTraceCursorFinal$'
+    '_WrathIOSInputTraceEngineState$'
+    '_WrathIOSInputTraceMenuVMRead$'
+    '_WrathIOSInputTraceMenuState$'
+    '_WrathIOSInputTraceSDLTextEvent$'
+    '_WrathIOSInputTraceGyro$'
+    '_WrathIOSDiagnosticsSetMotionRunning$'
     '_OBJC_CLASS_\$_WrathRuntime$'
     '_OBJC_CLASS_\$_WrathDataImporter$'
     '_OBJC_CLASS_\$_WrathImportViewController$'
@@ -106,6 +117,17 @@ required_markers=(
     'Gate 5B input state reset'
     'Gate 5B runtime returned to foreground'
     'Gate 5B foreground first frame'
+    'GATE 5B REVISION 3'
+    'gate5b-r3-input-contract-v1'
+    'bridge-direct-touch'
+    'menu-vm-builtin'
+    'UIKit fallback'
+    'SDL native text input'
+    'Gate 5B R3 keyboard backend'
+    'Gate 5B R3 menu detector'
+    'candidate(unverified)'
+    'position-wait'
+    'menu-ignored'
     'absolute logical cursor positioned under the primary finger'
     'origin established in the rightmost 65 percent; camera unchanged'
     'no click or fire event emitted'
@@ -131,8 +153,12 @@ launch_storyboard="$(/usr/libexec/PlistBuddy -c 'Print :UILaunchStoryboardName' 
 [[ "$bundle_id" == 'com.arjukstudios.wrathios.gate3' ]] || {
     echo "error: unexpected Gate 5B bundle identifier: $bundle_id" >&2; exit 1;
 }
-[[ "$short_version" == '0.0.8' && "$build_version" == '8' ]] || {
+[[ "$short_version" == '0.0.9' && "$build_version" == '9' ]] || {
     echo "error: unexpected Gate 5B version: $short_version ($build_version)" >&2; exit 1;
+}
+plist_head="$(/usr/libexec/PlistBuddy -c 'Print :WrathBuildHead' "$APP_BUNDLE/Info.plist")"
+[[ "$plist_head" == "$build_head" ]] || {
+    echo "error: Gate 5B build-head marker is $plist_head, expected $build_head" >&2; exit 1;
 }
 [[ "$launch_storyboard" == 'LaunchScreen' ]] || { echo "error: adaptive launch storyboard missing" >&2; exit 1; }
 find "$APP_BUNDLE" -type d -name 'LaunchScreen.storyboardc' -print -quit | grep -q .
@@ -218,18 +244,21 @@ cp Artifacts/gate5b-engine-archive/report.json "$ARTIFACT_DIR/engine-archive-rep
 ipa_size="$(stat -f '%z' "$IPA")"
 ipa_sha256="$(shasum -a 256 "$IPA" | awk '{print $1}')"
 cat > "$ARTIFACT_DIR/summary.md" <<EOF
-# Gate 5B persistent direct-touch, profile text, and gyro diagnostic device build
+# Gate 5B Revision 3 runtime-observable input diagnostic device build
 
 - Target: arm64-apple-ios16.3
 - Bundle identifier: $bundle_id (unchanged)
 - Version: $short_version ($build_version)
+- Branch head marker: $plist_head
 - IPA: $(basename "$IPA")
 - IPA size: $ipa_size bytes
 - IPA SHA-256: $ipa_sha256
-- Menu input: persistent authoritative direct touch with position-before-click sequencing
-- Profile text: authentic WRATH field through SDL iOS native text input
+- Input bridge contract: gate5b-r3-input-contract-v1
+- Menu input: persistent bridge coordinate is returned directly by the authentic menu VM getmousepos builtin
+- Cursor evidence: lower-level writers, final engine coordinate, menu-VM coordinate, hover, and click sequence are visible at 5 Hz
+- Profile text: authentic WRATH field with SDL text events and narrow UIKit first-responder fallback
 - Gameplay input: right-side relative swipe-look at the authentic mouse-look boundary
-- Gyroscope: Core Motion raw x/y/z diagnostic at 5 Hz with bounded gameplay overlay/transcript
+- Gyroscope: Core Motion raw x/y/z diagnostic at 5 Hz before gameplay; candidate mapping remains device-unverified
 - SDL synthetic touch-to-mouse path: disabled
 - Mode-transition and lifecycle reset contracts: embedded
 - WRATH engine, SDL2, audio, Host_Main, and Gate 4 importer: retained
@@ -240,7 +269,7 @@ cat > "$ARTIFACT_DIR/summary.md" <<EOF
 - Provisioning profile and code signature: absent
 - ZIP integrity: passed
 - Gameplay movement and firing controls: absent
-- Physical menu, swipe, gyro, and lifecycle result: not established by CI
+- Physical cursor ownership, keyboard visibility, and gyro-axis correctness: device-unverified
 EOF
 
 cat "$ARTIFACT_DIR/summary.md"

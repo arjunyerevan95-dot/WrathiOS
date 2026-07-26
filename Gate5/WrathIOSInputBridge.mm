@@ -5,7 +5,6 @@
 #import "WrathRuntimeHooks.h"
 
 #import <CoreMotion/CoreMotion.h>
-#import <QuartzCore/QuartzCore.h>
 #import <UIKit/UIKit.h>
 #import <SDL.h>
 
@@ -74,12 +73,10 @@ NSOperationQueue *gMotionQueue;
 std::mutex gGyroMutex;
 GyroAccumulator gGyro;
 std::atomic<int> gOrientation(static_cast<int>(LandscapeOrientation::unknown));
+std::atomic<bool> gMotionSamplingEnabled(false);
 std::atomic<bool> gGameplayMotionEnabled(false);
 bool gMotionRunning = false;
 double gLastDiagnosticTimestamp = 0.0;
-#if WRATH_IOS_GYRO_DIAGNOSTIC
-UILabel *gGyroDiagnosticLabel;
-#endif
 
 const char *modeName(WrathIOSInputMode mode) {
     switch (mode) {
@@ -106,57 +103,6 @@ const char *orientationName(LandscapeOrientation orientation) {
     }
     return "unknown";
 }
-
-#if WRATH_IOS_GYRO_DIAGNOSTIC
-UIWindow *foregroundWindow() {
-    for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
-        if (![scene isKindOfClass:UIWindowScene.class] ||
-            scene.activationState != UISceneActivationStateForegroundActive) {
-            continue;
-        }
-        for (UIWindow *window in ((UIWindowScene *)scene).windows) {
-            if (window.isKeyWindow) {
-                return window;
-            }
-        }
-    }
-    return nil;
-}
-
-void updateGyroDiagnosticOverlay(NSString *text) {
-    UIWindow *window = foregroundWindow();
-    if (window == nil) {
-        return;
-    }
-    if (gGyroDiagnosticLabel == nil) {
-        gGyroDiagnosticLabel = [[UILabel alloc] initWithFrame:CGRectZero];
-        gGyroDiagnosticLabel.userInteractionEnabled = NO;
-        gGyroDiagnosticLabel.numberOfLines = 2;
-        gGyroDiagnosticLabel.font = [UIFont monospacedSystemFontOfSize:10.0
-                                                               weight:UIFontWeightSemibold];
-        gGyroDiagnosticLabel.textColor = UIColor.whiteColor;
-        gGyroDiagnosticLabel.backgroundColor = [UIColor colorWithWhite:0.0 alpha:0.62];
-        gGyroDiagnosticLabel.layer.cornerRadius = 5.0;
-        gGyroDiagnosticLabel.layer.masksToBounds = YES;
-        gGyroDiagnosticLabel.textAlignment = NSTextAlignmentCenter;
-    }
-    if (gGyroDiagnosticLabel.superview != window) {
-        [gGyroDiagnosticLabel removeFromSuperview];
-        [window addSubview:gGyroDiagnosticLabel];
-    }
-    const CGFloat width = std::min<CGFloat>(460.0, window.bounds.size.width - 24.0);
-    gGyroDiagnosticLabel.frame = CGRectMake(12.0, window.safeAreaInsets.top + 6.0, width, 38.0);
-    gGyroDiagnosticLabel.text = text;
-    gGyroDiagnosticLabel.hidden = NO;
-}
-
-void hideGyroDiagnosticOverlay() {
-    gGyroDiagnosticLabel.hidden = YES;
-}
-#else
-void hideGyroDiagnosticOverlay() {
-}
-#endif
 
 void report(const char *stage, const char *reason) {
     if (gInput.stageBudget == 0) {
@@ -199,12 +145,12 @@ void setTextInputActive(bool active, const char *reason) {
         return;
     }
     if (active) {
-        SDL_StartTextInput();
+        WrathIOSDiagnosticsRequestTextEntry(1);
         gInput.counters.textStarts += 1;
         report("Gate 5B profile text entry started",
-               reason != nullptr ? reason : "authentic New Profile field selected");
+               reason != nullptr ? reason : "authentic New Profile field selected; UIKit fallback requested");
     } else {
-        SDL_StopTextInput();
+        WrathIOSDiagnosticsRequestTextEntry(0);
         gInput.counters.textStops += 1;
         report("Gate 5B profile text entry stopped",
                reason != nullptr ? reason : "left authentic New Profile field");
@@ -275,27 +221,14 @@ void startMotionIfNeeded(bool resumed) {
         return;
     }
     clearGyroAccumulator();
-    gGameplayMotionEnabled.store(true);
+    gMotionSamplingEnabled.store(true);
     [gMotionManager startDeviceMotionUpdatesUsingReferenceFrame:CMAttitudeReferenceFrameXArbitraryZVertical
                                                         toQueue:gMotionQueue
                                                     withHandler:^(CMDeviceMotion *motion, NSError *error) {
-        if (error != nil || motion == nil || !gGameplayMotionEnabled.load()) {
+        if (error != nil || motion == nil || !gMotionSamplingEnabled.load()) {
             return;
         }
         const double timestamp = motion.timestamp;
-        std::lock_guard<std::mutex> lock(gGyroMutex);
-        if (gGyro.lastTimestamp == 0.0) {
-            gGyro.lastTimestamp = timestamp;
-            return;
-        }
-        const double deltaTime = timestamp - gGyro.lastTimestamp;
-        gGyro.lastTimestamp = timestamp;
-        if (deltaTime <= 0.0 || deltaTime > 0.1) {
-            gGyro.yawRadians = 0.0f;
-            gGyro.pitchRadians = 0.0f;
-            gGyro.samples = 0;
-            return;
-        }
         InputPoint mapped = wrathios::input::mapGyroRotationRate(
             static_cast<LandscapeOrientation>(gOrientation.load()),
             static_cast<float>(motion.rotationRate.x),
@@ -303,35 +236,63 @@ void startMotionIfNeeded(bool resumed) {
             static_cast<float>(motion.rotationRate.z));
         mapped.x = removeDeadZone(mapped.x);
         mapped.y = removeDeadZone(mapped.y);
-        gGyro.rawX = static_cast<float>(motion.rotationRate.x);
-        gGyro.rawY = static_cast<float>(motion.rotationRate.y);
-        gGyro.rawZ = static_cast<float>(motion.rotationRate.z);
-        gGyro.mappedYaw = mapped.x;
-        gGyro.mappedPitch = mapped.y;
-        gGyro.snapshotTimestamp = timestamp;
-        gGyro.yawRadians += mapped.x * static_cast<float>(deltaTime);
-        gGyro.pitchRadians += mapped.y * static_cast<float>(deltaTime);
-        gGyro.samples += 1;
+        const bool applyToGameplay = gGameplayMotionEnabled.load();
+        bool publishDiagnostic = false;
+        {
+            std::lock_guard<std::mutex> lock(gGyroMutex);
+            const double deltaTime = gGyro.lastTimestamp == 0.0
+                ? 0.0
+                : timestamp - gGyro.lastTimestamp;
+            gGyro.lastTimestamp = timestamp;
+            gGyro.rawX = static_cast<float>(motion.rotationRate.x);
+            gGyro.rawY = static_cast<float>(motion.rotationRate.y);
+            gGyro.rawZ = static_cast<float>(motion.rotationRate.z);
+            gGyro.mappedYaw = mapped.x;
+            gGyro.mappedPitch = mapped.y;
+            if (timestamp - gGyro.snapshotTimestamp >= 0.2) {
+                gGyro.snapshotTimestamp = timestamp;
+                publishDiagnostic = true;
+            }
+            if (applyToGameplay && deltaTime > 0.0 && deltaTime <= 0.1) {
+                gGyro.yawRadians += mapped.x * static_cast<float>(deltaTime);
+                gGyro.pitchRadians += mapped.y * static_cast<float>(deltaTime);
+                gGyro.samples += 1;
+            } else if (!applyToGameplay) {
+                gGyro.yawRadians = 0.0f;
+                gGyro.pitchRadians = 0.0f;
+                gGyro.samples = 0;
+            }
+        }
+        if (publishDiagnostic) {
+            WrathIOSInputTraceGyro(static_cast<float>(motion.rotationRate.x),
+                                   static_cast<float>(motion.rotationRate.y),
+                                   static_cast<float>(motion.rotationRate.z),
+                                   mapped.x,
+                                   mapped.y,
+                                   applyToGameplay ? 1 : 0);
+        }
     }];
     gMotionRunning = true;
+    WrathIOSDiagnosticsSetMotionRunning(1);
     gInput.counters.gyroStarts += 1;
     if (resumed) {
         gInput.counters.gyroResumes += 1;
     }
     report(resumed ? "Gate 5B gyro resumed" : "Gate 5B gyro started",
-           "Core Motion device-motion updates running at 120 Hz; gameplay gate enabled");
+           "Core Motion samples at 120 Hz; the 5 Hz overlay is diagnostic-only outside gameplay");
 }
 
 void stopMotion(const char *reason) {
+    gMotionSamplingEnabled.store(false);
     gGameplayMotionEnabled.store(false);
     if (gMotionRunning) {
         [gMotionManager stopDeviceMotionUpdates];
         gMotionRunning = false;
+        WrathIOSDiagnosticsSetMotionRunning(0);
         gInput.counters.gyroSuspends += 1;
         report("Gate 5B gyro suspended", reason);
     }
     clearGyroAccumulator();
-    hideGyroDiagnosticOverlay();
 }
 
 void clearFingerState(bool modeTransition, const char *reason) {
@@ -351,12 +312,14 @@ void setMenuPosition(float normalizedX, float normalizedY) {
     InputPoint logical = wrathios::input::normalizedToLogical(
         normalizedX, normalizedY, gInput.logicalWidth, gInput.logicalHeight);
     wrathios::input::updateMenuCursor(gInput.menuCursor, logical);
+    WrathIOSDiagnosticsStoredTouch(logical.x, logical.y);
 }
 
 } // namespace
 
 extern "C" void WrathIOSInputBeginFrame(void) {
     wrathios::input::beginMenuFrame(gInput.menuCursor);
+    WrathIOSDiagnosticsBeginFrame();
 }
 
 extern "C" void WrathIOSInputSetMode(WrathIOSInputMode mode, int logicalWidth, int logicalHeight) {
@@ -369,9 +332,8 @@ extern "C" void WrathIOSInputSetMode(WrathIOSInputMode mode, int logicalWidth, i
         const bool oldWasMenu = isMenuMode(oldMode);
         const bool newIsMenu = isMenuMode(mode);
         clearFingerState(true, "engine input mode transition");
-        if (oldMode == WrathIOSInputModeGameplay) {
-            stopMotion("left gameplay input state");
-        }
+        gGameplayMotionEnabled.store(false);
+        clearGyroAccumulator();
         if (!newIsMenu) {
             setTextInputActive(false, "left menu text-entry state");
         }
@@ -391,12 +353,17 @@ extern "C" void WrathIOSInputSetMode(WrathIOSInputMode mode, int logicalWidth, i
         char reason[96];
         std::snprintf(reason, sizeof(reason), "%s to %s", modeName(oldMode), modeName(mode));
         report("Gate 5B input mode changed", reason);
-        if (mode == WrathIOSInputModeGameplay) {
+        if (!gMotionRunning) {
             startMotionIfNeeded(false);
         }
-    } else if (mode == WrathIOSInputModeGameplay && !gMotionRunning) {
-        startMotionIfNeeded(true);
+        gGameplayMotionEnabled.store(mode == WrathIOSInputModeGameplay);
+    } else {
+        if (!gMotionRunning) {
+            startMotionIfNeeded(true);
+        }
+        gGameplayMotionEnabled.store(mode == WrathIOSInputModeGameplay);
     }
+    WrathIOSDiagnosticsSetMode(mode);
 
     if (gInput.foregroundPending) {
         gInput.foregroundPending = false;
@@ -517,17 +484,35 @@ extern "C" int WrathIOSInputGetMenuPosition(float *logicalX, float *logicalY) {
 
 extern "C" void WrathIOSInputMarkMenuPositionApplied(void) {
     wrathios::input::markMenuCursorApplied(gInput.menuCursor);
+    InputPoint logical = {};
+    if (wrathios::input::getMenuCursor(gInput.menuCursor, logical)) {
+        WrathIOSInputTraceCursorWrite(WrathIOSCursorWriterBridgeDirectTouch,
+                                      logical.x,
+                                      logical.y);
+    }
 }
 
 extern "C" int WrathIOSInputConsumeMenuButtonPhase(void) {
     if (gInput.forcedMenuButtonRelease) {
         gInput.forcedMenuButtonRelease = false;
+        WrathIOSInputTraceButtonPhase(3);
         return -1;
     }
     if (!isMenuMode(gInput.mode)) {
         return 0;
     }
-    return wrathios::input::consumeMenuButtonPhase(gInput.menuCursor);
+    const int phase = wrathios::input::consumeMenuButtonPhase(gInput.menuCursor);
+    if (phase > 0) {
+        WrathIOSInputTraceButtonPhase(2);
+    } else if (phase < 0) {
+        WrathIOSInputTraceButtonPhase(3);
+    } else if (gInput.menuCursor.buttonPhase ==
+               wrathios::input::MenuButtonPhase::waitingForPosition) {
+        WrathIOSInputTraceButtonPhase(1);
+    } else {
+        WrathIOSInputTraceButtonPhase(0);
+    }
+    return phase;
 }
 
 extern "C" void WrathIOSInputConsumeGameplayLook(float *mouseDeltaX, float *mouseDeltaY) {
@@ -575,7 +560,7 @@ extern "C" void WrathIOSInputConsumeGameplayLook(float *mouseDeltaX, float *mous
             std::snprintf(snapshot,
                           sizeof(snapshot),
                           "raw rotation-rate rad/s x=%+.3f y=%+.3f z=%+.3f; "
-                          "v7 baseline mapped yaw=%+.3f pitch=%+.3f; orientation=%s; snapshot %u/24",
+                          "unverified candidate mapped yaw=%+.3f pitch=%+.3f; orientation=%s; snapshot %u/24",
                           accumulated.rawX,
                           accumulated.rawY,
                           accumulated.rawZ,
@@ -584,18 +569,6 @@ extern "C" void WrathIOSInputConsumeGameplayLook(float *mouseDeltaX, float *mous
                           orientationName(static_cast<LandscapeOrientation>(gOrientation.load())),
                           gInput.counters.gyroDiagnostics);
             WrathIOSRuntimeStage("Gate 5B gyro axis diagnostic", snapshot);
-#if WRATH_IOS_GYRO_DIAGNOSTIC
-            NSString *overlay = [NSString stringWithFormat:
-                @"RAW x=%+.3f  y=%+.3f  z=%+.3f\nBASELINE yaw=%+.3f  pitch=%+.3f  %@",
-                accumulated.rawX,
-                accumulated.rawY,
-                accumulated.rawZ,
-                accumulated.mappedYaw,
-                accumulated.mappedPitch,
-                [NSString stringWithUTF8String:
-                    orientationName(static_cast<LandscapeOrientation>(gOrientation.load()))]];
-            updateGyroDiagnosticOverlay(overlay);
-#endif
         }
     }
 }
@@ -625,6 +598,7 @@ extern "C" void WrathIOSInputReset(const char *reason) {
     gInput.textEntryDismissed = false;
     setTextInputActive(false, reason != nullptr ? reason : "external reset");
     stopMotion(reason != nullptr ? reason : "external reset");
+    WrathIOSDiagnosticsReset(reason != nullptr ? reason : "external reset");
 }
 
 extern "C" void WrathIOSInputEnteredForeground(void) {

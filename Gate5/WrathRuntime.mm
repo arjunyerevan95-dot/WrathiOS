@@ -25,7 +25,7 @@ static NSString * const WrathStagePathsPrepared = @"Runtime path contract prepar
 static NSString * const WrathStageSDLMainReady = @"SDL main readiness established";
 static NSString * const WrathStageSDLInitialized = @"SDL initialized";
 #ifdef WRATH_IOS_GATE5B
-static NSString * const WrathTranscriptVersion = @"0.0.8 (8)";
+static NSString * const WrathTranscriptVersion = @"0.0.9 (9)";
 #else
 static NSString * const WrathTranscriptVersion = @"0.0.5 (5)";
 #endif

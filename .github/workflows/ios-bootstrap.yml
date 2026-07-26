@@ -186,7 +186,7 @@ jobs:
           path: Artifacts/gate5b-input-math
           if-no-files-found: error
 
-      - name: Build Gate 5B persistent touch, profile text, and gyro diagnostic
+      - name: Build Gate 5B R3 runtime-observable input diagnostic
         if: always()
         run: bash scripts/build_gate5b_device_menu.sh
 
@@ -212,7 +212,7 @@ jobs:
           test -s Artifacts/gate5-menu-bootstrap/SHA256SUMS.txt
           test -s Artifacts/gate5-menu-bootstrap/summary.md
           test -s Artifacts/gate5b-input-math/summary.txt
-          test -s Artifacts/gate5b-menu-input/WrathiOSGate5B-v8-unsigned.ipa
+          test -s Artifacts/gate5b-menu-input/WrathiOSGate5B-v9-unsigned.ipa
           test -s Artifacts/gate5b-menu-input/SHA256SUMS.txt
           test -s Artifacts/gate5b-menu-input/summary.md
           grep -q 'Valid PK3 layout: passed' Artifacts/gate4-data-contract/summary.md
@@ -220,8 +220,8 @@ jobs:
           grep -q 'Runtime engine startup: absent' Artifacts/gate4-device-importer/summary.md
           grep -q 'Host_Main and authentic runtime entry symbols: present' Artifacts/gate5-menu-bootstrap/summary.md
           grep -q 'Commercial WRATH data: absent' Artifacts/gate5-menu-bootstrap/summary.md
-          grep -q 'Menu input: persistent authoritative direct touch' Artifacts/gate5b-menu-input/summary.md
-          grep -q 'Profile text: authentic WRATH field through SDL iOS native text input' Artifacts/gate5b-menu-input/summary.md
+          grep -q 'Input bridge contract: gate5b-r3-input-contract-v1' Artifacts/gate5b-menu-input/summary.md
+          grep -q 'Profile text: authentic WRATH field with SDL text events and narrow UIKit first-responder fallback' Artifacts/gate5b-menu-input/summary.md
           grep -q 'Gameplay input: right-side relative swipe-look' Artifacts/gate5b-menu-input/summary.md
           grep -q 'Gyroscope: Core Motion' Artifacts/gate5b-menu-input/summary.md
           grep -q 'Commercial WRATH data: absent' Artifacts/gate5b-menu-input/summary.md

@@ -8,6 +8,9 @@
 static NSString * const WrathChooseFolderTitle = @"Choose WRATH Folder";
 static NSString * const WrathRemoveDataTitle = @"Remove Imported Data";
 static NSString * const WrathLaunchTitle = @"Launch WRATH";
+#ifdef WRATH_IOS_GATE5B
+static NSString * const WrathGate5BR4Contract = @"gate5b-r4-input-contract-v1";
+#endif
 
 static NSString * const WrathStatusNoData = @"No imported data";
 static NSString * const WrathStatusInvalidFolder = @"Invalid folder rejected";
@@ -38,9 +41,24 @@ static NSString * const WrathStatusRemoved = @"Imported data removed";
 
     UILabel *eyebrow = [self labelWithFont:[UIFont monospacedSystemFontOfSize:14.0 weight:UIFontWeightSemibold]
                                       color:[UIColor colorWithRed:0.28 green:0.94 blue:0.88 alpha:1.0]];
+#ifdef WRATH_IOS_GATE5B
+    if (self.runtimeLaunchHandler != nil) {
+        NSString *shortVersion = [NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleShortVersionString"] ?: @"unknown";
+        NSString *buildVersion = [NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleVersion"] ?: @"unknown";
+        NSString *head = [NSBundle.mainBundle objectForInfoDictionaryKey:@"WrathBuildHead"] ?: @"unknown";
+        eyebrow.text = [NSString stringWithFormat:
+            @"GATE 5B REVISION 4 · INPUT DIAGNOSTICS\n"
+             "%@ (%@) · branch head: %@\n"
+             "input bridge contract: %@",
+            shortVersion, buildVersion, head, WrathGate5BR4Contract];
+    } else {
+        eyebrow.text = @"GATE 4 · LICENSED DATA IMPORT";
+    }
+#else
     eyebrow.text = self.runtimeLaunchHandler != nil
         ? @"GATE 5A · CONTROLLED RUNTIME BOOTSTRAP"
         : @"GATE 4 · LICENSED DATA IMPORT";
+#endif
 
     UILabel *title = [self labelWithFont:[UIFont systemFontOfSize:34.0 weight:UIFontWeightBold]
                                    color:UIColor.whiteColor];
@@ -150,9 +168,15 @@ static NSString * const WrathStatusRemoved = @"Imported data removed";
     UILabel *boundary = [self labelWithFont:[UIFont systemFontOfSize:13.0 weight:UIFontWeightRegular]
                                       color:[UIColor colorWithWhite:0.5 alpha:1.0]];
     self.boundaryLabel = boundary;
+#ifdef WRATH_IOS_GATE5B
+    boundary.text = self.runtimeLaunchHandler != nil
+        ? @"Gate 5B R4 starts WRATH only after Launch WRATH. Direct menu hit testing and profile text entry are device-unverified; gyro is diagnostic-only until physical axes are known."
+        : @"Gate 4 validates and copies data only. The WRATH engine, filesystem, menu, audio, and gameplay remain disabled in this build.";
+#else
     boundary.text = self.runtimeLaunchHandler != nil
         ? @"Gate 5A starts WRATH only after Launch WRATH. This experiment targets the authentic main menu; gameplay remains out of scope."
         : @"Gate 4 validates and copies data only. The WRATH engine, filesystem, menu, audio, and gameplay remain disabled in this build.";
+#endif
 
     UIStackView *stack = [[UIStackView alloc] initWithArrangedSubviews:@[eyebrow, title, intro, card, buttons, boundary]];
     stack.translatesAutoresizingMaskIntoConstraints = NO;

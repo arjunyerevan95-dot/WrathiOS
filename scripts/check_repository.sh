@@ -275,6 +275,19 @@ grep -Fq 'WRATH_ENGINE_BUILD_FLAVOR=gate5' scripts/build_gate5_device_menu.sh ||
     exit 1
 }
 
+grep -Fq 'GATE 5C · SEMANTIC MENU TOUCH' Gate4/WrathImportViewController.mm || {
+    echo "error: Gate 5C visible launcher provenance is missing" >&2
+    exit 1
+}
+grep -Fq '0.0.11 (11) · based on Gate 5A main 538a61f · semantic adapter contract v1' Gate4/WrathImportViewController.mm || {
+    echo "error: Gate 5C visible version/base provenance is missing" >&2
+    exit 1
+}
+grep -Fq 'WRATHIOS_GATE5C_SEMANTIC_MENU_TOUCH_V1' Gate4/WrathImportViewController.mm || {
+    echo "error: Gate 5C binary-safe contract marker is missing" >&2
+    exit 1
+}
+
 grep -Fq 'wrathios_semantic_entry(chain, master_position, tsize' config/qc/ios_semantic_menu_patches.json || {
     echo "error: Gate 5C does not export authentic QC semantic bounds" >&2
     exit 1

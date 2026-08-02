@@ -170,6 +170,30 @@ jobs:
           path: Artifacts/gate5-menu-bootstrap
           if-no-files-found: error
 
+      - name: Test Gate 5C semantic menu adapter
+        if: always()
+        run: bash scripts/test_gate5c_semantic_menu.sh
+
+      - name: Upload Gate 5C semantic host evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate5c-semantic-tests
+          path: Artifacts/gate5c-semantic-tests
+          if-no-files-found: error
+
+      - name: Build Gate 5C semantic menu candidate
+        if: always()
+        run: bash scripts/build_gate5c_device_semantic_menu.sh
+
+      - name: Upload Gate 5C semantic menu IPA
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate5c-semantic-menu
+          path: Artifacts/gate5c-semantic-menu
+          if-no-files-found: error
+
       - name: Verify durable Gate 1-5A receipts
         if: always()
         shell: bash
@@ -183,9 +207,16 @@ jobs:
           test -s Artifacts/gate5-menu-bootstrap/WrathiOSGate5-v5-unsigned.ipa
           test -s Artifacts/gate5-menu-bootstrap/SHA256SUMS.txt
           test -s Artifacts/gate5-menu-bootstrap/summary.md
+          test -s Artifacts/gate5c-semantic-tests/summary.md
+          test -s Artifacts/gate5c-semantic-menu/WrathiOSGate5C-v11-unsigned.ipa
+          test -s Artifacts/gate5c-semantic-menu/SHA256SUMS.txt
+          test -s Artifacts/gate5c-semantic-menu/summary.md
           grep -q 'Valid PK3 layout: passed' Artifacts/gate4-data-contract/summary.md
           grep -q 'Traversal-bearing PK3: rejected' Artifacts/gate4-data-contract/summary.md
           grep -q 'Runtime engine startup: absent' Artifacts/gate4-device-importer/summary.md
           grep -q 'Host_Main and authentic runtime entry symbols: present' Artifacts/gate5-menu-bootstrap/summary.md
           grep -q 'Commercial WRATH data: absent' Artifacts/gate5-menu-bootstrap/summary.md
-          echo "Gate 1-5A durable receipts verified"
+          grep -q 'Position-before-hover-before-click sequencing: passed' Artifacts/gate5c-semantic-tests/summary.md
+          grep -q 'Semantic bounds: emitted by authentic QC hover geometry' Artifacts/gate5c-semantic-menu/summary.md
+          grep -q 'Commercial WRATH data: absent' Artifacts/gate5c-semantic-menu/summary.md
+          echo "Gate 1-5A and Gate 5C candidate receipts verified"

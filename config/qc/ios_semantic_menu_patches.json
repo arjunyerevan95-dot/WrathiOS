@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "upstream_commit": "bf7f46792ed3ed018a3d30bf6ca773900d816de1",
+  "patches": [
+    {
+      "path": "menuqc/menudefs.qc",
+      "reason": "Declare three Gate 5C-only menu builtins for immutable semantic snapshots.",
+      "replacements": [
+        {
+          "old": "void(float index, float leftmult, float rightmult, float msec) controller_rumbletriggers = #742;",
+          "new": "void(float index, float leftmult, float rightmult, float msec) controller_rumbletriggers = #742;\n\n// WrathiOS Gate 5C semantic menu snapshot boundary.\nvoid(entity menu, vector virtual_size) wrathios_semantic_begin = #743;\nvoid(entity entry, vector origin, vector size, float flags, float order) wrathios_semantic_entry = #744;\nvoid(entity hover) wrathios_semantic_end = #745;"
+        }
+      ]
+    },
+    {
+      "path": "uielement.h",
+      "reason": "Declare the per-frame semantic ordering counter beside the authentic QC UI globals.",
+      "replacements": [
+        {
+          "old": "float ui_renderframe;",
+          "new": "float ui_renderframe;\nfloat wrathios_semantic_order;"
+        }
+      ]
+    },
+    {
+      "path": "uielement.qc",
+      "reason": "Publish source-derived clickable bounds at the exact QC hover-computation boundary.",
+      "replacements": [
+        {
+          "old": "\tif ((chain.flags & UIFLAG::CLICKABLE) || (chain.flags & UIFLAG::SELECTABLE) || (chain.flags & UIFLAG::FORCECURSOR))\n\t\tui_usemouse = TRUE;\n\tchain.render(); // render the top",
+          "new": "\tif ((chain.flags & UIFLAG::CLICKABLE) || (chain.flags & UIFLAG::SELECTABLE) || (chain.flags & UIFLAG::FORCECURSOR))\n\t\tui_usemouse = TRUE;\n\tif (((chain.flags & UIFLAG::CLICKABLE) || (chain.flags & UIFLAG::SELECTABLE)) && chain.m_click)\n\t\twrathios_semantic_entry(chain, master_position, tsize, chain.flags, wrathios_semantic_order++);\n\tchain.render(); // render the top"
+        }
+      ]
+    },
+    {
+      "path": "menuqc/menu.qc",
+      "reason": "Bracket each authentic menu draw with one immutable semantic snapshot generation.",
+      "replacements": [
+        {
+          "old": "\tvector mouse_move = getpointerpos();\n\t//mouse_move = [mouse_move[0] * ui_scale[0], mouse_move[1] * ui_scale[1]];",
+          "new": "\tvector mouse_move = getpointerpos();\n\twrathios_semantic_begin(menu_current, [vid_width, vid_height]);\n\twrathios_semantic_order = 0;\n\t//mouse_move = [mouse_move[0] * ui_scale[0], mouse_move[1] * ui_scale[1]];"
+        },
+        {
+          "old": "\tif (ui_hover && ui_hover.m_over)\n\t\tui_hover.m_over(ui_hover);\n\tdrawresetcliparea();",
+          "new": "\tif (ui_hover && ui_hover.m_over)\n\t\tui_hover.m_over(ui_hover);\n\twrathios_semantic_end(ui_hover);\n\tdrawresetcliparea();"
+        }
+      ]
+    }
+  ]
+}

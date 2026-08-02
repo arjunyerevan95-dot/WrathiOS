@@ -12,9 +12,11 @@ required_files=(
     project-gate3.yml
     project-gate4.yml
     project-gate5.yml
+    project-gate5c.yml
     App/Info.plist
     App/Gate4Info.plist
     App/Gate5Info.plist
+    App/Gate5CInfo.plist
     App/LaunchScreen.storyboard
     App/main.mm
     Platform/WrathEngineBridge.mm
@@ -35,6 +37,12 @@ required_files=(
     Gate5/AppDelegate.h
     Gate5/AppDelegate.mm
     Gate5/main.mm
+    Gate5C/WrathSemanticMenuBridge.h
+    Gate5C/WrathSemanticMenuBridge.mm
+    Gate5C/WrathSemanticMenuModel.hpp
+    Gate5C/WrathSemanticMenuModel.cpp
+    Gate5C/Resources/wrathios-menu.dat
+    Tests/Gate5C/WrathSemanticMenuModelTests.cpp
     Tests/Gate4/WrathDataContractCLI.cpp
     scripts/upstream.env
     scripts/validate_engine_manifest.py
@@ -44,9 +52,13 @@ required_files=(
     scripts/build_gate3_device_diagnostic.sh
     scripts/build_gate4_device_importer.sh
     scripts/build_gate5_device_menu.sh
+    scripts/build_gate5c_device_semantic_menu.sh
+    scripts/materialize_gate5c_menu_qc.py
+    scripts/test_gate5c_semantic_menu.sh
     scripts/test_gate4_data_contract.sh
     config/engine/source_dispositions.json
     config/engine/ios_upstream_sources.txt
+    config/qc/ios_semantic_menu_patches.json
     docs/PORTING_PLAN.md
     docs/ASSET_POLICY.md
     docs/GATE1_SOURCE_INVENTORY.md
@@ -55,6 +67,8 @@ required_files=(
     docs/GATE4_DEVICE_CHECKLIST.md
     docs/GATE5_RUNTIME_BOOTSTRAP.md
     docs/GATE5_DEVICE_CHECKLIST.md
+    docs/GATE5C_SEMANTIC_MENU_TOUCH.md
+    docs/GATE5C_DEVICE_CHECKLIST.md
 )
 
 for file in "${required_files[@]}"; do
@@ -101,6 +115,15 @@ if grep -Eq '^[[:space:]]+info:[[:space:]]*$' project-gate5.yml; then
     exit 1
 fi
 
+grep -q 'INFOPLIST_FILE: App/Gate5CInfo.plist' project-gate5c.yml || {
+    echo "error: Gate 5C does not consume its committed Info.plist" >&2
+    exit 1
+}
+if grep -Eq '^[[:space:]]+info:[[:space:]]*$' project-gate5c.yml; then
+    echo "error: Gate 5C lets XcodeGen overwrite its committed Info.plist" >&2
+    exit 1
+fi
+
 python3 - <<'PY'
 import plistlib
 import xml.etree.ElementTree as ET
@@ -112,6 +135,8 @@ with Path("App/Gate4Info.plist").open("rb") as handle:
     gate4 = plistlib.load(handle)
 with Path("App/Gate5Info.plist").open("rb") as handle:
     gate5 = plistlib.load(handle)
+with Path("App/Gate5CInfo.plist").open("rb") as handle:
+    gate5c = plistlib.load(handle)
 
 expected_gate3 = {
     "CFBundleDisplayName": "WrathiOS G3 v2",
@@ -131,22 +156,30 @@ expected_gate5 = {
     "CFBundleVersion": "5",
     "UILaunchStoryboardName": "LaunchScreen",
 }
-for name, plist, expected in (("Gate 3", gate3, expected_gate3), ("Gate 4", gate4, expected_gate4), ("Gate 5", gate5, expected_gate5)):
+expected_gate5c = {
+    "CFBundleDisplayName": "WrathiOS G5C",
+    "CFBundleShortVersionString": "0.0.11",
+    "CFBundleVersion": "11",
+    "UILaunchStoryboardName": "LaunchScreen",
+}
+for name, plist, expected in (("Gate 3", gate3, expected_gate3), ("Gate 4", gate4, expected_gate4), ("Gate 5", gate5, expected_gate5), ("Gate 5C", gate5c, expected_gate5c)):
     for key, value in expected.items():
         if plist.get(key) != value:
             raise SystemExit(f"error: {name} {key} must be {value!r}, found {plist.get(key)!r}")
 
 ET.parse("App/LaunchScreen.storyboard")
-print("validated Gate 3, Gate 4, and Gate 5 plists plus LaunchScreen.storyboard")
+print("validated Gate 3, Gate 4, Gate 5, and Gate 5C plists plus LaunchScreen.storyboard")
 PY
 
 bash -n scripts/build_gate2_sdl.sh
 bash -n scripts/build_gate3_device_diagnostic.sh
 bash -n scripts/build_gate4_device_importer.sh
 bash -n scripts/build_gate5_device_menu.sh
+bash -n scripts/build_gate5c_device_semantic_menu.sh
+bash -n scripts/test_gate5c_semantic_menu.sh
 bash -n scripts/test_gate4_data_contract.sh
 python3 -m py_compile scripts/materialize_sdl_ios_patches.py scripts/materialize_gate3_platform.py
-python3 -m py_compile scripts/build_gate2_engine_archive.py scripts/materialize_engine_patches.py
+python3 -m py_compile scripts/build_gate2_engine_archive.py scripts/materialize_engine_patches.py scripts/materialize_gate5c_menu_qc.py
 python3 scripts/materialize_gate3_platform.py
 
 grep -q 'WrathGate3LaunchCountV2' Derived/gate3-platform/WrathGraphicsDiagnostic.mm || {
@@ -241,5 +274,48 @@ grep -Fq 'WRATH_ENGINE_BUILD_FLAVOR=gate5' scripts/build_gate5_device_menu.sh ||
     echo "error: Gate 5 device build does not select the instrumented engine archive" >&2
     exit 1
 }
+
+grep -Fq 'GATE 5C · SEMANTIC MENU TOUCH' Gate4/WrathImportViewController.mm || {
+    echo "error: Gate 5C visible launcher provenance is missing" >&2
+    exit 1
+}
+grep -Fq '0.0.11 (11) · based on Gate 5A main 538a61f · semantic adapter contract v1' Gate4/WrathImportViewController.mm || {
+    echo "error: Gate 5C visible version/base provenance is missing" >&2
+    exit 1
+}
+grep -Fq 'WRATHIOS_GATE5C_SEMANTIC_MENU_TOUCH_V1' Gate4/WrathImportViewController.mm || {
+    echo "error: Gate 5C binary-safe contract marker is missing" >&2
+    exit 1
+}
+
+grep -Fq 'wrathios_semantic_entry(chain, master_position, tsize' config/qc/ios_semantic_menu_patches.json || {
+    echo "error: Gate 5C does not export authentic QC semantic bounds" >&2
+    exit 1
+}
+grep -Fq 'WrathIOSGate5CNextButtonEvent' config/engine/ios_source_patches.json || {
+    echo "error: Gate 5C authentic pointer-hover-click bridge is missing" >&2
+    exit 1
+}
+grep -Fq 'WRATH_ENGINE_BUILD_FLAVOR=gate5c' scripts/build_gate5c_device_semantic_menu.sh || {
+    echo "error: Gate 5C build does not select its isolated engine archive" >&2
+    exit 1
+}
+
+python3 - <<'PY'
+from hashlib import sha256
+from pathlib import Path
+
+path = Path("Gate5C/Resources/wrathios-menu.dat")
+expected = "3d848d8988952cff025a167e52574ff0a70c142c8aa9d934d0df9313b045ee2b"
+actual = sha256(path.read_bytes()).hexdigest()
+if actual != expected:
+    raise SystemExit(f"error: Gate 5C derived menu bytecode checksum mismatch: {actual}")
+print("validated Gate 5C pinned derived menu bytecode")
+PY
+
+if grep -ERni 'CMMotionManager|swipe[-_ ]?look|virtual[ _-]?joystick|fire[ _-]?button' Gate5C Tests/Gate5C; then
+    echo "error: excluded keyboard/gyro/swipe/gameplay controls entered Gate 5C" >&2
+    exit 1
+fi
 
 echo "repository checks passed"

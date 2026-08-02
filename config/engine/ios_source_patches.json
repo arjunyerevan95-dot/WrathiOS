@@ -12,11 +12,19 @@
         },
         {
           "old": "\tPRVM_Prog_Load(prog, menu_progs.string, NULL, 0, m_numrequiredfunc, m_required_func, m_numrequiredfields, m_required_fields, m_numrequiredglobals, m_required_globals);",
-          "new": "#ifdef WRATH_IOS_GATE5\n\tWrathIOSRuntimeStage(\"QuakeC VM loading entered\", \"Menu VM initialization entered.\");\n\tWrathIOSRuntimeStage(\"menu.dat loading entered\", \"Loading the authentic WRATH menu program.\");\n#endif\n\tPRVM_Prog_Load(prog, menu_progs.string, NULL, 0, m_numrequiredfunc, m_required_func, m_numrequiredfields, m_required_fields, m_numrequiredglobals, m_required_globals);\n#ifdef WRATH_IOS_GATE5\n\tWrathIOSRuntimeStage(\"menu.dat loading passed\", \"The authentic WRATH menu program loaded.\");\n#endif"
+          "new": "#ifdef WRATH_IOS_GATE5\n\tWrathIOSRuntimeStage(\"QuakeC VM loading entered\", \"Menu VM initialization entered.\");\n\tWrathIOSRuntimeStage(\"menu.dat loading entered\", \"Loading the authentic WRATH menu program.\");\n#endif\n#ifdef WRATH_IOS_GATE5C\n\t{\n\t\tlong long wrathios_menu_size = 0;\n\t\tconst unsigned char *wrathios_menu_data = WrathIOSGate5CMenuProgramData(&wrathios_menu_size);\n\t\tif (!wrathios_menu_data || wrathios_menu_size <= 0)\n\t\t\tSys_Error(\"Gate 5C semantic menu program resource is unavailable\");\n\t\tPRVM_Prog_Load(prog, menu_progs.string, (unsigned char *)wrathios_menu_data, (fs_offset_t)wrathios_menu_size, m_numrequiredfunc, m_required_func, m_numrequiredfields, m_required_fields, m_numrequiredglobals, m_required_globals);\n\t}\n#else\n\tPRVM_Prog_Load(prog, menu_progs.string, NULL, 0, m_numrequiredfunc, m_required_func, m_numrequiredfields, m_required_fields, m_numrequiredglobals, m_required_globals);\n#endif\n#ifdef WRATH_IOS_GATE5\n\tWrathIOSRuntimeStage(\"menu.dat loading passed\", \"The authentic WRATH menu program loaded.\");\n#endif"
         },
         {
           "old": "\tprog->ExecuteProgram(prog, PRVM_menufunction(m_draw),\"m_draw() required\");",
-          "new": "\tprog->ExecuteProgram(prog, PRVM_menufunction(m_draw),\"m_draw() required\");\n#ifdef WRATH_IOS_GATE5\n\t{\n\t\tstatic qboolean wrath_ios_menu_frame_recorded = false;\n\t\tif (!wrath_ios_menu_frame_recorded)\n\t\t{\n\t\t\twrath_ios_menu_frame_recorded = true;\n\t\t\tWrathIOSRuntimeStage(\"Main menu reached\", \"The authentic menu VM completed its first draw.\");\n\t\t}\n\t}\n#endif"
+          "new": "\tprog->ExecuteProgram(prog, PRVM_menufunction(m_draw),\"m_draw() required\");\n#ifdef WRATH_IOS_GATE5C\n\tWrathIOSGate5CSetMenuActive(1);\n\t{\n\t\tint wrathios_button_event = WrathIOSGate5CNextButtonEvent();\n\t\tif (wrathios_button_event == 1)\n\t\t{\n\t\t\tMP_KeyEvent(K_MOUSE1, 0, true);\n\t\t\tif (key_dest != key_menu && key_dest != key_menu_grabbed)\n\t\t\t\tMP_KeyEvent(K_MOUSE1, 0, false);\n\t\t}\n\t\telse if (wrathios_button_event == 2)\n\t\t\tMP_KeyEvent(K_MOUSE1, 0, false);\n\t}\n\tWrathIOSGate5CSetMenuActive(key_dest == key_menu || key_dest == key_menu_grabbed);\n#endif\n#ifdef WRATH_IOS_GATE5\n\t{\n\t\tstatic qboolean wrath_ios_menu_frame_recorded = false;\n\t\tif (!wrath_ios_menu_frame_recorded)\n\t\t{\n\t\t\twrath_ios_menu_frame_recorded = true;\n\t\t\tWrathIOSRuntimeStage(\"Main menu reached\", \"The authentic menu VM completed its first draw.\");\n\t\t}\n\t}\n#endif"
+        },
+        {
+          "old": "\tprog->globals.fp[OFS_PARM0] = (prvm_vec_t) mode;\n\tprog->ExecuteProgram(prog, PRVM_menufunction(m_toggle),\"m_toggle(float mode) required\");",
+          "new": "\tprog->globals.fp[OFS_PARM0] = (prvm_vec_t) mode;\n\tprog->ExecuteProgram(prog, PRVM_menufunction(m_toggle),\"m_toggle(float mode) required\");\n#ifdef WRATH_IOS_GATE5C\n\tWrathIOSGate5CSetMenuActive(key_dest == key_menu || key_dest == key_menu_grabbed);\n#endif"
+        },
+        {
+          "old": "static void MP_Shutdown (void)\n{\n\tprvm_prog_t *prog = MVM_prog;",
+          "new": "static void MP_Shutdown (void)\n{\n#ifdef WRATH_IOS_GATE5C\n\tWrathIOSGate5CSetMenuActive(0);\n#endif\n\tprvm_prog_t *prog = MVM_prog;"
         }
       ]
     },
@@ -26,7 +34,19 @@
       "replacements": [
         {
           "old": "#include \"csprogs.h\"\n",
-          "new": "#include \"csprogs.h\"\n#include \"cl_steam.h\"\n"
+          "new": "#include \"csprogs.h\"\n#include \"cl_steam.h\"\n#ifdef WRATH_IOS_GATE5C\n#include \"WrathSemanticMenuBridge.h\"\n#endif\n"
+        },
+        {
+          "old": "static void VM_M_getmousepos(prvm_prog_t *prog)\n{\n\tVM_SAFEPARMCOUNT(0,VM_M_getmousepos);\n\n\tif (key_consoleactive || (key_dest != key_menu && key_dest != key_menu_grabbed))\n\t\tVectorSet(PRVM_G_VECTOR(OFS_RETURN), 0, 0, 0);\n\telse if (USE_HW_MOUSE)\n\t\tVectorSet(PRVM_G_VECTOR(OFS_RETURN), in_windowmouse_x * vid_conwidth.integer / vid.width, in_windowmouse_y * vid_conheight.integer / vid.height, 0);\n\telse\n\t\tVectorSet(PRVM_G_VECTOR(OFS_RETURN), in_mouse_x * vid_conwidth.integer / vid.width, in_mouse_y * vid_conheight.integer / vid.height, 0);\n}",
+          "new": "static void VM_M_getmousepos(prvm_prog_t *prog)\n{\n\tVM_SAFEPARMCOUNT(0,VM_M_getmousepos);\n#ifdef WRATH_IOS_GATE5C\n\t{\n\t\tfloat wrathios_x = 0, wrathios_y = 0;\n\t\tif (WrathIOSGate5CPointer(&wrathios_x, &wrathios_y))\n\t\t{\n\t\t\tVectorSet(PRVM_G_VECTOR(OFS_RETURN), wrathios_x, wrathios_y, 0);\n\t\t\treturn;\n\t\t}\n\t}\n#endif\n\tif (key_consoleactive || (key_dest != key_menu && key_dest != key_menu_grabbed))\n\t\tVectorSet(PRVM_G_VECTOR(OFS_RETURN), 0, 0, 0);\n\telse if (USE_HW_MOUSE)\n\t\tVectorSet(PRVM_G_VECTOR(OFS_RETURN), in_windowmouse_x * vid_conwidth.integer / vid.width, in_windowmouse_y * vid_conheight.integer / vid.height, 0);\n\telse\n\t\tVectorSet(PRVM_G_VECTOR(OFS_RETURN), in_mouse_x * vid_conwidth.integer / vid.width, in_mouse_y * vid_conheight.integer / vid.height, 0);\n}"
+        },
+        {
+          "old": "prvm_builtin_t vm_m_builtins[] = {",
+          "new": "#ifdef WRATH_IOS_GATE5C\nstatic void VM_M_wrathios_semantic_begin(prvm_prog_t *prog)\n{\n\tVM_SAFEPARMCOUNT(2, VM_M_wrathios_semantic_begin);\n\tWrathIOSGate5CSnapshotBegin(PRVM_G_EDICTNUM(OFS_PARM0), PRVM_G_VECTOR(OFS_PARM1)[0], PRVM_G_VECTOR(OFS_PARM1)[1]);\n}\n\nstatic void VM_M_wrathios_semantic_entry(prvm_prog_t *prog)\n{\n\tVM_SAFEPARMCOUNT(5, VM_M_wrathios_semantic_entry);\n\tWrathIOSGate5CSnapshotEntry(PRVM_G_EDICTNUM(OFS_PARM0),\n\t\tPRVM_G_VECTOR(OFS_PARM1)[0], PRVM_G_VECTOR(OFS_PARM1)[1],\n\t\tPRVM_G_VECTOR(OFS_PARM2)[0], PRVM_G_VECTOR(OFS_PARM2)[1],\n\t\t(int)PRVM_G_FLOAT(OFS_PARM3), (int)PRVM_G_FLOAT(OFS_PARM4));\n}\n\nstatic void VM_M_wrathios_semantic_end(prvm_prog_t *prog)\n{\n\tVM_SAFEPARMCOUNT(1, VM_M_wrathios_semantic_end);\n\tWrathIOSGate5CSnapshotEnd(PRVM_G_EDICTNUM(OFS_PARM0));\n}\n#endif\n\nprvm_builtin_t vm_m_builtins[] = {"
+        },
+        {
+          "old": "NULL,\t\t\t\t\t\t// #743\nNULL,\t\t\t\t\t\t// #744\nNULL,\t\t\t\t\t\t// #745",
+          "new": "#ifdef WRATH_IOS_GATE5C\nVM_M_wrathios_semantic_begin, // #743\nVM_M_wrathios_semantic_entry, // #744\nVM_M_wrathios_semantic_end,   // #745\n#else\nNULL,\t\t\t\t\t\t// #743\nNULL,\t\t\t\t\t\t// #744\nNULL,\t\t\t\t\t\t// #745\n#endif"
         }
       ]
     },

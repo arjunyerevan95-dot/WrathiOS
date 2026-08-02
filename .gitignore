@@ -35,3 +35,4 @@ kp1/
 # Editors
 .vscode/
 .idea/
+__pycache__/

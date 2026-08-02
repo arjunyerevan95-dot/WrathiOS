@@ -60,7 +60,7 @@ def main() -> int:
             source = UPSTREAM / relative
             destination = OUTPUT / relative
             original_bytes = source.read_bytes()
-            text = original_bytes.decode("utf-8")
+            text = original_bytes.decode("utf-8").replace("\r\n", "\n")
             replacement_records = []
 
             for replacement in patch["replacements"]:

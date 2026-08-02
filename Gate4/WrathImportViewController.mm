@@ -38,20 +38,32 @@ static NSString * const WrathStatusRemoved = @"Imported data removed";
 
     UILabel *eyebrow = [self labelWithFont:[UIFont monospacedSystemFontOfSize:14.0 weight:UIFontWeightSemibold]
                                       color:[UIColor colorWithRed:0.28 green:0.94 blue:0.88 alpha:1.0]];
+#ifdef WRATH_IOS_GATE5C
+    eyebrow.text = @"GATE 5C · SEMANTIC MENU TOUCH";
+#else
     eyebrow.text = self.runtimeLaunchHandler != nil
         ? @"GATE 5A · CONTROLLED RUNTIME BOOTSTRAP"
         : @"GATE 4 · LICENSED DATA IMPORT";
+#endif
 
     UILabel *title = [self labelWithFont:[UIFont systemFontOfSize:34.0 weight:UIFontWeightBold]
                                    color:UIColor.whiteColor];
+#ifdef WRATH_IOS_GATE5C
+    title.text = @"WRATH native menu-touch candidate";
+#else
     title.text = self.runtimeLaunchHandler != nil
         ? @"WRATH data and runtime launcher"
         : @"Import your WRATH installation";
+#endif
 
     UILabel *intro = [self labelWithFont:[UIFont systemFontOfSize:16.0 weight:UIFontWeightRegular]
                                    color:[UIColor colorWithWhite:0.78 alpha:1.0]];
     self.introLabel = intro;
+#ifdef WRATH_IOS_GATE5C
+    intro.text = @"0.0.11 (11) · based on Gate 5A main 538a61f · semantic adapter contract v1. Imported data remains in the existing app container.";
+#else
     intro.text = @"Choose the folder that contains kp1, or choose kp1 itself. WrathiOS validates package indexes and copies your licensed files into this app only. Nothing is uploaded or bundled into the IPA.";
+#endif
 
     UIView *card = [[UIView alloc] init];
     card.translatesAutoresizingMaskIntoConstraints = NO;
@@ -150,9 +162,13 @@ static NSString * const WrathStatusRemoved = @"Imported data removed";
     UILabel *boundary = [self labelWithFont:[UIFont systemFontOfSize:13.0 weight:UIFontWeightRegular]
                                       color:[UIColor colorWithWhite:0.5 alpha:1.0]];
     self.boundaryLabel = boundary;
+#ifdef WRATH_IOS_GATE5C
+    boundary.text = @"Gate 5C adds semantic menu taps only. Profile keyboard, gyro, gameplay swipe, movement, and firing are intentionally absent.";
+#else
     boundary.text = self.runtimeLaunchHandler != nil
         ? @"Gate 5A starts WRATH only after Launch WRATH. This experiment targets the authentic main menu; gameplay remains out of scope."
         : @"Gate 4 validates and copies data only. The WRATH engine, filesystem, menu, audio, and gameplay remain disabled in this build.";
+#endif
 
     UIStackView *stack = [[UIStackView alloc] initWithArrangedSubviews:@[eyebrow, title, intro, card, buttons, boundary]];
     stack.translatesAutoresizingMaskIntoConstraints = NO;

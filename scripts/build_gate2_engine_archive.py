@@ -18,12 +18,24 @@ SDL = ROOT / "Vendor" / "SDL2"
 DEPS_PREFIX = ROOT / "Derived" / "deps" / "iphoneos"
 MANIFEST = ROOT / "config" / "engine" / "ios_upstream_sources.txt"
 BUILD_FLAVOR = os.environ.get("WRATH_ENGINE_BUILD_FLAVOR", "gate2")
-if BUILD_FLAVOR not in {"gate2", "gate5"}:
+if BUILD_FLAVOR not in {"gate2", "gate5", "gate5c"}:
     raise SystemExit(f"error: unsupported WRATH_ENGINE_BUILD_FLAVOR: {BUILD_FLAVOR}")
-BUILD_DIR = ROOT / "Derived" / ("gate5-engine-archive" if BUILD_FLAVOR == "gate5" else "gate2-engine-archive")
+BUILD_DIR = ROOT / "Derived" / ({
+    "gate2": "gate2-engine-archive",
+    "gate5": "gate5-engine-archive",
+    "gate5c": "gate5c-engine-archive",
+}[BUILD_FLAVOR])
 OBJECT_DIR = BUILD_DIR / "objects"
-ARTIFACT_DIR = ROOT / "Artifacts" / ("gate5-engine-archive" if BUILD_FLAVOR == "gate5" else "gate2-engine-archive")
-ARCHIVE_NAME = "libwrath-engine-gate5.a" if BUILD_FLAVOR == "gate5" else "libwrath-engine.a"
+ARTIFACT_DIR = ROOT / "Artifacts" / ({
+    "gate2": "gate2-engine-archive",
+    "gate5": "gate5-engine-archive",
+    "gate5c": "gate5c-engine-archive",
+}[BUILD_FLAVOR])
+ARCHIVE_NAME = {
+    "gate2": "libwrath-engine.a",
+    "gate5": "libwrath-engine-gate5.a",
+    "gate5c": "libwrath-engine-gate5c.a",
+}[BUILD_FLAVOR]
 ENGINE_PREFIX = "Vendor/wrath-darkplaces/"
 ENGINE_COMMIT = "f6862f628d6ddc133a9ef67bc4631b6137809772"
 
@@ -92,18 +104,23 @@ def main() -> int:
         "-D_FILE_OFFSET_BITS=64",
         "-D__KERNEL_STRICT_NAMES=1",
         f"-DSVNREVISION={ENGINE_COMMIT}",
-        f"-DBUILDTYPE={'ios_gate5a' if BUILD_FLAVOR == 'gate5' else 'ios_gate2'}",
+        f"-DBUILDTYPE={ {'gate2': 'ios_gate2', 'gate5': 'ios_gate5a', 'gate5c': 'ios_gate5c'}[BUILD_FLAVOR] }",
         f"-I{ENGINE}",
         f"-I{SDL / 'include'}",
         f"-I{DEPS_PREFIX / 'include'}",
         f"-I{DEPS_PREFIX / 'include' / 'freetype2'}",
     ]
-    if BUILD_FLAVOR == "gate5":
+    if BUILD_FLAVOR in {"gate5", "gate5c"}:
         common.extend([
             "-DWRATH_IOS_GATE5=1",
             "-DDP_MOBILETOUCH=1",
             "-include", str(ROOT / "Gate5" / "WrathRuntimeHooks.h"),
         ])
+        if BUILD_FLAVOR == "gate5c":
+            common.extend([
+                "-DWRATH_IOS_GATE5C=1",
+                "-include", str(ROOT / "Gate5C" / "WrathSemanticMenuBridge.h"),
+            ])
 
     manifest_paths = [
         line.strip()

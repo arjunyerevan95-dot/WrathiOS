@@ -119,6 +119,7 @@ def main() -> int:
         if BUILD_FLAVOR == "gate5c":
             common.extend([
                 "-DWRATH_IOS_GATE5C=1",
+                f"-I{ROOT / 'Gate5C'}",
                 "-include", str(ROOT / "Gate5C" / "WrathSemanticMenuBridge.h"),
             ])
 

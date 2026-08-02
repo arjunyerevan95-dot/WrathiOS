@@ -8,22 +8,22 @@
 
 namespace {
 
-using namespace wrathios::menu;
+namespace SemanticMenu = wrathios::menu;
 
 constexpr double kSemanticHitSlop = 4.0;
 constexpr NSInteger kTouchSurfaceTag = 0x57524335;
 
 struct BridgeState {
     std::mutex mutex;
-    Snapshot building;
-    Snapshot published;
-    ActivationMachine activation;
+    SemanticMenu::Snapshot building;
+    SemanticMenu::Snapshot published;
+    SemanticMenu::ActivationMachine activation;
     int hoverIdentifier = 0;
     bool menuActive = false;
     unsigned long long hits = 0;
     unsigned long long misses = 0;
-    Point lastTouch;
-    Rect lastHitBounds;
+    SemanticMenu::Point lastTouch;
+    SemanticMenu::Rect lastHitBounds;
     int lastHitIdentifier = 0;
     bool pointerAcknowledged = false;
 };
@@ -51,10 +51,12 @@ NSString *DiagnosticText() {
         state.lastHitBounds.height,
         state.pointerAcknowledged ? @"yes" : @"no",
         state.hoverIdentifier,
-        ClickStageName(state.activation.Stage()),
+        SemanticMenu::ClickStageName(state.activation.Stage()),
         state.hits,
         state.misses];
 }
+
+} // namespace
 
 @interface WrathSemanticTouchSurface : UIView
 @property(nonatomic, strong) UILabel *diagnosticLabel;
@@ -110,7 +112,7 @@ NSString *DiagnosticText() {
     UITouch *touch = touches.anyObject;
     CGPoint uiPoint = [touch locationInView:self];
 
-    Snapshot snapshot;
+    wrathios::menu::Snapshot snapshot;
     {
         BridgeState &state = State();
         std::scoped_lock lock(state.mutex);
@@ -120,11 +122,12 @@ NSString *DiagnosticText() {
         snapshot = state.published;
     }
 
-    Point menuPoint = ConvertUIKitPoint(
+    wrathios::menu::Point menuPoint = wrathios::menu::ConvertUIKitPoint(
         {uiPoint.x, uiPoint.y},
         {self.bounds.size.width, self.bounds.size.height},
         snapshot.menuSize);
-    std::optional<Entry> hit = HitTest(snapshot, menuPoint, kSemanticHitSlop);
+    std::optional<wrathios::menu::Entry> hit =
+        wrathios::menu::HitTest(snapshot, menuPoint, kSemanticHitSlop);
 
     {
         BridgeState &state = State();
@@ -146,6 +149,8 @@ NSString *DiagnosticText() {
 }
 
 @end
+
+namespace {
 
 UIWindow *ActiveWindow() {
     for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
@@ -222,7 +227,7 @@ void WrathIOSGate5CSnapshotBegin(int menuIdentifier, float menuWidth, float menu
     BridgeState &state = State();
     std::scoped_lock lock(state.mutex);
     if (state.building.menuIdentifier != menuIdentifier &&
-        state.activation.Stage() == ClickStage::positionWait) {
+        state.activation.Stage() == wrathios::menu::ClickStage::positionWait) {
         state.activation.Reset();
     }
     state.building = {};
@@ -257,7 +262,7 @@ void WrathIOSGate5CSnapshotEnd(int hoverIdentifier) {
         state.published = state.building;
         state.hoverIdentifier = hoverIdentifier;
         state.pointerAcknowledged =
-            state.activation.Stage() != ClickStage::idle &&
+            state.activation.Stage() != wrathios::menu::ClickStage::idle &&
             hoverIdentifier == state.activation.EntryIdentifier();
         state.menuActive = true;
     }
@@ -270,7 +275,7 @@ int WrathIOSGate5CPointer(float *x, float *y) {
     if (!state.menuActive || !state.activation.HasPointer()) {
         return 0;
     }
-    Point pointer = state.activation.Pointer();
+    wrathios::menu::Point pointer = state.activation.Pointer();
     if (x) *x = static_cast<float>(pointer.x);
     if (y) *y = static_cast<float>(pointer.y);
     return 1;
@@ -279,9 +284,10 @@ int WrathIOSGate5CPointer(float *x, float *y) {
 int WrathIOSGate5CNextButtonEvent(void) {
     BridgeState &state = State();
     std::scoped_lock lock(state.mutex);
-    ButtonEvent event = state.activation.Advance(state.published.menuIdentifier, state.hoverIdentifier);
-    if (event == ButtonEvent::down) return 1;
-    if (event == ButtonEvent::up) return 2;
+    wrathios::menu::ButtonEvent event =
+        state.activation.Advance(state.published.menuIdentifier, state.hoverIdentifier);
+    if (event == wrathios::menu::ButtonEvent::down) return 1;
+    if (event == wrathios::menu::ButtonEvent::up) return 2;
     return 0;
 }
 

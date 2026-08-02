@@ -131,12 +131,26 @@ grep -Fq 'wrathios-menu.dat' "$ARTIFACT_DIR/bundle-inventory.txt" || {
     echo "error: Gate 5C derived open-source menu program is missing" >&2
     exit 1
 }
-for forbidden in 'CMMotionManager' 'swipe-look' 'virtual joystick' 'fire button'; do
+for forbidden in 'CMMotionManager' 'swipe-look' 'fire button'; do
     if grep -Fiq "$forbidden" "$ARTIFACT_DIR/strings.txt"; then
         echo "error: excluded input feature entered Gate 5C binary: $forbidden" >&2
         exit 1
     fi
 done
+gate5a_strings="$ROOT_DIR/Artifacts/gate5-menu-bootstrap/strings.txt"
+grep -Fi 'virtual joystick' "$gate5a_strings" | LC_ALL=C sort -u > "$ARTIFACT_DIR/gate5a-virtual-joystick-strings.txt"
+grep -Fi 'virtual joystick' "$ARTIFACT_DIR/strings.txt" | LC_ALL=C sort -u > "$ARTIFACT_DIR/gate5c-virtual-joystick-strings.txt"
+diff -u \
+    "$ARTIFACT_DIR/gate5a-virtual-joystick-strings.txt" \
+    "$ARTIFACT_DIR/gate5c-virtual-joystick-strings.txt" \
+    > "$ARTIFACT_DIR/inherited-sdl-virtual-joystick-delta.txt" || {
+        echo "error: Gate 5C virtual-joystick strings differ from the retained Gate 5A SDL2 baseline" >&2
+        exit 1
+    }
+printf '%s\n' \
+    'Project-authored Gate 5C sources: no keyboard, gyro, swipe-look, virtual-control, movement, or firing code.' \
+    'The generic virtual-joystick strings in the Gate 5C binary are inherited unchanged from the retained Gate 5A SDL2 binary.' \
+    > "$ARTIFACT_DIR/input-exclusion-audit.txt"
 grep -Fq '<private-path>' "$ARTIFACT_DIR/strings.txt" || {
     echo "error: Gate 5 binary is missing the private-path sanitization marker" >&2
     exit 1

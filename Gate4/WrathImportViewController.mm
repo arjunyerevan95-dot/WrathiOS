@@ -40,6 +40,7 @@ static NSString * const WrathStatusRemoved = @"Imported data removed";
                                       color:[UIColor colorWithRed:0.28 green:0.94 blue:0.88 alpha:1.0]];
 #ifdef WRATH_IOS_GATE5C
     eyebrow.text = @"GATE 5C · SEMANTIC MENU TOUCH";
+    eyebrow.accessibilityIdentifier = @"WRATHIOS_GATE5C_SEMANTIC_MENU_TOUCH_V1";
 #else
     eyebrow.text = self.runtimeLaunchHandler != nil
         ? @"GATE 5A · CONTROLLED RUNTIME BOOTSTRAP"

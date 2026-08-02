@@ -119,7 +119,7 @@ for title in 'Launch WRATH' 'Choose WRATH Folder' 'Remove Imported Data'; do
     }
 done
 for marker in \
-    'GATE 5C · SEMANTIC MENU TOUCH' \
+    'WRATHIOS_GATE5C_SEMANTIC_MENU_TOUCH_V1' \
     '0.0.11 (11)' \
     'semantic adapter contract v1' \
     'Gate 5C semantic adapter' \

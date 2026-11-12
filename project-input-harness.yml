@@ -71,8 +71,6 @@ targets:
         - -ObjC
         - -force_load
         - $(SRCROOT)/Derived/deps/iphonesimulator/lib/libSDL2.a
-    scheme:
-      gatherCoverageData: false
   InputUITests:
     type: bundle.ui-testing
     platform: iOS

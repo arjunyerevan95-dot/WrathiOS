@@ -1,6 +1,12 @@
 import XCTest
 final class InputUITests: XCTestCase {
     override func setUpWithError() throws { continueAfterFailure = false }
+    func dismissKeyboardTutorial(_ app: XCUIApplication) {
+        // Fresh iOS Simulator keyboards cover the keys with this one-time
+        // QuickPath explanation. Dismiss only that observed non-binding notice.
+        let notice = app.staticTexts["Speed up your typing by sliding your finger across the letters to compose a word."]
+        if notice.waitForExistence(timeout: 2) { app.buttons["Continue"].tap() }
+    }
     func testManualKeyboardInSDLHostLoop() {
         let app = XCUIApplication()
         XCUIDevice.shared.orientation = .landscapeLeft
@@ -12,6 +18,7 @@ final class InputUITests: XCTestCase {
         app.buttons["WrathAction_FIRE"].tap()
         app.buttons["WrathKeyboardButton"].tap()
         XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 8))
+        dismissKeyboardTutorial(app)
         for key in "wrath" { app.keyboards.keys[String(key)].tap() }
         let shot = XCTAttachment(screenshot: app.screenshot()); shot.lifetime = .keepAlways; add(shot)
         sleep(1)
@@ -21,6 +28,7 @@ final class InputUITests: XCTestCase {
         XCUIDevice.shared.orientation = .landscapeLeft
         app.launch()
         XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 10))
+        dismissKeyboardTutorial(app)
         for key in "profile" { app.keyboards.keys[String(key)].tap() }
         let shot = XCTAttachment(screenshot: app.screenshot()); shot.lifetime = .keepAlways; add(shot)
     }

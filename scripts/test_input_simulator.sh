@@ -23,7 +23,7 @@ xcodebuild -project WrathInputHarness.xcodeproj -scheme WrathInputHarness \
  -destination "platform=iOS Simulator,id=$DEVICE" -derivedDataPath DerivedData/InputHarness \
  -resultBundlePath "$ART/InputTests.xcresult" -parallel-testing-enabled NO \
  -test-timeouts-enabled YES -default-test-execution-time-allowance 90 -maximum-test-execution-time-allowance 120 \
- CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "$ART/xcodebuild.log"
+ ARCHS="$(uname -m)" ONLY_ACTIVE_ARCH=YES CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "$ART/xcodebuild.log"
 CONTAINER="$(xcrun simctl get_app_container "$DEVICE" com.arjukstudios.wrath.inputharness data)"
 cp "$CONTAINER"/Documents/harness-*.json "$ART/"
 python3 - "$ART" <<'PY'

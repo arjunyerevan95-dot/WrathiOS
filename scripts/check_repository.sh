@@ -258,8 +258,9 @@ grep -Fq 'Launch WRATH' Gate4/WrathImportViewController.mm || {
     echo "error: Gate 5 launch action is missing" >&2
     exit 1
 }
-grep -Fq 'SDL_iPhoneSetEventPump(SDL_TRUE)' Gate5/WrathRuntime.mm || {
-    echo "error: Gate 5 does not enable SDL's UIKit event pump around Host_Main" >&2
+grep -Fq 'SDL_iPhoneSetEventPump(SDL_FALSE)' Gate5/WrathRuntime.mm &&
+grep -Fq 'CADisplayLink displayLinkWithTarget:self' Gate5/WrathRuntime.mm || {
+    echo "error: Gate 5 must yield bounded host frames to UIKit rather than nested event pumping" >&2
     exit 1
 }
 grep -Fq 'Host_Main();' Gate5/WrathRuntime.mm || {

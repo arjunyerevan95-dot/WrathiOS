@@ -1,5 +1,6 @@
 import XCTest
 final class InputUITests: XCTestCase {
+    override func setUpWithError() throws { continueAfterFailure = false }
     func testManualKeyboardInSDLHostLoop() {
         let app = XCUIApplication()
         XCUIDevice.shared.orientation = .landscapeLeft

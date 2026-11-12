@@ -5,6 +5,7 @@
 #import "WrathRuntimeHooks.h"
 
 #import <UIKit/UIKit.h>
+#import <QuartzCore/QuartzCore.h>
 #import <os/log.h>
 #import <SDL.h>
 #import <SDL_system.h>
@@ -43,6 +44,8 @@ void Sys_ProvideSelfFD(void);
 @property(nonatomic) NSUInteger sequence;
 @property(nonatomic) BOOL attempted;
 @property(nonatomic, copy) WrathRuntimeCompletion completion;
+@property(nonatomic, strong) CADisplayLink *frameLink;
+- (void)runFrame:(CADisplayLink *)link;
 - (void)recordStage:(NSString *)stage detail:(NSString *)detail;
 - (void)recordFatalError:(NSString *)message;
 - (NSString *)sanitize:(NSString *)text;
@@ -203,9 +206,7 @@ static int WrathRunHostMain(void) {
     self.sequence = 0;
 
     [[WrathDataImporter sharedImporter] inspectInstalledDataWithCompletion:^(WrathImportReport *report, NSError *error) {
-        // Host_Main never returns. Leave the importer main-queue callback first;
-        // otherwise nested SDL runloops cannot service UIKit main-queue work.
-        // SDL's own iOS launcher similarly enters from a delayed selector.
+        // Leave the importer callback before setting up the UIKit-owned frame driver.
         [NSTimer scheduledTimerWithTimeInterval:0.001 repeats:NO block:^(NSTimer *timer) {
         (void)timer;
         if (error != nil || report == nil || !report.compatible) {
@@ -233,13 +234,13 @@ static int WrathRunHostMain(void) {
         [self recordStage:WrathStagePathsPrepared
                    detail:@"Read-only GameData/kp1 and separate Runtime/UserData roots prepared."];
         [self recordStage:WrathStageSDLMainReady
-                   detail:@"UIKit owns launch; SDL iOS event pumping is enabled for Host_Main."];
+                   detail:@"UIKit owns each frame; SDL nested iOS event pumping is disabled."];
 
         CGSize size = UIScreen.mainScreen.bounds.size;
         int width = (int)MAX(size.width, size.height);
         int height = (int)MIN(size.width, size.height);
         NSString *executable = NSBundle.mainBundle.executablePath ?: @"WrathiOSGate5";
-        std::vector<std::string> arguments = {
+        static std::vector<std::string> arguments = {
             executable.UTF8String,
             "-wrath",
             "-basedir", baseURL.fileSystemRepresentation,
@@ -253,7 +254,7 @@ static int WrathRunHostMain(void) {
             "+vid_touchscreen", "1"
 #endif
         };
-        std::vector<const char *> argv;
+        static std::vector<const char *> argv;
         argv.reserve(arguments.size());
         for (const std::string &argument : arguments) {
             argv.push_back(argument.c_str());
@@ -279,22 +280,24 @@ static int WrathRunHostMain(void) {
         [self recordStage:WrathStageSDLInitialized detail:@"SDL core initialized without prestarting video."];
 
         gActiveRuntime = self;
-        SDL_iPhoneSetEventPump(SDL_TRUE);
-        int hostResult = WrathRunHostMain();
-        SDL_Quit();
         SDL_iPhoneSetEventPump(SDL_FALSE);
-        gActiveRuntime = nil;
-        self.startingOrActive = NO;
-
-        NSString *failure = hostResult == 0
-            ? @"Host_Main returned before the runtime became active."
-            : self.entries.lastObject[@"detail"];
-        if (hostResult == 0) {
-            [self recordFatalError:failure];
-        }
-        completion([self sanitize:failure]);
+        self.frameLink = [CADisplayLink displayLinkWithTarget:self selector:@selector(runFrame:)];
+        self.frameLink.preferredFramesPerSecond = 60;
+        [self.frameLink addToRunLoop:NSRunLoop.mainRunLoop forMode:NSRunLoopCommonModes];
         }];
     }];
+}
+
+- (void)runFrame:(CADisplayLink *)link {
+    (void)link;
+    // A normal frame returns. Keep the fatal-error recovery target active only
+    // while inside engine code; no setjmp target survives across UIKit callbacks.
+    int hostResult = WrathRunHostMain();
+    if (hostResult == 0) return;
+    [self.frameLink invalidate]; self.frameLink = nil;
+    SDL_Quit(); gActiveRuntime = nil; self.startingOrActive = NO;
+    NSString *failure = self.entries.lastObject[@"detail"] ?: @"Engine stopped.";
+    if (self.completion) self.completion([self sanitize:failure]);
 }
 
 - (void)recordLifecycleEvent:(NSString *)event {

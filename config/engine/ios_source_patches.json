@@ -94,11 +94,23 @@
     },
     {
       "path": "host.c",
-      "reason": "Record entry into the authentic WRATH host-owned runtime loop for Gate 5 device evidence.",
+      "reason": "Keep authentic host frame logic but yield to UIKit after each iOS iteration; preserve timing state and initialize exactly once.",
       "replacements": [
         {
-          "old": "\tHost_Init();\n\n\trealtime = 0;",
-          "new": "#ifdef WRATH_IOS_GATE5\n\tWrathIOSRuntimeStage(\"WRATH Host_Main entered\", \"Authentic host initialization and host-owned frame loop selected.\");\n#endif\n\tHost_Init();\n\n\trealtime = 0;"
+          "old": "\tdouble time1 = 0;\n\tdouble time2 = 0;\n\tdouble time3 = 0;\n\tdouble cl_timer = 0, sv_timer = 0;",
+          "new": "#ifdef WRATH_IOS_GATE5\n\tstatic double time1 = 0, time2 = 0, time3 = 0;\n\tstatic double cl_timer = 0, sv_timer = 0;\n\tstatic qboolean ios_host_initialized = false;\n#else\n\tdouble time1 = 0;\n\tdouble time2 = 0;\n\tdouble time3 = 0;\n\tdouble cl_timer = 0, sv_timer = 0;\n#endif"
+        },
+        {
+          "old": "\tHost_Init();\n\n\trealtime = 0;\n\thost_dirtytime = Sys_DirtyTime();\n\tfor (;;)",
+          "new": "#ifdef WRATH_IOS_GATE5\n\tif (!ios_host_initialized)\n\t{\n\t\tios_host_initialized = true;\n\t\tWrathIOSRuntimeStage(\"WRATH Host_Main entered\", \"Authentic host frames driven by UIKit display link.\");\n\t\tHost_Init();\n\t\trealtime = 0;\n\t\thost_dirtytime = Sys_DirtyTime();\n\t}\n\t/* Existing outer-loop continue paths yield this tick; inner loops unchanged. */\n\tdo\n#else\n\tHost_Init();\n\trealtime = 0;\n\thost_dirtytime = Sys_DirtyTime();\n\tfor (;;)\n#endif"
+        },
+        {
+          "old": "\t\thost_framecount++;\n\t}\n}",
+          "new": "\t\thost_framecount++;\n\t}\n#ifdef WRATH_IOS_GATE5\n\twhile (0);\n#endif\n}"
+        },
+        {
+          "old": "\t\tif (!cls.timedemo && wait >= 1)\n\t\t{",
+          "new": "\t\tif (!cls.timedemo && wait >= 1)\n\t\t{\n#ifdef WRATH_IOS_GATE5\n\t\t\t/* UIKit schedules the next tick; never sleep the UI thread. */\n\t\t\tcontinue;\n#endif"
         }
       ]
     },

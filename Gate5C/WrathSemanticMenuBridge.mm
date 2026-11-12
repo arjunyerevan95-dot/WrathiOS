@@ -1,308 +1,169 @@
 #import "WrathSemanticMenuBridge.h"
-
 #import <UIKit/UIKit.h>
-
-#include "WrathSemanticMenuModel.hpp"
-
+#import <CoreMotion/CoreMotion.h>
+#import <QuartzCore/QuartzCore.h>
+#include "WrathTouchMath.hpp"
+#include <deque>
 #include <mutex>
 
 namespace {
-
-namespace SemanticMenu = wrathios::menu;
-
-constexpr double kSemanticHitSlop = 4.0;
-constexpr NSInteger kTouchSurfaceTag = 0x57524335;
-
-struct BridgeState {
-    std::mutex mutex;
-    SemanticMenu::Snapshot building;
-    SemanticMenu::Snapshot published;
-    SemanticMenu::ActivationMachine activation;
-    int hoverIdentifier = 0;
-    bool menuActive = false;
-    unsigned long long hits = 0;
-    unsigned long long misses = 0;
-    SemanticMenu::Point lastTouch;
-    SemanticMenu::Rect lastHitBounds;
-    int lastHitIdentifier = 0;
-    bool pointerAcknowledged = false;
+using wrathios::touch::PointerEvent;
+struct State {
+ std::mutex mutex;
+ bool menu=false,game=false,suspended=false;
+ wrathios::touch::Pointer pointer;
+ float width=640,height=480,x=0,y=0,lookX=0,lookY=0,moveX=0,moveY=0;
+ unsigned buttons=0;
+ std::deque<int> keys;
 };
-
-BridgeState &State() {
-    static BridgeState state;
-    return state;
+State &S(){static State s;return s;}
+void ResetLocked(State &s){s.pointer.reset();s.lookX=s.lookY=s.moveX=s.moveY=0;s.buttons=0;s.keys.clear();for(int i=1;i<=4;i++)s.keys.push_back(-i);}
+constexpr NSInteger tag=0x57524335;
 }
 
-NSString *DiagnosticText() {
-    BridgeState &state = State();
-    std::scoped_lock lock(state.mutex);
-    return [NSString stringWithFormat:
-        @"Gate 5C semantic adapter\nmenu=%d entries=%lu touch=(%.0f,%.0f)\n"
-         "hit=%d [%.0f,%.0f %.0fx%.0f] ack=%@ hover=%d\n"
-         "click=%s hit/miss=%llu/%llu",
-        state.published.menuIdentifier,
-        static_cast<unsigned long>(state.published.entries.size()),
-        state.lastTouch.x,
-        state.lastTouch.y,
-        state.lastHitIdentifier,
-        state.lastHitBounds.x,
-        state.lastHitBounds.y,
-        state.lastHitBounds.width,
-        state.lastHitBounds.height,
-        state.pointerAcknowledged ? @"yes" : @"no",
-        state.hoverIdentifier,
-        SemanticMenu::ClickStageName(state.activation.Stage()),
-        state.hits,
-        state.misses];
+@interface WrathSemanticTouchSurface : UIView {
+ NSMutableDictionary<NSValue *,NSNumber *> *_owners;
+ NSMutableDictionary<NSValue *,NSValue *> *_last;
+ CGPoint _moveOrigin;
+ CMMotionManager *_motion;
+ UIInterfaceOrientation _orientation;
+ double _sampleTime;
+ BOOL _wasGame;
+ int _lastMode;
 }
-
-} // namespace
-
-@interface WrathSemanticTouchSurface : UIView
-@property(nonatomic, strong) UILabel *diagnosticLabel;
+- (void)refresh;
+- (void)reset;
 @end
-
 @implementation WrathSemanticTouchSurface
-
 - (instancetype)initWithFrame:(CGRect)frame {
-    self = [super initWithFrame:frame];
-    if (!self) {
-        return nil;
-    }
-    self.backgroundColor = UIColor.clearColor;
-    self.multipleTouchEnabled = NO;
-    self.exclusiveTouch = YES;
-    self.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-
-    UILabel *label = [[UILabel alloc] initWithFrame:CGRectMake(10, 10, 330, 86)];
-    label.backgroundColor = [UIColor colorWithWhite:0 alpha:0.58];
-    label.textColor = UIColor.whiteColor;
-    label.font = [UIFont monospacedSystemFontOfSize:9 weight:UIFontWeightRegular];
-    label.numberOfLines = 4;
-    label.userInteractionEnabled = NO;
-    label.layer.cornerRadius = 5;
-    label.layer.masksToBounds = YES;
-    label.autoresizingMask = UIViewAutoresizingFlexibleRightMargin | UIViewAutoresizingFlexibleBottomMargin;
-    [self addSubview:label];
-    self.diagnosticLabel = label;
-    [NSNotificationCenter.defaultCenter addObserver:self
-                                           selector:@selector(runtimeBecameInactive:)
-                                               name:UIApplicationWillResignActiveNotification
-                                             object:nil];
-    [NSNotificationCenter.defaultCenter addObserver:self
-                                           selector:@selector(runtimeBecameInactive:)
-                                               name:UIApplicationDidEnterBackgroundNotification
-                                             object:nil];
-    return self;
+ if(!(self=[super initWithFrame:frame]))return nil;
+ NSLog(@"WRATHIOS_NATIVE_TOUCH_V12");
+ self.backgroundColor=UIColor.clearColor;self.multipleTouchEnabled=YES;
+ self.autoresizingMask=UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleHeight;
+ _owners=[NSMutableDictionary new];_last=[NSMutableDictionary new];_motion=[CMMotionManager new];
+ _motion.deviceMotionUpdateInterval=1.0/100;
+ [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(inactive:) name:UIApplicationWillResignActiveNotification object:nil];
+ [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(active:) name:UIApplicationDidBecomeActiveNotification object:nil];
+ return self;
 }
-
-- (void)dealloc {
-    [NSNotificationCenter.defaultCenter removeObserver:self];
+- (void)dealloc {[_motion stopDeviceMotionUpdates];[NSNotificationCenter.defaultCenter removeObserver:self];}
+- (void)reset {
+ [_owners removeAllObjects];[_last removeAllObjects];_sampleTime=0;
+ auto &s=S();std::scoped_lock lock(s.mutex);ResetLocked(s);
 }
-
-- (void)runtimeBecameInactive:(NSNotification *)notification {
-    (void)notification;
-    WrathIOSGate5CSetMenuActive(0);
+- (void)inactive:(NSNotification *)n {(void)n;[self reset];{auto &s=S();std::scoped_lock lock(s.mutex);s.suspended=true;}[_motion stopDeviceMotionUpdates];}
+- (void)active:(NSNotification *)n {(void)n;[self reset];{auto &s=S();std::scoped_lock lock(s.mutex);s.suspended=false;}[self refresh];}
+- (void)refresh {
+ bool game,enabled;{auto &s=S();std::scoped_lock lock(s.mutex);game=s.game&&!s.suspended;enabled=(s.menu||s.game)&&!s.suspended;}
+ UIInterfaceOrientation orientation=self.window.windowScene.interfaceOrientation;
+ int mode=enabled?(game?2:1):0;
+ if(_lastMode!=mode||(_orientation!=UIInterfaceOrientationUnknown&&orientation!=_orientation))[self reset];
+ _lastMode=mode;_wasGame=game;_orientation=orientation;
+ self.hidden=!enabled;self.userInteractionEnabled=enabled;
+ if(!game){[_motion stopDeviceMotionUpdates];_sampleTime=0;}
+ else if(!_motion.deviceMotionActive&&_motion.deviceMotionAvailable){
+  __weak WrathSemanticTouchSurface *weakSelf=self;
+  [_motion startDeviceMotionUpdatesUsingReferenceFrame:CMAttitudeReferenceFrameXArbitraryZVertical toQueue:NSOperationQueue.mainQueue withHandler:^(CMDeviceMotion *m,NSError *error){
+   WrathSemanticTouchSurface *v=weakSelf;if(!v||error||!m)return;
+   if(NSProcessInfo.processInfo.systemUptime-m.timestamp>.15)return;
+   double now=m.timestamp,dt=v->_sampleTime?wrathios::touch::SafeDelta(now-v->_sampleTime):0;v->_sampleTime=now;
+   UIInterfaceOrientation o=v.window.windowScene.interfaceOrientation;
+   if(o!=UIInterfaceOrientationLandscapeLeft&&o!=UIInterfaceOrientationLandscapeRight)return;
+   auto rate=wrathios::touch::Gyro(m.rotationRate.x,m.rotationRate.y,o==UIInterfaceOrientationLandscapeRight);
+   if(fabs(rate.x)<.018)rate.x=0;if(fabs(rate.y)<.018)rate.y=0;
+   auto &s=S();std::scoped_lock lock(s.mutex);
+   if(s.game&&!s.suspended){s.lookX+=rate.x*57.2957795*dt;s.lookY+=rate.y*57.2957795*dt;}
+  }];
+ }
+ [self setNeedsDisplay];
 }
-
-- (void)touchesEnded:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
-    if (touches.count != 1) {
-        return;
-    }
-    UITouch *touch = touches.anyObject;
-    CGPoint uiPoint = [touch locationInView:self];
-
-    wrathios::menu::Snapshot snapshot;
-    {
-        BridgeState &state = State();
-        std::scoped_lock lock(state.mutex);
-        if (!state.menuActive) {
-            return;
-        }
-        snapshot = state.published;
-    }
-
-    wrathios::menu::Point menuPoint = wrathios::menu::ConvertUIKitPoint(
-        {uiPoint.x, uiPoint.y},
-        {self.bounds.size.width, self.bounds.size.height},
-        snapshot.menuSize);
-    std::optional<wrathios::menu::Entry> hit =
-        wrathios::menu::HitTest(snapshot, menuPoint, kSemanticHitSlop);
-
-    {
-        BridgeState &state = State();
-        std::scoped_lock lock(state.mutex);
-        state.lastTouch = menuPoint;
-        if (hit) {
-            state.lastHitIdentifier = hit->identifier;
-            state.lastHitBounds = hit->bounds;
-            state.pointerAcknowledged = false;
-            state.activation.Begin(snapshot.menuIdentifier, hit->identifier, menuPoint);
-            ++state.hits;
-        } else {
-            state.lastHitIdentifier = 0;
-            state.lastHitBounds = {};
-            ++state.misses;
-        }
-    }
-    self.diagnosticLabel.text = DiagnosticText();
+- (CGRect)buttonRect:(int)b {
+ CGFloat w=self.bounds.size.width,h=self.bounds.size.height;
+ if(b==0)return CGRectMake(w-88,h-160,70,70); // fire
+ if(b==1)return CGRectMake(w-172,h-84,66,66); // jump
+ if(b==2)return CGRectMake(w-88,h-246,70,62); // alternate fire
+ return CGRectMake(w-90,16,72,42); // menu
 }
+- (void)drawRect:(CGRect)rect {
+ (void)rect;if(!_wasGame)return;
+ NSArray *names=@[@"FIRE",@"JUMP",@"ALT",@"MENU"];
+ for(int i=0;i<4;i++){
+  CGRect r=[self buttonRect:i];[[UIColor colorWithWhite:0 alpha:.28] setFill];[[UIBezierPath bezierPathWithRoundedRect:r cornerRadius:16] fill];
+  [names[i] drawInRect:CGRectInset(r,8,18) withAttributes:@{NSFontAttributeName:[UIFont boldSystemFontOfSize:12],NSForegroundColorAttributeName:UIColor.whiteColor}];
+ }
+ [@"MOVE" drawAtPoint:CGPointMake(65,self.bounds.size.height-95) withAttributes:@{NSFontAttributeName:[UIFont systemFontOfSize:12],NSForegroundColorAttributeName:UIColor.whiteColor}];
+}
+- (void)menuPoint:(CGPoint)p button:(int)button {
+ auto &s=S();std::scoped_lock lock(s.mutex);
+ s.x=std::clamp((float)(p.x/MAX(1,self.bounds.size.width)),0.f,1.f);
+ s.y=std::clamp((float)(p.y/MAX(1,self.bounds.size.height)),0.f,1.f);s.pointer.input(s.x,s.y,button,CACurrentMediaTime());
 
+}
+- (void)touchesBegan:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
+ (void)event;bool menu;{auto &s=S();std::scoped_lock lock(s.mutex);menu=s.menu;}
+ for(UITouch *t in touches){
+  NSValue *key=[NSValue valueWithNonretainedObject:t];CGPoint p=[t locationInView:self];
+  int owner=-1;
+  if(menu){if(_owners.count)continue;owner=10;[self menuPoint:p button:1];}
+  else {
+   for(int b=0;b<4;b++)if(CGRectContainsPoint([self buttonRect:b],p)){owner=b;break;}
+   if(owner<0)owner=p.x<self.bounds.size.width*.42?4:5;
+   if((owner==4||owner==5)&&[_owners.allValues containsObject:@(owner)])continue;
+   if(owner==4)_moveOrigin=p;
+   if(owner<4){auto &s=S();std::scoped_lock lock(s.mutex);if(!(s.buttons&(1u<<owner)))s.keys.push_back(owner+1);s.buttons|=1u<<owner;}
+  }
+  _owners[key]=@(owner);_last[key]=[NSValue valueWithCGPoint:p];
+ }
+}
+- (void)touchesMoved:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
+ (void)event;
+ for(UITouch *t in touches){NSValue *key=[NSValue valueWithNonretainedObject:t];NSNumber *n=_owners[key];if(!n)continue;
+  int owner=n.intValue;CGPoint p=[t locationInView:self],last=[_last[key] CGPointValue];
+  if(owner==10)[self menuPoint:p button:0];
+  else {auto &s=S();std::scoped_lock lock(s.mutex);
+   if(owner==5){s.lookX+=(p.x-last.x)*.15;s.lookY+=(p.y-last.y)*.15;}
+   if(owner==4){auto stick=wrathios::touch::Stick({p.x-_moveOrigin.x,p.y-_moveOrigin.y});s.moveX=stick.x;s.moveY=stick.y;}
+  }
+  _last[key]=[NSValue valueWithCGPoint:p];
+ }
+}
+- (void)finish:(NSSet<UITouch *> *)touches cancelled:(BOOL)cancelled {
+ for(UITouch *t in touches){NSValue *key=[NSValue valueWithNonretainedObject:t];NSNumber *n=_owners[key];if(!n)continue;int owner=n.intValue;
+  if(owner==10){if(cancelled){auto &s=S();std::scoped_lock lock(s.mutex);s.pointer.reset();}else [self menuPoint:[t locationInView:self] button:2];}
+  [_owners removeObjectForKey:key];[_last removeObjectForKey:key];
+  auto &s=S();std::scoped_lock lock(s.mutex);
+  if(owner==4)s.moveX=s.moveY=0;
+  if(owner<4&&![_owners.allValues containsObject:@(owner)]){s.buttons&=~(1u<<owner);s.keys.push_back(-(owner+1));}
+ }
+}
+- (void)touchesEnded:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {(void)event;[self finish:touches cancelled:NO];}
+- (void)touchesCancelled:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {(void)event;[self finish:touches cancelled:YES];}
 @end
 
 namespace {
-
-UIWindow *ActiveWindow() {
-    for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
-        if (scene.activationState != UISceneActivationStateForegroundActive ||
-            ![scene isKindOfClass:UIWindowScene.class]) {
-            continue;
-        }
-        UIWindowScene *windowScene = (UIWindowScene *)scene;
-        for (UIWindow *window in windowScene.windows.reverseObjectEnumerator) {
-            if (window.hidden || window.alpha <= 0) {
-                continue;
-            }
-            if (window.isKeyWindow) {
-                return window;
-            }
-        }
-        for (UIWindow *window in windowScene.windows.reverseObjectEnumerator) {
-            if (!window.hidden && window.alpha > 0) {
-                return window;
-            }
-        }
-    }
-    return nil;
+void Refresh(){
+ // Engine and UIKit run on the same thread; never dispatch input behind Host_Main.
+ for(UIScene *scene in UIApplication.sharedApplication.connectedScenes){
+  if(scene.activationState!=UISceneActivationStateForegroundActive||![scene isKindOfClass:UIWindowScene.class])continue;
+  for(UIWindow *w in ((UIWindowScene *)scene).windows.reverseObjectEnumerator){
+   if(w.hidden||!w.isKeyWindow)continue;
+   WrathSemanticTouchSurface *surface=(WrathSemanticTouchSurface *)[w viewWithTag:tag];
+   if(!surface){surface=[[WrathSemanticTouchSurface alloc]initWithFrame:w.bounds];surface.tag=tag;[w addSubview:surface];}
+   [w bringSubviewToFront:surface];[surface refresh];return;
+  }
+ }
 }
-
-WrathSemanticTouchSurface *TouchSurface(BOOL create) {
-    UIWindow *window = ActiveWindow();
-    if (!window) {
-        return nil;
-    }
-    WrathSemanticTouchSurface *surface = (WrathSemanticTouchSurface *)[window viewWithTag:kTouchSurfaceTag];
-    if (!surface && create) {
-        surface = [[WrathSemanticTouchSurface alloc] initWithFrame:window.bounds];
-        surface.tag = kTouchSurfaceTag;
-        [window addSubview:surface];
-    }
-    if (surface) {
-        [window bringSubviewToFront:surface];
-    }
-    return surface;
 }
-
-void RefreshSurface() {
-    BridgeState &state = State();
-    bool active;
-    {
-        std::scoped_lock lock(state.mutex);
-        active = state.menuActive;
-    }
-    WrathSemanticTouchSurface *surface = TouchSurface(active);
-    surface.hidden = !active;
-    surface.userInteractionEnabled = active;
-    if (active) {
-        surface.diagnosticLabel.text = DiagnosticText();
-    }
-}
-
-} // namespace
-
-const unsigned char *WrathIOSGate5CMenuProgramData(long long *size) {
-    static NSData *program = nil;
-    static dispatch_once_t onceToken;
-    dispatch_once(&onceToken, ^{
-        NSURL *url = [NSBundle.mainBundle URLForResource:@"wrathios-menu" withExtension:@"dat"];
-        program = url ? [NSData dataWithContentsOfURL:url options:NSDataReadingMappedIfSafe error:nil] : nil;
-    });
-    if (size) {
-        *size = static_cast<long long>(program.length);
-    }
-    return static_cast<const unsigned char *>(program.bytes);
-}
-
-void WrathIOSGate5CSnapshotBegin(int menuIdentifier, float menuWidth, float menuHeight) {
-    BridgeState &state = State();
-    std::scoped_lock lock(state.mutex);
-    if (state.building.menuIdentifier != menuIdentifier &&
-        state.activation.Stage() == wrathios::menu::ClickStage::positionWait) {
-        state.activation.Reset();
-    }
-    state.building = {};
-    state.building.menuIdentifier = menuIdentifier;
-    state.building.menuSize = {menuWidth, menuHeight};
-    state.building.generation = state.published.generation + 1;
-}
-
-void WrathIOSGate5CSnapshotEntry(int entryIdentifier,
-                                float x,
-                                float y,
-                                float width,
-                                float height,
-                                int flags,
-                                int order) {
-    (void)flags;
-    BridgeState &state = State();
-    std::scoped_lock lock(state.mutex);
-    state.building.entries.push_back({
-        entryIdentifier,
-        {x, y, width, height},
-        true,
-        true,
-        order,
-    });
-}
-
-void WrathIOSGate5CSnapshotEnd(int hoverIdentifier) {
-    {
-        BridgeState &state = State();
-        std::scoped_lock lock(state.mutex);
-        state.published = state.building;
-        state.hoverIdentifier = hoverIdentifier;
-        state.pointerAcknowledged =
-            state.activation.Stage() != wrathios::menu::ClickStage::idle &&
-            hoverIdentifier == state.activation.EntryIdentifier();
-        state.menuActive = true;
-    }
-    RefreshSurface();
-}
-
-int WrathIOSGate5CPointer(float *x, float *y) {
-    BridgeState &state = State();
-    std::scoped_lock lock(state.mutex);
-    if (!state.menuActive || !state.activation.HasPointer()) {
-        return 0;
-    }
-    wrathios::menu::Point pointer = state.activation.Pointer();
-    if (x) *x = static_cast<float>(pointer.x);
-    if (y) *y = static_cast<float>(pointer.y);
-    return 1;
-}
-
-int WrathIOSGate5CNextButtonEvent(void) {
-    BridgeState &state = State();
-    std::scoped_lock lock(state.mutex);
-    wrathios::menu::ButtonEvent event =
-        state.activation.Advance(state.published.menuIdentifier, state.hoverIdentifier);
-    if (event == wrathios::menu::ButtonEvent::down) return 1;
-    if (event == wrathios::menu::ButtonEvent::up) return 2;
-    return 0;
-}
-
-void WrathIOSGate5CSetMenuActive(int active) {
-    {
-        BridgeState &state = State();
-        std::scoped_lock lock(state.mutex);
-        state.menuActive = active != 0;
-        if (!state.menuActive) {
-            state.activation.Reset();
-            state.building = {};
-            state.published = {};
-            state.hoverIdentifier = 0;
-            state.pointerAcknowledged = false;
-        }
-    }
-    RefreshSurface();
+const unsigned char *WrathIOSGate5CMenuProgramData(long long *size){static NSData *data;static dispatch_once_t once;dispatch_once(&once,^{data=[NSData dataWithContentsOfURL:[NSBundle.mainBundle URLForResource:@"wrathios-menu" withExtension:@"dat"]];});if(size)*size=data.length;return (const unsigned char *)data.bytes;}
+void WrathIOSGate5CSnapshotBegin(int menu,float w,float h){(void)menu;auto &s=S();std::scoped_lock lock(s.mutex);if(w>0&&h>0){s.width=w;s.height=h;}}
+void WrathIOSGate5CSnapshotEntry(int e,float x,float y,float w,float h,int f,int o){(void)e;(void)x;(void)y;(void)w;(void)h;(void)f;(void)o;}
+void WrathIOSGate5CSnapshotEnd(int hover){(void)hover;}
+int WrathIOSGate5CPointer(float *x,float *y){auto &s=S();std::scoped_lock lock(s.mutex);if(!s.menu||!s.pointer.owns(CACurrentMediaTime()))return 0;auto p=s.pointer.point();if(x)*x=p.x;if(y)*y=p.y;return 1;}
+int WrathIOSGate5CNextButtonEvent(void){auto &s=S();std::scoped_lock lock(s.mutex);return s.pointer.next();}
+int WrathIOSTouchTakeMenuRelease(void){auto &s=S();std::scoped_lock lock(s.mutex);return s.pointer.takeRelease();}
+void WrathIOSGate5CSetMenuActive(int active){auto &s=S();{std::scoped_lock lock(s.mutex);if(s.menu!=(active!=0)){ResetLocked(s);s.menu=active!=0;if(active)s.game=false;}}Refresh();}
+void WrathIOSTouchSetMode(int menu,int game){auto &s=S();{std::scoped_lock lock(s.mutex);if(s.menu!=(menu!=0)||s.game!=(game!=0)){ResetLocked(s);s.menu=menu!=0;s.game=game!=0;}}Refresh();}
+int WrathIOSTouchNextKey(void){auto &s=S();std::scoped_lock lock(s.mutex);if(s.keys.empty())return 0;int key=s.keys.front();s.keys.pop_front();return key;}
+void WrathIOSTouchFrame(float *yaw,float *pitch,float *side,float *forward,unsigned *buttons){
+ auto &s=S();std::scoped_lock lock(s.mutex);*yaw=s.game?s.lookX:0;*pitch=s.game?s.lookY:0;*side=s.game?s.moveX:0;*forward=s.game?s.moveY:0;*buttons=s.suspended?0:s.buttons;s.lookX=s.lookY=0;
 }

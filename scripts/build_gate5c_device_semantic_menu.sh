@@ -9,7 +9,7 @@ PROJECT="$ROOT_DIR/WrathiOSGate5C.xcodeproj"
 APP_BUNDLE="$DERIVED_DATA/Build/Products/Debug-iphoneos/WrathiOSGate5C.app"
 BINARY="$APP_BUNDLE/WrathiOSGate5C"
 PACKAGE_ROOT="$ROOT_DIR/Derived/gate5c-package"
-IPA="$ARTIFACT_DIR/WrathiOSGate5C-v11-unsigned.ipa"
+IPA="$ARTIFACT_DIR/WrathiOSGate5C-v12-unsigned.ipa"
 
 rm -rf "$ARTIFACT_DIR" "$DERIVED_DATA" "$PROJECT" "$PACKAGE_ROOT"
 mkdir -p "$ARTIFACT_DIR"
@@ -80,6 +80,8 @@ required_symbols=(
     '_WrathIOSGate5CSnapshotEntry$'
     '_WrathIOSGate5CSnapshotEnd$'
     '_WrathIOSGate5CNextButtonEvent$'
+    '_WrathIOSTouchFrame$'
+    '_WrathIOSTouchSetMode$'
 )
 for symbol in "${required_symbols[@]}"; do
     grep -Eq "$symbol" "$ARTIFACT_DIR/global-symbols.txt" || {
@@ -120,8 +122,7 @@ for title in 'Launch WRATH' 'Choose WRATH Folder' 'Remove Imported Data'; do
 done
 for marker in \
     'WRATHIOS_GATE5C_SEMANTIC_MENU_TOUCH_V1' \
-    'Gate 5C semantic adapter' \
-    'position wait'; do
+    'WRATHIOS_NATIVE_TOUCH_V12'; do
     grep -Fq "$marker" "$ARTIFACT_DIR/strings.txt" || {
         echo "error: Gate 5C binary is missing semantic adapter marker: $marker" >&2
         exit 1
@@ -131,26 +132,15 @@ grep -Fq 'wrathios-menu.dat' "$ARTIFACT_DIR/bundle-inventory.txt" || {
     echo "error: Gate 5C derived open-source menu program is missing" >&2
     exit 1
 }
-for forbidden in 'CMMotionManager' 'swipe-look' 'fire button'; do
-    if grep -Fiq "$forbidden" "$ARTIFACT_DIR/strings.txt"; then
-        echo "error: excluded input feature entered Gate 5C binary: $forbidden" >&2
-        exit 1
-    fi
-done
-gate5a_strings="$ROOT_DIR/Artifacts/gate5-menu-bootstrap/strings.txt"
-grep -Fi 'virtual joystick' "$gate5a_strings" | LC_ALL=C sort -u > "$ARTIFACT_DIR/gate5a-virtual-joystick-strings.txt"
-grep -Fi 'virtual joystick' "$ARTIFACT_DIR/strings.txt" | LC_ALL=C sort -u > "$ARTIFACT_DIR/gate5c-virtual-joystick-strings.txt"
-diff -u \
-    "$ARTIFACT_DIR/gate5a-virtual-joystick-strings.txt" \
-    "$ARTIFACT_DIR/gate5c-virtual-joystick-strings.txt" \
-    > "$ARTIFACT_DIR/inherited-sdl-virtual-joystick-delta.txt" || {
-        echo "error: Gate 5C virtual-joystick strings differ from the retained Gate 5A SDL2 baseline" >&2
-        exit 1
-    }
+grep -Fq 'CMMotionManager' "$ARTIFACT_DIR/strings.txt" || {
+    echo "error: native Core Motion support missing" >&2
+    exit 1
+}
 printf '%s\n' \
-    'Project-authored Gate 5C sources: no keyboard, gyro, swipe-look, virtual-control, movement, or firing code.' \
-    'The generic virtual-joystick strings in the Gate 5C binary are inherited unchanged from the retained Gate 5A SDL2 binary.' \
-    > "$ARTIFACT_DIR/input-exclusion-audit.txt"
+    'v12: native absolute menu pointer, gameplay relative look, move/fire/jump and orientation-aware gyro.' \
+    'SDL accelerometer virtual joystick disabled before initialization; physical controllers retained.' \
+    'Physical quality remains device-unverified.' \
+    > "$ARTIFACT_DIR/native-input-audit.txt"
 grep -Fq '<private-path>' "$ARTIFACT_DIR/strings.txt" || {
     echo "error: Gate 5 binary is missing the private-path sanitization marker" >&2
     exit 1
@@ -177,7 +167,7 @@ launch_storyboard="$(/usr/libexec/PlistBuddy -c 'Print :UILaunchStoryboardName' 
     echo "error: unexpected Gate 5 bundle identifier: $bundle_id" >&2
     exit 1
 }
-[[ "$short_version" == '0.0.11' && "$build_version" == '11' ]] || {
+[[ "$short_version" == '0.0.12' && "$build_version" == '12' ]] || {
     echo "error: unexpected Gate 5 version: $short_version ($build_version)" >&2
     exit 1
 }
@@ -284,16 +274,16 @@ cat > "$ARTIFACT_DIR/summary.md" <<EOF
 - WRATH engine and SDL2: statically linked
 - Host_Main and authentic runtime entry symbols: present
 - Gate 4 importer: retained
-- Semantic UIKit adapter and authentic pointer-hover-click symbols: present
+- Native UIKit controls and authentic menu pointer/click symbols: present
 - Derived menu QC source: pinned and provenance-checked
-- Semantic bounds: emitted by authentic QC hover geometry
+- Semantic bounds: retained for provenance only, not required by native pointer delivery
 - Dynamic dependencies: system-only
 - Adaptive launch storyboard: packaged
 - Orientation: landscape-only
 - Commercial WRATH data: absent
 - Provisioning profile and code signature: absent
 - ZIP integrity: passed
-- Profile keyboard, gyro, gameplay swipe, movement, and firing: absent by scope
+- Native gameplay swipe, movement, firing and Core Motion gyro: present; device-unverified
 - Physical direct-touch result: device-unverified
 EOF
 

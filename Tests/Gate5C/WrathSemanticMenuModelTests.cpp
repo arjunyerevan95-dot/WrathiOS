@@ -46,6 +46,18 @@ int main() {
     assert(!activation.HasPointer());
     assert(activation.Stage() == ClickStage::idle);
 
+    // A second tap between engine frames must not discard a pending release.
+    activation.Begin(7, 11, {130, 120});
+    assert(activation.Advance(7, 11) == ButtonEvent::down);
+    activation.Begin(7, 10, {110, 120});
+    assert(activation.EntryIdentifier() == 11);
+    assert(activation.Advance(7, 11) == ButtonEvent::up);
+    assert(activation.Advance(7, 11) == ButtonEvent::none);
+    activation.Begin(7, 10, {110, 120});
+    assert(activation.Advance(7, 10) == ButtonEvent::down);
+    assert(activation.Advance(7, 10) == ButtonEvent::up);
+    assert(activation.Advance(7, 10) == ButtonEvent::none);
+
     Snapshot replacement = snapshot;
     replacement.menuIdentifier = 8;
     replacement.entries = {{20, {200, 200, 80, 30}, true, true, 0}};

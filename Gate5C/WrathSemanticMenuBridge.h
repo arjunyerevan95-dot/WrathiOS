@@ -19,6 +19,10 @@ void WrathIOSGate5CSnapshotEnd(int hoverIdentifier);
 int WrathIOSGate5CPointer(float *x, float *y);
 int WrathIOSGate5CNextButtonEvent(void);
 void WrathIOSGate5CSetMenuActive(int active);
+void WrathIOSTouchSetMode(int menu, int game);
+int WrathIOSTouchNextKey(void);
+int WrathIOSTouchTakeMenuRelease(void);
+void WrathIOSTouchFrame( float *yaw, float *pitch, float *side, float *forward, unsigned *buttons);
 
 #ifdef __cplusplus
 }

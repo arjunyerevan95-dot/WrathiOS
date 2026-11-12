@@ -242,7 +242,11 @@ static int WrathRunHostMain(void) {
             "-fullscreen",
             "-width", std::to_string(width),
             "-height", std::to_string(height),
+            #ifdef WRATH_IOS_GATE5C
+            "+vid_touchscreen", "0", "+freelook", "1"
+#else
             "+vid_touchscreen", "1"
+#endif
         };
         std::vector<const char *> argv;
         argv.reserve(arguments.size());
@@ -253,6 +257,13 @@ static int WrathRunHostMain(void) {
         com_argv = argv.data();
         Sys_ProvideSelfFD();
 
+#ifdef WRATH_IOS_GATE5C
+        // Gravity is not camera gyro. Preserve real controllers, suppress only SDL's
+        // virtual raw-accelerometer joystick and duplicate touch-to-mouse synthesis.
+        SDL_SetHint(SDL_HINT_ACCELEROMETER_AS_JOYSTICK, "0");
+        SDL_SetHint(SDL_HINT_TOUCH_MOUSE_EVENTS, "0");
+        SDL_SetHint(SDL_HINT_MOUSE_TOUCH_EVENTS, "0");
+#endif
         if (SDL_Init(0) < 0) {
             self.startingOrActive = NO;
             NSString *errorText = [NSString stringWithUTF8String:SDL_GetError()] ?: @"Unknown SDL error";

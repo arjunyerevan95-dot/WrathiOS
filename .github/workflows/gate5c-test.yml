@@ -1,0 +1,62 @@
+name: Gate 5C focused test IPA
+on:
+  push:
+    branches: [review/gate5c-click-pairing]
+permissions:
+  contents: read
+concurrency:
+  group: gate5c-focused-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  portable-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate repository policy
+        run: bash scripts/check_repository.sh
+      - name: Validate data importer with synthetic fixtures
+        run: bash scripts/test_gate4_data_contract.sh
+      - name: Fetch pinned public QC sources
+        run: |
+          source scripts/upstream.env
+          mkdir -p Vendor/wrath-qc
+          git -C Vendor/wrath-qc init
+          git -C Vendor/wrath-qc remote add origin "$WRATH_QC_URL"
+          git -C Vendor/wrath-qc fetch --depth 1 origin "$WRATH_QC_COMMIT"
+          git -C Vendor/wrath-qc checkout --detach FETCH_HEAD
+      - name: Test semantic menu and click pairing
+        run: bash scripts/test_gate5c_semantic_menu.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: gate5c-portable-checks
+          path: |
+            Artifacts/gate4-data-contract/*.txt
+            Artifacts/gate4-data-contract/summary.md
+            Artifacts/gate5c-semantic-tests/*.txt
+            Artifacts/gate5c-semantic-tests/summary.md
+  device-ipa:
+    needs: portable-checks
+    runs-on: macos-15-intel
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch pinned public engine and dependencies
+        run: bash scripts/fetch_upstream.sh
+      - name: Build arm64 dependencies
+        run: |
+          bash scripts/build_gate2_audio_deps.sh
+          bash scripts/build_gate2_sdl.sh
+          bash scripts/build_gate2_freetype.sh
+      - name: Install project generator
+        run: brew install xcodegen
+      - name: Build and audit only the current Gate 5C candidate
+        run: bash scripts/build_gate5c_device_semantic_menu.sh
+      - name: Preserve unsigned IPA and audit evidence
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: gate5c-v12-test-ipa
+          path: Artifacts/gate5c-semantic-menu
+          if-no-files-found: error
+          retention-days: 30

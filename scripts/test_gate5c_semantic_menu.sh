@@ -18,6 +18,10 @@ mkdir -p "$ARTIFACT_DIR"
 
 "$TEST_BINARY" | tee "$ARTIFACT_DIR/results.txt"
 
+"${CXX:-c++}" -std=c++20 -Wall -Wextra -Werror -I"$ROOT_DIR/Gate5C" \
+    "$ROOT_DIR/Tests/Gate5C/WrathTouchInputTests.cpp" -o "$ARTIFACT_DIR/WrathTouchInputTests"
+"$ARTIFACT_DIR/WrathTouchInputTests" | tee "$ARTIFACT_DIR/native-touch-results.txt"
+
 python3 "$ROOT_DIR/scripts/materialize_gate5c_menu_qc.py"
 test -s "$ROOT_DIR/Gate5C/Resources/wrathios-menu.dat"
 actual_sha="$(shasum -a 256 "$ROOT_DIR/Gate5C/Resources/wrathios-menu.dat" | awk '{print $1}')"

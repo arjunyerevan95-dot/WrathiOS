@@ -16,7 +16,7 @@
         },
         {
           "old": "\tprog->ExecuteProgram(prog, PRVM_menufunction(m_draw),\"m_draw() required\");",
-          "new": "\tprog->ExecuteProgram(prog, PRVM_menufunction(m_draw),\"m_draw() required\");\n#ifdef WRATH_IOS_GATE5C\n\tWrathIOSGate5CSetMenuActive(1);\n\t{\n\t\tint wrathios_button_event = WrathIOSGate5CNextButtonEvent();\n\t\tif (wrathios_button_event == 1)\n\t\t{\n\t\t\tMP_KeyEvent(K_MOUSE1, 0, true);\n\t\t\tif (key_dest != key_menu && key_dest != key_menu_grabbed)\n\t\t\t\tMP_KeyEvent(K_MOUSE1, 0, false);\n\t\t}\n\t\telse if (wrathios_button_event == 2)\n\t\t\tMP_KeyEvent(K_MOUSE1, 0, false);\n\t}\n\tWrathIOSGate5CSetMenuActive(key_dest == key_menu || key_dest == key_menu_grabbed);\n#endif\n#ifdef WRATH_IOS_GATE5\n\t{\n\t\tstatic qboolean wrath_ios_menu_frame_recorded = false;\n\t\tif (!wrath_ios_menu_frame_recorded)\n\t\t{\n\t\t\twrath_ios_menu_frame_recorded = true;\n\t\t\tWrathIOSRuntimeStage(\"Main menu reached\", \"The authentic menu VM completed its first draw.\");\n\t\t}\n\t}\n#endif"
+          "new": "#ifdef WRATH_IOS_GATE5C\n\t{\n\t\tfloat x, y;\n\t\tif (WrathIOSGate5CPointer(&x, &y))\n\t\t{\n\t\t\tin_windowmouse_x = x * vid.width;\n\t\t\tin_windowmouse_y = y * vid.height;\n\t\t\tint mode = PRVM_ED_FindGlobalOffset(prog, \"input_mode\");\n\t\t\tif (mode >= 0) prog->globals.fp[mode] = 1; /* pinned QC IN_MODE_KEYBOARD */\n\t\t}\n\t}\n#endif\n\tprog->ExecuteProgram(prog, PRVM_menufunction(m_draw),\"m_draw() required\");\n#ifdef WRATH_IOS_GATE5C\n\tWrathIOSGate5CSetMenuActive(1);\n\t{\n\t\tint wrathios_button_event = WrathIOSGate5CNextButtonEvent();\n\t\tif (wrathios_button_event == 1)\n\t\t{\n\t\t\tMP_InputEvent(0, K_MOUSE1, 0);\n\t\t\tif (key_dest != key_menu && key_dest != key_menu_grabbed)\n\t\t\t\tMP_InputEvent(1, K_MOUSE1, 0);\n\t\t}\n\t\telse if (wrathios_button_event == 2)\n\t\t\tMP_InputEvent(1, K_MOUSE1, 0);\n\t}\n\tWrathIOSGate5CSetMenuActive(key_dest == key_menu || key_dest == key_menu_grabbed);\n#endif\n#ifdef WRATH_IOS_GATE5\n\t{\n\t\tstatic qboolean wrath_ios_menu_frame_recorded = false;\n\t\tif (!wrath_ios_menu_frame_recorded)\n\t\t{\n\t\t\twrath_ios_menu_frame_recorded = true;\n\t\t\tWrathIOSRuntimeStage(\"Main menu reached\", \"The authentic menu VM completed its first draw.\");\n\t\t}\n\t}\n#endif"
         },
         {
           "old": "\tprog->globals.fp[OFS_PARM0] = (prvm_vec_t) mode;\n\tprog->ExecuteProgram(prog, PRVM_menufunction(m_toggle),\"m_toggle(float mode) required\");",
@@ -38,7 +38,7 @@
         },
         {
           "old": "static void VM_M_getmousepos(prvm_prog_t *prog)\n{\n\tVM_SAFEPARMCOUNT(0,VM_M_getmousepos);\n\n\tif (key_consoleactive || (key_dest != key_menu && key_dest != key_menu_grabbed))\n\t\tVectorSet(PRVM_G_VECTOR(OFS_RETURN), 0, 0, 0);\n\telse if (USE_HW_MOUSE)\n\t\tVectorSet(PRVM_G_VECTOR(OFS_RETURN), in_windowmouse_x * vid_conwidth.integer / vid.width, in_windowmouse_y * vid_conheight.integer / vid.height, 0);\n\telse\n\t\tVectorSet(PRVM_G_VECTOR(OFS_RETURN), in_mouse_x * vid_conwidth.integer / vid.width, in_mouse_y * vid_conheight.integer / vid.height, 0);\n}",
-          "new": "static void VM_M_getmousepos(prvm_prog_t *prog)\n{\n\tVM_SAFEPARMCOUNT(0,VM_M_getmousepos);\n#ifdef WRATH_IOS_GATE5C\n\t{\n\t\tfloat wrathios_x = 0, wrathios_y = 0;\n\t\tif (WrathIOSGate5CPointer(&wrathios_x, &wrathios_y))\n\t\t{\n\t\t\tVectorSet(PRVM_G_VECTOR(OFS_RETURN), wrathios_x, wrathios_y, 0);\n\t\t\treturn;\n\t\t}\n\t}\n#endif\n\tif (key_consoleactive || (key_dest != key_menu && key_dest != key_menu_grabbed))\n\t\tVectorSet(PRVM_G_VECTOR(OFS_RETURN), 0, 0, 0);\n\telse if (USE_HW_MOUSE)\n\t\tVectorSet(PRVM_G_VECTOR(OFS_RETURN), in_windowmouse_x * vid_conwidth.integer / vid.width, in_windowmouse_y * vid_conheight.integer / vid.height, 0);\n\telse\n\t\tVectorSet(PRVM_G_VECTOR(OFS_RETURN), in_mouse_x * vid_conwidth.integer / vid.width, in_mouse_y * vid_conheight.integer / vid.height, 0);\n}"
+          "new": "static void VM_M_getmousepos(prvm_prog_t *prog)\n{\n\tVM_SAFEPARMCOUNT(0,VM_M_getmousepos);\n#ifdef WRATH_IOS_GATE5C\n\t{\n\t\tfloat wrathios_x = 0, wrathios_y = 0;\n\t\tif (WrathIOSGate5CPointer(&wrathios_x, &wrathios_y))\n\t\t{\n\t\t\tVectorSet(PRVM_G_VECTOR(OFS_RETURN), wrathios_x * vid_conwidth.integer, wrathios_y * vid_conheight.integer, 0);\n\t\t\treturn;\n\t\t}\n\t}\n#endif\n\tif (key_consoleactive || (key_dest != key_menu && key_dest != key_menu_grabbed))\n\t\tVectorSet(PRVM_G_VECTOR(OFS_RETURN), 0, 0, 0);\n\telse if (USE_HW_MOUSE)\n\t\tVectorSet(PRVM_G_VECTOR(OFS_RETURN), in_windowmouse_x * vid_conwidth.integer / vid.width, in_windowmouse_y * vid_conheight.integer / vid.height, 0);\n\telse\n\t\tVectorSet(PRVM_G_VECTOR(OFS_RETURN), in_mouse_x * vid_conwidth.integer / vid.width, in_mouse_y * vid_conheight.integer / vid.height, 0);\n}"
         },
         {
           "old": "prvm_builtin_t vm_m_builtins[] = {",
@@ -73,6 +73,22 @@
         {
           "old": "\tif (context == NULL)\n\t{\n\t\tCon_Printf(\"Failed to initialize OpenGL context: %s\\n\", SDL_GetError());\n\t\tVID_Shutdown();\n\t\treturn false;\n\t}\n#endif",
           "new": "\tif (context == NULL)\n\t{\n\t\tCon_Printf(\"Failed to initialize OpenGL context: %s\\n\", SDL_GetError());\n\t\tVID_Shutdown();\n\t\treturn false;\n\t}\n#ifdef WRATH_IOS_GATE5\n\tWrathIOSRuntimeStage(\"GLES context created\", \"OpenGL ES 2 context creation passed.\");\n#endif\n#endif"
+        },
+        {
+          "old": "\tif (vid_touchscreen.integer)\n\t{",
+          "new": "#ifdef WRATH_IOS_GATE5C\n\tif (0) /* UIKit owns touch; do not run generic Quake zones as well. */\n#else\n\tif (vid_touchscreen.integer)\n#endif\n\t{"
+        },
+        {
+          "old": "\tVID_BuildJoyState(&joystate);\n\tVID_ApplyJoyState(&joystate);",
+          "new": "\tVID_BuildJoyState(&joystate);\n\tVID_ApplyJoyState(&joystate);\n#ifdef WRATH_IOS_GATE5C\n\t{\n\t\tfloat yaw, pitch, side, forward;\n\t\tunsigned buttons;\n\t\tWrathIOSTouchFrame(&yaw, &pitch, &side, &forward, &buttons);\n\t\t/* Degrees converted to nominal mouse counts; normal CSQC/camera processing\n\t\t * retains user sensitivity, zoom, filtering and capture semantics. */\n\t\tin_mouse_x += yaw / 0.05f;\n\t\tin_mouse_y += pitch / 0.05f;\n\t\tcl.cmd.sidemove += side * cl_sidespeed.value;\n\t\tcl.cmd.forwardmove += forward * cl_forwardspeed.value;\n\t}\n#endif"
+        },
+        {
+          "old": "\tint unicode;\n\tSDL_Event event;\n\n\tVID_EnableJoystick(true);",
+          "new": "\tint unicode;\n\tSDL_Event event;\n#ifdef WRATH_IOS_GATE5C\n\t{\n\t\tstatic const int keys[] = { K_MOUSE1, K_SPACE, K_MOUSE2, K_ESCAPE };\n\t\tint edge;\n\t\tstatic unsigned native_held = 0;\n\t\tWrathIOSTouchSetMode(!key_consoleactive && (key_dest == key_menu || key_dest == key_menu_grabbed),\n\t\t\t!key_consoleactive && key_dest == key_game && cls.signon == SIGNONS);\n\t\tif (WrathIOSTouchTakeMenuRelease() && MR_InputEvent) MR_InputEvent(1, K_MOUSE1, 0);\n\t\twhile ((edge = WrathIOSTouchNextKey()) != 0)\n\t\t{\n\t\t\tint index = (edge < 0 ? -edge : edge) - 1;\n\t\t\tunsigned mask = 1u << index;\n\t\t\tif (edge > 0 || (native_held & mask)) Key_Event(keys[index], 0, edge > 0);\n\t\t\tif (edge > 0) native_held |= mask; else native_held &= ~mask;\n\t\t}\n\t}\n#endif\n\tVID_EnableJoystick(true);"
+        },
+        {
+          "old": "#ifdef DP_MOBILETOUCH\n\tCvar_SetValueQuick(&vid_touchscreen, 1);\n#endif",
+          "new": "#ifdef WRATH_IOS_GATE5C\n\tCvar_SetValueQuick(&vid_touchscreen, 0);\n#elif defined(DP_MOBILETOUCH)\n\tCvar_SetValueQuick(&vid_touchscreen, 1);\n#endif"
         }
       ]
     },

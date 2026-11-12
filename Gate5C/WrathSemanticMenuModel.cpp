@@ -32,6 +32,12 @@ std::optional<Entry> HitTest(const Snapshot &snapshot, Point point, double hitSl
 }
 
 void ActivationMachine::Begin(int menuIdentifier, int entryIdentifier, Point pointer) {
+    // Once down has been delivered, preserve its pointer and matching up.
+    // UIKit can deliver another tap before the next engine draw/frame.
+    // Replacing the transaction here would strand K_MOUSE1 in its down state.
+    if (stage_ == ClickStage::downSent) {
+        return;
+    }
     menuIdentifier_ = menuIdentifier;
     entryIdentifier_ = entryIdentifier;
     pointer_ = pointer;

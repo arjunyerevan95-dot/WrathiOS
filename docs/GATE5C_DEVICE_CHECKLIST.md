@@ -4,7 +4,7 @@ Install the Gate 5C IPA over the current Gate 5A app. Do not uninstall and do
 not reimport licensed data.
 
 1. Confirm the launcher reads `GATE 5C · SEMANTIC MENU TOUCH` and
-   `0.0.11 (11)`.
+   `0.0.12 (12)`.
 2. Confirm existing imported data is detected, then tap `Launch WRATH`.
 3. Confirm the authentic menu still animates and authentic audio is audible.
 4. Tap Options directly. Confirm Options opens without locating or moving the

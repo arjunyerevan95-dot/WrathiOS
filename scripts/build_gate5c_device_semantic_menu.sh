@@ -54,6 +54,11 @@ xcodebuild \
     exit 1
 }
 
+# Preserve the compiled app if a later audit/package step fails; avoid recompiling
+# only to recover identical bytes. This contains no licensed game data.
+mkdir -p "$ARTIFACT_DIR/recovery"
+ditto "$APP_BUNDLE" "$ARTIFACT_DIR/recovery/WrathiOSGate5C.app"
+
 file "$BINARY" | tee "$ARTIFACT_DIR/file.txt"
 lipo -info "$BINARY" | tee "$ARTIFACT_DIR/architecture.txt"
 otool -L "$BINARY" | tee "$ARTIFACT_DIR/dynamic-dependencies.txt"
@@ -167,7 +172,9 @@ launch_storyboard="$(/usr/libexec/PlistBuddy -c 'Print :UILaunchStoryboardName' 
     echo "error: unexpected Gate 5 bundle identifier: $bundle_id" >&2
     exit 1
 }
-[[ "$short_version" == '0.0.13' && "$build_version" == '12' ]] || {
+expected_short_version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$ROOT_DIR/App/Gate5CInfo.plist")"
+expected_build_version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$ROOT_DIR/App/Gate5CInfo.plist")"
+[[ "$short_version" == "$expected_short_version" && "$build_version" == "$expected_build_version" ]] || {
     echo "error: unexpected Gate 5 version: $short_version ($build_version)" >&2
     exit 1
 }

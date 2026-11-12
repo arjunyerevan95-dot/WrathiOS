@@ -26,3 +26,7 @@ for label,rawdown,rawup in re.findall(r'\{"([^"\\]*)","((?:\\.|[^"\\])*)","((?:\
     elif down:covered.add(down)
 assert not required-covered, 'unreachable game controls: '+str(required-covered)
 print(f'Control contract passed: {len(required)} actual WRATH bindings covered; real menu handler, gameplay mode and profile keyboard hooks verified')
+
+pack=(r/"scripts/build_gate5c_device_semantic_menu.sh").read_text()
+assert '"$build_version" == "$expected_build_version"' in pack
+assert '"$short_version" == "$expected_short_version"' in pack

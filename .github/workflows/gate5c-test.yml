@@ -43,20 +43,24 @@ jobs:
       - uses: actions/checkout@v4
       - name: Fetch pinned public engine and dependencies
         run: bash scripts/fetch_upstream.sh
+      - name: Install project generator
+        run: brew install xcodegen
+      - name: Test real UIKit SDL keyboard and controls before device compilation
+        run: bash scripts/test_input_simulator.sh
       - name: Build arm64 dependencies
         run: |
           bash scripts/build_gate2_audio_deps.sh
           bash scripts/build_gate2_sdl.sh
           bash scripts/build_gate2_freetype.sh
-      - name: Install project generator
-        run: brew install xcodegen
       - name: Build and audit only the current Gate 5C candidate
         run: bash scripts/build_gate5c_device_semantic_menu.sh
       - name: Preserve unsigned IPA and audit evidence
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: gate5c-v13-test-ipa
-          path: Artifacts/gate5c-semantic-menu
+          name: gate5c-v14-test-ipa
+          path: |
+            Artifacts/gate5c-semantic-menu
+            Artifacts/input-integration
           if-no-files-found: error
           retention-days: 30

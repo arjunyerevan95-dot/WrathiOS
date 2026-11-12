@@ -2,6 +2,7 @@
 #import <UIKit/UIKit.h>
 #import <CoreMotion/CoreMotion.h>
 #import <QuartzCore/QuartzCore.h>
+#import <SDL.h>
 #include "WrathTouchMath.hpp"
 #include "WrathTouchActions.hpp"
 #include <deque>
@@ -24,7 +25,7 @@ void ResetLocked(State &s){s.pointer.reset();s.pad.reset();s.menuPad=false;s.nav
 constexpr NSInteger tag=0x57524335;
 }
 
-@interface WrathSemanticTouchSurface : UIView <UIKeyInput> {
+@interface WrathSemanticTouchSurface : UIView {
  NSMutableDictionary<NSValue *,NSNumber *> *_owners;
  NSMutableDictionary<NSValue *,NSValue *> *_last;
  CGPoint _moveOrigin,_navOrigin;
@@ -40,14 +41,17 @@ constexpr NSInteger tag=0x57524335;
 }
 - (void)refresh;
 - (void)reset;
+- (CGRect)buttonRect:(int)b;
+- (void)requestKeyboard:(BOOL)show;
 @end
 @implementation WrathSemanticTouchSurface
 - (instancetype)initWithFrame:(CGRect)frame {
  if(!(self=[super initWithFrame:frame]))return nil;
- NSLog(@"WRATHIOS_NATIVE_TOUCH_V13");
+ NSLog(@"WRATHIOS_NATIVE_TOUCH_V14");
  [NSUserDefaults.standardUserDefaults registerDefaults:@{@"WrathTouchScale":@1,@"WrathTouchOpacity":@.5,@"WrathTouchSwipe":@.15,@"WrathTouchGyro":@1}];
  _controlScale=[NSUserDefaults.standardUserDefaults doubleForKey:@"WrathTouchScale"];_opacity=[NSUserDefaults.standardUserDefaults doubleForKey:@"WrathTouchOpacity"];
  _swipeGain=[NSUserDefaults.standardUserDefaults doubleForKey:@"WrathTouchSwipe"];_gyroGain=[NSUserDefaults.standardUserDefaults doubleForKey:@"WrathTouchGyro"];
+ self.accessibilityIdentifier=@"WrathNativeControls";
  self.backgroundColor=UIColor.clearColor;self.multipleTouchEnabled=YES;
  self.autoresizingMask=UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleHeight;
  _owners=[NSMutableDictionary new];_last=[NSMutableDictionary new];_motion=[CMMotionManager new];
@@ -59,24 +63,19 @@ constexpr NSInteger tag=0x57524335;
 - (void)dealloc {[_motion stopDeviceMotionUpdates];[NSNotificationCenter.defaultCenter removeObserver:self];}
 - (void)reset {
  [_owners removeAllObjects];[_last removeAllObjects];_sampleTime=0;_tray=0;_settingsPanel.hidden=YES;
- [self resignFirstResponder];_textFocused=NO;
+ [self requestKeyboard:NO];_textFocused=NO;
  auto &s=S();std::scoped_lock lock(s.mutex);ResetLocked(s);
 }
 - (void)inactive:(NSNotification *)n {(void)n;[self reset];{auto &s=S();std::scoped_lock lock(s.mutex);s.suspended=true;}[_motion stopDeviceMotionUpdates];}
 - (void)active:(NSNotification *)n {(void)n;[self reset];{auto &s=S();std::scoped_lock lock(s.mutex);s.suspended=false;}[self refresh];}
-- (BOOL)canBecomeFirstResponder {return YES;}
-- (BOOL)hasText {return YES;}
-- (UIKeyboardType)keyboardType {return UIKeyboardTypeASCIICapable;}
-- (UITextAutocorrectionType)autocorrectionType {return UITextAutocorrectionTypeNo;}
-- (UITextAutocapitalizationType)autocapitalizationType {return UITextAutocapitalizationTypeNone;}
-- (UIReturnKeyType)returnKeyType {return UIReturnKeyDone;}
-- (void)insertText:(NSString *)text {
- for(NSUInteger i=0;i<text.length;i++){unichar c=[text characterAtIndex:i];
-  if(c=='\n'||c=='\r'){[self resignFirstResponder];continue;}
-  if(c>0&&c<128){auto &s=S();std::scoped_lock lock(s.mutex);s.text.push_back(c);}
- }
+- (void)requestKeyboard:(BOOL)show {
+ SDL_Window *window=SDL_GetKeyboardFocus();
+ if(show){
+  if(SDL_IsTextInputActive()&&window&&!SDL_IsScreenKeyboardShown(window))SDL_StopTextInput();
+  SDL_StartTextInput();
+ }else SDL_StopTextInput();
+ NSLog(@"WRATH_INPUT keyboard requested=%d active=%d shown=%d",show,SDL_IsTextInputActive(),window?SDL_IsScreenKeyboardShown(window):0);
 }
-- (void)deleteBackward {auto &s=S();std::scoped_lock lock(s.mutex);s.text.push_back(8);}
 - (void)refresh {
  bool game,enabled,captured;{auto &s=S();std::scoped_lock lock(s.mutex);game=s.game&&!s.suspended;captured=s.captured;enabled=(s.menu||s.game)&&!s.suspended;}
  UIInterfaceOrientation orientation=self.window.windowScene.interfaceOrientation;
@@ -84,10 +83,19 @@ constexpr NSInteger tag=0x57524335;
  if(_lastMode!=mode||(_orientation!=UIInterfaceOrientationUnknown&&orientation!=_orientation))[self reset];
  _lastMode=mode;_wasGame=game;_orientation=orientation;_captured=captured;
  self.hidden=!enabled;self.userInteractionEnabled=enabled;
- bool textWanted;{auto &s=S();std::scoped_lock lock(s.mutex);textWanted=s.menu&&s.textFocus&&!s.suspended;}
- if(textWanted&&!_textFocused)[self becomeFirstResponder];
- if(!textWanted&&_textFocused)[self resignFirstResponder];
+ bool textWanted;{auto &s=S();std::scoped_lock lock(s.mutex);textWanted=s.menu&&s.textFocus&&!s.suspended&&(!_settingsPanel||_settingsPanel.hidden);}
+ if(textWanted&&!_textFocused)[self requestKeyboard:YES];
+ if(!textWanted&&_textFocused)[self requestKeyboard:NO];
  _textFocused=textWanted;
+ self.accessibilityLabel=game?@"WRATH gameplay controls: fire alt jump crouch use weapons radial settings":@"WRATH menu controls: cursor accept back keyboard";
+ static double lastDiagnostic=0;
+ double now=CACurrentMediaTime();
+ if(now-lastDiagnostic>1){
+  lastDiagnostic=now;SDL_Window *w=SDL_GetKeyboardFocus();
+  NSDictionary *status=@{@"version":NSBundle.mainBundle.infoDictionary[@"CFBundleVersion"]?:@"test",@"mode":game?@"gameplay":@"menu",@"keyboardRequested":@(textWanted),@"keyboardActive":@(SDL_IsTextInputActive()),@"keyboardShown":@(w?SDL_IsScreenKeyboardShown(w):0),@"captured":@(captured)};
+  NSURL *directory=[NSFileManager.defaultManager URLsForDirectory:NSDocumentDirectory inDomains:NSUserDomainMask].firstObject;
+  [[NSJSONSerialization dataWithJSONObject:status options:0 error:nil] writeToURL:[directory URLByAppendingPathComponent:@"WrathInputDiagnostics.json"] atomically:YES];
+ }
  if(!game||captured||_gyroGain<=0||(_settingsPanel&&!_settingsPanel.hidden)){[_motion stopDeviceMotionUpdates];_sampleTime=0;}
  else if(!_motion.deviceMotionActive&&_motion.deviceMotionAvailable){
   __weak WrathSemanticTouchSurface *weakSelf=self;
@@ -103,6 +111,12 @@ constexpr NSInteger tag=0x57524335;
    if(s.game&&!s.suspended&&!s.captured){s.lookX+=rate.x*57.2957795*dt*v->_gyroGain;s.lookY+=rate.y*57.2957795*dt*v->_gyroGain;}
   }];
  }
+ NSMutableArray *elements=[NSMutableArray new];
+ for(int i=0;i<wrathios::touch::ActionCount;i++){CGRect rect=[self buttonRect:i];if(CGRectIsNull(rect))continue;
+  UIAccessibilityElement *e=[[UIAccessibilityElement alloc]initWithAccessibilityContainer:self];e.accessibilityLabel=[NSString stringWithUTF8String:wrathios::touch::Actions[i].label];e.accessibilityIdentifier=[@"WrathAction_" stringByAppendingString:e.accessibilityLabel];e.accessibilityTraits=UIAccessibilityTraitButton;e.accessibilityFrameInContainerSpace=rect;[elements addObject:e];
+ }
+ if(!game){UIAccessibilityElement *e=[[UIAccessibilityElement alloc]initWithAccessibilityContainer:self];e.accessibilityLabel=@"Keyboard";e.accessibilityIdentifier=@"WrathKeyboardButton";e.accessibilityTraits=UIAccessibilityTraitButton;e.accessibilityFrameInContainerSpace=CGRectMake(self.bounds.size.width*.5-62,10,125,42);[elements addObject:e];}
+ self.accessibilityElements=(_settingsPanel&&!_settingsPanel.hidden)?@[_settingsPanel]:elements;
  [self setNeedsDisplay];
 }
 - (void)settingChanged:(UISlider *)slider {
@@ -147,23 +161,16 @@ constexpr NSInteger tag=0x57524335;
  (void)rect;
  if(!_wasGame){
   NSDictionary *a=@{NSFontAttributeName:[UIFont boldSystemFontOfSize:13],NSForegroundColorAttributeName:UIColor.whiteColor,NSBackgroundColorAttributeName:[UIColor colorWithWhite:0 alpha:.5]};
-  [@" BACK " drawAtPoint:CGPointMake(16,16) withAttributes:a];
-  [@" KEYBOARD " drawAtPoint:CGPointMake(self.bounds.size.width-115,16) withAttributes:a];
-  CGFloat w=self.bounds.size.width,h=self.bounds.size.height;
-  [[UIColor colorWithWhite:0 alpha:.45]setFill];[[UIBezierPath bezierPathWithOvalInRect:CGRectMake(30,h-160,120,120)]fill];
-  [[UIBezierPath bezierPathWithRoundedRect:CGRectMake(w-105,h-115,90,75) cornerRadius:20]fill];
-  [[UIBezierPath bezierPathWithRoundedRect:CGRectMake(w-200,h-110,80,65) cornerRadius:20]fill];
-  [@"CURSOR" drawAtPoint:CGPointMake(60,h-110) withAttributes:a];
-  [@"A ACCEPT" drawAtPoint:CGPointMake(w-100,h-85) withAttributes:a];
-  [@"B BACK" drawAtPoint:CGPointMake(w-195,h-85) withAttributes:a];return;
+  [@" KEYBOARD " drawAtPoint:CGPointMake(self.bounds.size.width*.5-55,18) withAttributes:a];
+  [@"MENU: FIRE / JUMP / USE = ACCEPT; ALT / CROUCH = BACK" drawAtPoint:CGPointMake(100,self.bounds.size.height-24) withAttributes:@{NSFontAttributeName:[UIFont systemFontOfSize:10],NSForegroundColorAttributeName:UIColor.whiteColor}];
  }
  for(int i=0;i<wrathios::touch::ActionCount;i++){
   CGRect r=[self buttonRect:i];if(CGRectIsNull(r))continue;[[UIColor colorWithWhite:0 alpha:_opacity] setFill];[[UIBezierPath bezierPathWithRoundedRect:r cornerRadius:16] fill];
-  [[NSString stringWithUTF8String:(_captured&&i==0)?"ACCEPT":(_tray==1&&i==12)?"MORE":wrathios::touch::Actions[i].label] drawInRect:CGRectInset(r,5,(r.size.height-15)/2) withAttributes:@{NSFontAttributeName:[UIFont boldSystemFontOfSize:i>=7?10:12],NSForegroundColorAttributeName:UIColor.whiteColor}];
+  [[NSString stringWithUTF8String:((!_wasGame||_captured)&&i==0)?"ACCEPT":(!_wasGame&&i==2)?"BACK":(_tray==1&&i==12)?"MORE":wrathios::touch::Actions[i].label] drawInRect:CGRectInset(r,5,(r.size.height-15)/2) withAttributes:@{NSFontAttributeName:[UIFont boldSystemFontOfSize:i>=7?10:12],NSForegroundColorAttributeName:UIColor.whiteColor}];
  }
  CGPoint center=[_owners.allValues containsObject:@100]?_moveOrigin:CGPointMake(90,self.bounds.size.height-100);
  [[UIColor colorWithWhite:1 alpha:.3]setStroke];UIBezierPath *ring=[UIBezierPath bezierPathWithOvalInRect:CGRectMake(center.x-54,center.y-54,108,108)];ring.lineWidth=2;[ring stroke];
- [@"MOVE" drawAtPoint:CGPointMake(65,self.bounds.size.height-95) withAttributes:@{NSFontAttributeName:[UIFont systemFontOfSize:12],NSForegroundColorAttributeName:UIColor.whiteColor}];
+ [(_wasGame?@"MOVE":@"CURSOR") drawAtPoint:CGPointMake(65,self.bounds.size.height-95) withAttributes:@{NSFontAttributeName:[UIFont systemFontOfSize:12],NSForegroundColorAttributeName:UIColor.whiteColor}];
 }
 - (void)menuPoint:(CGPoint)p button:(int)button {
  auto &s=S();std::scoped_lock lock(s.mutex);
@@ -177,20 +184,21 @@ constexpr NSInteger tag=0x57524335;
   NSValue *key=[NSValue valueWithNonretainedObject:t];CGPoint p=[t locationInView:self];
   int owner=-1;
   if(menu){
-   if(p.y<54&&p.x>self.bounds.size.width-125){if(self.isFirstResponder)[self resignFirstResponder];else [self becomeFirstResponder];continue;}
-   if(p.y<54&&p.x<85){auto &s=S();std::scoped_lock lock(s.mutex);s.keys.push_back(4);s.keys.push_back(-4);continue;}
    CGFloat w=self.bounds.size.width,h=self.bounds.size.height;
-   if(CGRectContainsPoint(CGRectMake(20,h-170,140,140),p)){
-    if([_owners.allValues containsObject:@103])continue;owner=103;_navOrigin=p;
-    auto &s=S();std::scoped_lock lock(s.mutex);s.menuPad=true;s.pointer.reset();
-   }else if(CGRectContainsPoint(CGRectMake(w-110,h-120,100,85),p)){
+   if(CGRectContainsPoint(CGRectMake(w*.5-62,10,125,42),p)){SDL_Window *window=SDL_GetKeyboardFocus();[self requestKeyboard:!(window&&SDL_IsScreenKeyboardShown(window))];continue;}
+   int button=-1;for(int b=wrathios::touch::ActionCount-1;b>=0;b--)if(CGRectContainsPoint([self buttonRect:b],p)){button=b;break;}
+   if(button==31){[self showSettings];continue;}
+   if(button==6){_tray=_tray?0:1;[self setNeedsDisplay];continue;}
+   if(_tray==1&&button==12){_tray=2;[self setNeedsDisplay];continue;}
+   if(button==0||button==1||button==5){
     if([_owners.allValues containsObject:@104])continue;owner=104;
     auto &s=S();std::scoped_lock lock(s.mutex);s.menuPad=true;s.pointer.reset();s.pad.input(0,0,1,CACurrentMediaTime());
-   }else if(CGRectContainsPoint(CGRectMake(w-205,h-115,90,75),p)){
-    auto &s=S();std::scoped_lock lock(s.mutex);s.keys.push_back(4);s.keys.push_back(-4);continue;
-   }else{
-    if([_owners.allValues containsObject:@102])continue;owner=102;[self menuPoint:p button:1];
-   }
+   }else if(button==2||button==3||button==4){auto &s=S();std::scoped_lock lock(s.mutex);s.keys.push_back(4);s.keys.push_back(-4);continue;
+   }else if(button>=0){continue;
+   }else if(CGRectContainsPoint(CGRectMake(20,h-170,140,140),p)){
+    if([_owners.allValues containsObject:@103])continue;owner=103;_navOrigin=p;
+    auto &s=S();std::scoped_lock lock(s.mutex);s.menuPad=true;s.pointer.reset();
+   }else{if([_owners.allValues containsObject:@102])continue;owner=102;[self menuPoint:p button:1];}
   }
   else {
    for(int b=wrathios::touch::ActionCount-1;b>=0;b--)if(CGRectContainsPoint([self buttonRect:b],p)){owner=b;break;}

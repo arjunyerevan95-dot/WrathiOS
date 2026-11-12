@@ -1,0 +1,98 @@
+name: WrathInputHarness
+options:
+  bundleIdPrefix: com.arjukstudios
+  createIntermediateGroups: true
+  deploymentTarget:
+    iOS: '16.3'
+settings:
+  base:
+    CLANG_C_LANGUAGE_STANDARD: gnu17
+    CLANG_CXX_LANGUAGE_STANDARD: gnu++20
+    CLANG_ENABLE_OBJC_ARC: true
+    ENABLE_BITCODE: false
+    IPHONEOS_DEPLOYMENT_TARGET: '16.3'
+    TARGETED_DEVICE_FAMILY: 1,2
+targets:
+  WrathInputHarness:
+    type: application
+    platform: iOS
+    deploymentTarget: '16.3'
+    sources:
+    - path: App/LaunchScreen.storyboard
+    - path: Tests/InputHarness/main.mm
+    - path: Gate5C
+      excludes:
+      - Resources
+    - path: Gate5C/Resources
+      buildPhase: resources
+    dependencies:
+    - sdk: UIKit.framework
+    - sdk: Foundation.framework
+    - sdk: UniformTypeIdentifiers.framework
+    - sdk: CoreGraphics.framework
+    - sdk: QuartzCore.framework
+    - sdk: OpenGLES.framework
+    - sdk: AudioToolbox.framework
+    - sdk: AVFoundation.framework
+    - sdk: CoreAudio.framework
+    - sdk: CoreMotion.framework
+    - sdk: CoreBluetooth.framework
+    - sdk: GameController.framework
+    - sdk: Metal.framework
+    - sdk: CoreHaptics.framework
+    - sdk: Security.framework
+    - sdk: SystemConfiguration.framework
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.arjukstudios.wrath.inputharness
+        PRODUCT_NAME: WrathInputHarness
+        INFOPLIST_FILE: Tests/InputHarness/Info.plist
+        GENERATE_INFOPLIST_FILE: 'NO'
+        MARKETING_VERSION: 0.0.14
+        CURRENT_PROJECT_VERSION: 14
+        CODE_SIGN_STYLE: Automatic
+        SDKROOT: iphonesimulator
+        SUPPORTED_PLATFORMS: iphonesimulator
+        ARCHS: $(ARCHS_STANDARD)
+        ONLY_ACTIVE_ARCH: false
+        ENABLE_DEBUG_DYLIB: false
+        HEADER_SEARCH_PATHS:
+        - $(inherited)
+        - $(SRCROOT)/Gate5C
+        - $(SRCROOT)/Derived/deps/iphonesimulator/include/SDL2
+        LIBRARY_SEARCH_PATHS:
+        - $(inherited)
+        - $(SRCROOT)/Derived/deps/iphonesimulator/lib
+        GCC_PREPROCESSOR_DEFINITIONS:
+        - $(inherited)
+        - SDL_MAIN_HANDLED=1
+        OTHER_LDFLAGS:
+        - $(inherited)
+        - -ObjC
+        - -force_load
+        - $(SRCROOT)/Derived/deps/iphonesimulator/lib/libSDL2.a
+    scheme:
+      gatherCoverageData: false
+  InputUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+    - Tests/InputHarness/InputUITests.swift
+    dependencies:
+    - target: WrathInputHarness
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.arjukstudios.wrath.inputuitests
+        GENERATE_INFOPLIST_FILE: 'YES'
+        SWIFT_VERSION: '5.0'
+        TEST_TARGET_NAME: WrathInputHarness
+schemes:
+  WrathInputHarness:
+    build:
+      targets:
+        WrathInputHarness: all
+        InputUITests:
+        - test
+    test:
+      targets:
+      - InputUITests

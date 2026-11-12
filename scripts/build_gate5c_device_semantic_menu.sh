@@ -9,7 +9,7 @@ PROJECT="$ROOT_DIR/WrathiOSGate5C.xcodeproj"
 APP_BUNDLE="$DERIVED_DATA/Build/Products/Debug-iphoneos/WrathiOSGate5C.app"
 BINARY="$APP_BUNDLE/WrathiOSGate5C"
 PACKAGE_ROOT="$ROOT_DIR/Derived/gate5c-package"
-IPA="$ARTIFACT_DIR/WrathiOSGate5C-v14-unsigned.ipa"
+IPA="$ARTIFACT_DIR/WrathiOSGate5C-v15-unsigned.ipa"
 
 rm -rf "$ARTIFACT_DIR" "$DERIVED_DATA" "$PROJECT" "$PACKAGE_ROOT"
 mkdir -p "$ARTIFACT_DIR"
@@ -127,7 +127,7 @@ for title in 'Launch WRATH' 'Choose WRATH Folder' 'Remove Imported Data'; do
 done
 for marker in \
     'WRATHIOS_GATE5C_SEMANTIC_MENU_TOUCH_V1' \
-    'WRATHIOS_NATIVE_TOUCH_V14'; do
+    'WRATHIOS_NATIVE_TOUCH_V15'; do
     grep -Fq "$marker" "$ARTIFACT_DIR/strings.txt" || {
         echo "error: Gate 5C binary is missing semantic adapter marker: $marker" >&2
         exit 1
@@ -142,7 +142,7 @@ grep -Fq 'CMMotionManager' "$ARTIFACT_DIR/strings.txt" || {
     exit 1
 }
 printf '%s\n' \
-    'v14: native absolute menu pointer, gameplay relative look, move/fire/jump and orientation-aware gyro.' \
+    'v15: native absolute menu pointer, gameplay relative look, move/fire/jump and orientation-aware gyro.' \
     'SDL accelerometer virtual joystick disabled before initialization; physical controllers retained.' \
     'Physical quality remains device-unverified.' \
     > "$ARTIFACT_DIR/native-input-audit.txt"

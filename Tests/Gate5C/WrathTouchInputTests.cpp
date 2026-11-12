@@ -5,7 +5,9 @@
 #include <iostream>
 using namespace wrathios::touch;
 int main(){
- auto l=Gyro(1,2,false),r=Gyro(1,2,true);assert(l.x==-1&&l.y==2&&r.x==1&&r.y==-2);
+ auto l=Gyro(1,2,false),r=Gyro(1,2,true);assert(l.x==1&&l.y==-2&&r.x==-1&&r.y==2);
+ auto yaw=Gyro(1,0,false),pitch=Gyro(0,1,false);assert(yaw.x==1&&yaw.y==0&&pitch.x==0&&pitch.y==-1);
+ auto zero=Gyro(0,0,true);assert(zero.x==0&&zero.y==0);
  assert(Stick({0,0}).x==0);assert(Stick({2,2}).y==0);
  auto stick=Stick({54,-54});assert(stick.x>0&&stick.y>0&&std::hypot(stick.x,stick.y)<=1.00001);
  assert(SafeDelta(-1)==0&&SafeDelta(1)==.05);

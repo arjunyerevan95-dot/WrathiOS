@@ -12,7 +12,7 @@ final class InputUITests: XCTestCase {
         XCUIDevice.shared.orientation = .landscapeLeft
         app.launch()
         XCTAssertTrue(app.buttons["WrathKeyboardButton"].waitForExistence(timeout: 10))
-        for name in ["FIRE", "ALT", "JUMP", "CROUCH", "USE", "NEXT WEP", "PREV WEP", "ACTIONS", "SETTINGS"] {
+        for name in ["FIRE", "ALT", "JUMP", "CROUCH", "USE", "NEXT WEP",  "USE ART","USE ART", "ACTIONS", "SETTINGS"] {
             XCTAssertTrue(app.buttons["WrathAction_" + name].exists, "Menu cluster: " + name)
         }
         app.buttons["WrathAction_FIRE"].tap()
@@ -35,9 +35,13 @@ final class InputUITests: XCTestCase {
     func testGameplayClusterSurvivesRepeatedFrames() {
         let app = XCUIApplication(); app.launchArguments = ["--gameplay"]
         XCUIDevice.shared.orientation = .landscapeLeft; app.launch()
-        for name in ["FIRE","ALT","JUMP","CROUCH","USE","NEXT WEP","PREV WEP","ACTIONS","SETTINGS"] {
+        for name in ["FIRE","ALT","JUMP","CROUCH","USE","NEXT WEP","USE ART","ACTIONS","SETTINGS"] {
             XCTAssertTrue(app.buttons["WrathAction_" + name].waitForExistence(timeout: 10), name)
         }
+        let fire = app.buttons["WrathAction_FIRE"].frame
+        let use = app.buttons["WrathAction_USE"].frame
+        XCTAssertLessThan(use.maxY + 8, fire.minY, "Use must sit above Fire with spacing")
+        XCTAssertGreaterThan(fire.width, use.width, "Fire must remain the primary target")
         sleep(2)
         XCTAssertTrue(app.buttons["WrathAction_FIRE"].exists)
         app.buttons["WrathAction_FIRE"].tap()

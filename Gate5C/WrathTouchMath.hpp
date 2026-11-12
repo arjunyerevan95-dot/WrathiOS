@@ -5,7 +5,7 @@ namespace wrathios::touch {
 struct Vector { double x=0,y=0; };
 inline Vector Gyro(double x,double y,bool landscapeRight) {
  const double sign=landscapeRight?-1:1;
- return {-x*sign,y*sign}; // screen-horizontal yaw, screen-vertical pitch, radians/sec
+ return {x*sign,-y*sign}; // Mouse-space delta signs; v14 device feedback confirms both axes inverted.
 }
 inline Vector Stick(Vector delta,double radius=54) {
  double length=std::hypot(delta.x,delta.y);

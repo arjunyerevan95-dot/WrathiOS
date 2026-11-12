@@ -36,6 +36,7 @@ constexpr NSInteger tag=0x57524335;
  int _lastMode;
  BOOL _textFocused;
  int _tray; BOOL _captured;
+ NSInteger _radialSelection; NSTimeInterval _artifactStart; BOOL _artifactHolding; int _radialHeld;
  CGFloat _controlScale,_opacity,_swipeGain,_gyroGain;
  UIView *_settingsPanel;
  NSMutableDictionary<NSNumber *,UIAccessibilityElement *> *_accessibleButtons;
@@ -49,7 +50,7 @@ constexpr NSInteger tag=0x57524335;
 @implementation WrathSemanticTouchSurface
 - (instancetype)initWithFrame:(CGRect)frame {
  if(!(self=[super initWithFrame:frame]))return nil;
- NSLog(@"WRATHIOS_NATIVE_TOUCH_V14");
+ NSLog(@"WRATHIOS_NATIVE_TOUCH_V15");
  [NSUserDefaults.standardUserDefaults registerDefaults:@{@"WrathTouchScale":@1,@"WrathTouchOpacity":@.5,@"WrathTouchSwipe":@.15,@"WrathTouchGyro":@1}];
  _controlScale=[NSUserDefaults.standardUserDefaults doubleForKey:@"WrathTouchScale"];_opacity=[NSUserDefaults.standardUserDefaults doubleForKey:@"WrathTouchOpacity"];
  _swipeGain=[NSUserDefaults.standardUserDefaults doubleForKey:@"WrathTouchSwipe"];_gyroGain=[NSUserDefaults.standardUserDefaults doubleForKey:@"WrathTouchGyro"];
@@ -65,7 +66,7 @@ constexpr NSInteger tag=0x57524335;
 }
 - (void)dealloc {[_motion stopDeviceMotionUpdates];[NSNotificationCenter.defaultCenter removeObserver:self];}
 - (void)reset {
- [_owners removeAllObjects];[_last removeAllObjects];_sampleTime=0;_tray=0;_settingsPanel.hidden=YES;
+ [_owners removeAllObjects];[_last removeAllObjects];_sampleTime=0;_tray=0;_artifactHolding=NO;_radialHeld=0;_settingsPanel.hidden=YES;
  [self requestKeyboard:NO];_textFocused=NO;
  auto &s=S();std::scoped_lock lock(s.mutex);ResetLocked(s);
 }
@@ -121,6 +122,7 @@ constexpr NSInteger tag=0x57524335;
  }
  if(!game){if(!_accessibleKeyboard)_accessibleKeyboard=[[UIAccessibilityElement alloc]initWithAccessibilityContainer:self];UIAccessibilityElement *e=_accessibleKeyboard;e.accessibilityLabel=@"Keyboard";e.accessibilityIdentifier=@"WrathKeyboardButton";e.accessibilityTraits=UIAccessibilityTraitButton;e.accessibilityFrameInContainerSpace=CGRectMake(self.bounds.size.width*.5-62,10,125,42);[elements addObject:e];}
  self.accessibilityElements=(_settingsPanel&&!_settingsPanel.hidden)?@[_settingsPanel]:elements;
+ if([_owners.allValues containsObject:@201]&&!_artifactHolding&&NSProcessInfo.processInfo.systemUptime-_artifactStart>.3){_artifactHolding=YES;auto &s=S();std::scoped_lock lock(s.mutex);s.keys.push_back(12);}
  [self setNeedsDisplay];
 }
 - (void)settingChanged:(UISlider *)slider {
@@ -147,19 +149,42 @@ constexpr NSInteger tag=0x57524335;
 }
 - (CGRect)buttonRect:(int)b {
  CGFloat w=self.bounds.size.width,h=self.bounds.size.height;
- CGFloat size=46*_controlScale,gap=6,step=size+gap,right=MAX(12,self.safeAreaInsets.right),top=MAX(10,self.safeAreaInsets.top);
- // Compact upper-right cluster; lower-right remains a true unoccupied look pad.
- const int cluster[]={2,0,1,5,4,21,6,22,31};
- for(int i=0;i<9;i++)if(b==cluster[i])return CGRectMake(w-right-3*step+(i%3)*step,top+(i/3)*step,size,size);
- if(b==3)return CGRectMake(MAX(16,self.safeAreaInsets.left),16,62,36);
+ CGFloat left=MAX(16,self.safeAreaInsets.left),right=MAX(16,self.safeAreaInsets.right);
+ CGFloat usable=w-left-right, scale=MIN(_controlScale,1.3);
+ // Approved combat hierarchy. USE sits above FIRE with a clear gap.
+ auto rect=[&](CGFloat x,CGFloat y,CGFloat diameter){CGFloat d=diameter*scale;return CGRectMake(left+x*usable-d/2,y*h-d/2,d,d);};
+ if(b==0)return rect(.83,.49,70);
+ if(b==5)return rect(.83,.25,44);
+ if(b==2)return rect(.71,.34,50);
+ if(b==1)return rect(.95,.28,46);
+ if(b==4)return rect(.95,.52,46);
+ if(b==26&&_tray!=3)return rect(.60,.24,42);
+ if(b==3)return CGRectMake(left,12,62,34);
+ if(b==21)return CGRectMake(w-right-192,12,92,34);
+ if(b==6)return CGRectMake(w-right-94,12,92,34);
+ if(b==31)return CGRectMake(left+72,12,42,34);
  if(!_tray)return CGRectNull;
- if(_tray==1){
-  const int radial[]={11,28,26,25,27,29,12,7};
-  for(int i=0;i<8;i++)if(b==radial[i]){double a=-M_PI_2+i*M_PI/4;return CGRectMake(w*.53+cos(a)*115-43,h*.52+sin(a)*95-24,86,48);}
-  return CGRectNull;
- }
- CGFloat cell=(w-300)/6;
- return b>=7?CGRectMake(112+((b-7)%6)*cell,64+((b-7)/6)*48,cell-5,43):CGRectNull;
+ static const int weapons[]={12,13,14,15,16,17,18,19,20};
+ static const int utilities[]={28,11,27,30,8,29,9,10};
+ static const int artifacts[]={24,26,25};
+ const int *items=_tray==1?utilities:_tray==2?weapons:artifacts;
+ int count=_tray==1?8:_tray==2?9:3;
+ for(int i=0;i<count;i++)if(b==items[i]){double a=-M_PI_2+i*2*M_PI/count;return CGRectMake(w*.48+cos(a)*MIN(140.,w*.22)-42,h*.52+sin(a)*MIN(100.,h*.28)-22,84,44);}
+ return CGRectNull;
+}
+- (void)sendAction:(int)action {
+ if(action<0||action>=wrathios::touch::ActionCount)return;
+ auto &s=S();std::scoped_lock lock(s.mutex);s.keys.push_back(action+1);s.keys.push_back(-(action+1));
+}
+- (int)radialAt:(CGPoint)p {
+ if(!_tray)return -1;
+ static const int utilities[]={28,11,27,30,8,29,9,10};
+ static const int weapons[]={12,13,14,15,16,17,18,19,20};
+ static const int artifacts[]={24,26,25};
+ const int *items=_tray==1?utilities:_tray==2?weapons:artifacts;
+ int count=_tray==1?8:_tray==2?9:3;
+ for(int i=0;i<count;i++)if(CGRectContainsPoint([self buttonRect:items[i]],p))return items[i];
+ return -1;
 }
 - (void)drawRect:(CGRect)rect {
  (void)rect;
@@ -169,8 +194,8 @@ constexpr NSInteger tag=0x57524335;
   [@"MENU: FIRE / JUMP / USE = ACCEPT; ALT / CROUCH = BACK" drawAtPoint:CGPointMake(100,self.bounds.size.height-24) withAttributes:@{NSFontAttributeName:[UIFont systemFontOfSize:10],NSForegroundColorAttributeName:UIColor.whiteColor}];
  }
  for(int i=0;i<wrathios::touch::ActionCount;i++){
-  CGRect r=[self buttonRect:i];if(CGRectIsNull(r))continue;[[UIColor colorWithWhite:0 alpha:_opacity] setFill];[[UIBezierPath bezierPathWithRoundedRect:r cornerRadius:16] fill];
-  [[NSString stringWithUTF8String:((!_wasGame||_captured)&&i==0)?"ACCEPT":(!_wasGame&&i==2)?"BACK":(_tray==1&&i==12)?"MORE":wrathios::touch::Actions[i].label] drawInRect:CGRectInset(r,5,(r.size.height-15)/2) withAttributes:@{NSFontAttributeName:[UIFont boldSystemFontOfSize:i>=7?10:12],NSForegroundColorAttributeName:UIColor.whiteColor}];
+  CGRect r=[self buttonRect:i];if(CGRectIsNull(r))continue;[(i==_radialSelection&&_tray?[UIColor colorWithRed:.8 green:.35 blue:0 alpha:.8]:[UIColor colorWithWhite:0 alpha:_opacity]) setFill];[[UIBezierPath bezierPathWithRoundedRect:r cornerRadius:16] fill];
+  [[NSString stringWithUTF8String:((!_wasGame||_captured)&&i==0)?"ACCEPT":(!_wasGame&&i==2)?"BACK":(_tray==1&&i==12)?"MORE":(i==21?"WEAPONS":i==6?"UTILITIES":i==26?"ARTIFACT":i==31?"⚙":wrathios::touch::Actions[i].label)] drawInRect:CGRectInset(r,3,(r.size.height-15)/2) withAttributes:@{NSFontAttributeName:[UIFont boldSystemFontOfSize:i>=7?10:12],NSForegroundColorAttributeName:UIColor.whiteColor}];
  }
  CGPoint center=[_owners.allValues containsObject:@100]?_moveOrigin:CGPointMake(90,self.bounds.size.height-100);
  [[UIColor colorWithWhite:1 alpha:.3]setStroke];UIBezierPath *ring=[UIBezierPath bezierPathWithOvalInRect:CGRectMake(center.x-54,center.y-54,108,108)];ring.lineWidth=2;[ring stroke];
@@ -206,9 +231,11 @@ constexpr NSInteger tag=0x57524335;
   }
   else {
    for(int b=wrathios::touch::ActionCount-1;b>=0;b--)if(CGRectContainsPoint([self buttonRect:b],p)){owner=b;break;}
-   if(owner==6){_tray=_tray?0:1;[self setNeedsDisplay];continue;}
-   if(owner==31){[self showSettings];continue;}
-   if(_tray==1&&owner==12){_tray=2;[self setNeedsDisplay];continue;}
+   if((owner==6||owner==21)&&([_owners.allValues containsObject:@200]||[_owners.allValues containsObject:@202]))continue;
+   if(owner==6||owner==21){_tray=owner==6?1:2;_radialSelection=-1;owner=200;}
+   else if(owner==31){[self showSettings];continue;}
+   else if(owner==26&&_tray!=3){_artifactStart=t.timestamp;_artifactHolding=NO;owner=201;}
+   else if(_tray){int selected=[self radialAt:p];if(selected>=0){owner=202;_radialSelection=selected;}else{_tray=0;[self setNeedsDisplay];continue;}}
    if(owner<0)owner=p.x<self.bounds.size.width*.42?100:101;
    if((owner==100||owner==101)&&[_owners.allValues containsObject:@(owner)])continue;
    if(owner==100)_moveOrigin=p;
@@ -221,6 +248,12 @@ constexpr NSInteger tag=0x57524335;
  (void)event;
  for(UITouch *t in touches){NSValue *key=[NSValue valueWithNonretainedObject:t];NSNumber *n=_owners[key];if(!n)continue;
   int owner=n.intValue;CGPoint p=[t locationInView:self],last=[_last[key] CGPointValue];
+  if(owner==200||owner==202){
+   _radialSelection=[self radialAt:p];
+   int held=(_radialSelection>=0&&wrathios::touch::Actions[_radialSelection].down[0]=='+')?(int)_radialSelection+1:0;
+   if(held!=_radialHeld){auto &s=S();std::scoped_lock lock(s.mutex);if(_radialHeld)s.keys.push_back(-_radialHeld);if(held)s.keys.push_back(held);_radialHeld=held;}
+   [self setNeedsDisplay];continue;}
+  if(owner==201)continue;
   if(owner==102)[self menuPoint:p button:0];
   else {auto &s=S();std::scoped_lock lock(s.mutex);
    if(owner==101){s.lookX+=(p.x-last.x)*_swipeGain;s.lookY+=(p.y-last.y)*_swipeGain;}
@@ -232,6 +265,13 @@ constexpr NSInteger tag=0x57524335;
 }
 - (void)finish:(NSSet<UITouch *> *)touches cancelled:(BOOL)cancelled {
  for(UITouch *t in touches){NSValue *key=[NSValue valueWithNonretainedObject:t];NSNumber *n=_owners[key];if(!n)continue;int owner=n.intValue;
+  if(owner==200||owner==202||owner==201){
+   if(owner==201&&_artifactHolding){auto &s=S();std::scoped_lock lock(s.mutex);s.keys.push_back(-12);_artifactHolding=NO;}
+   else if(!cancelled&&owner==201)[self sendAction:26];
+   else if(!cancelled&&_radialSelection>=0&&!_radialHeld)[self sendAction:(int)_radialSelection];
+   if(_radialHeld){auto &s=S();std::scoped_lock lock(s.mutex);s.keys.push_back(-_radialHeld);_radialHeld=0;}
+   _tray=0;_radialSelection=-1;[_owners removeObjectForKey:key];[_last removeObjectForKey:key];[self setNeedsDisplay];continue;
+  }
   if(owner==102){if(cancelled){auto &s=S();std::scoped_lock lock(s.mutex);s.pointer.reset();}else [self menuPoint:[t locationInView:self] button:2];}
   [_owners removeObjectForKey:key];[_last removeObjectForKey:key];
   auto &s=S();std::scoped_lock lock(s.mutex);

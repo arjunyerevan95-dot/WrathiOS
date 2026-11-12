@@ -23,9 +23,11 @@ mkdir -p "$ARTIFACT_DIR"
 "$ARTIFACT_DIR/WrathTouchInputTests" | tee "$ARTIFACT_DIR/native-touch-results.txt"
 
 python3 "$ROOT_DIR/scripts/materialize_gate5c_menu_qc.py"
+python3 "$ROOT_DIR/Tests/Gate5C/test_nested_menu_geometry.py"
+python3 "$ROOT_DIR/Tests/Gate5C/test_menu_bytecode_contract.py"
 test -s "$ROOT_DIR/Gate5C/Resources/wrathios-menu.dat"
 actual_sha="$(shasum -a 256 "$ROOT_DIR/Gate5C/Resources/wrathios-menu.dat" | awk '{print $1}')"
-expected_sha="3d848d8988952cff025a167e52574ff0a70c142c8aa9d934d0df9313b045ee2b"
+expected_sha="f10318db61dc037ead5228b222fa4c0dc7ef8fee5cacc76174b3a62286ab317c"
 [[ "$actual_sha" == "$expected_sha" ]] || {
     echo "error: semantic menu bytecode checksum mismatch: $actual_sha" >&2
     exit 1
@@ -52,3 +54,5 @@ cat > "$ARTIFACT_DIR/summary.md" <<EOF
 EOF
 
 cat "$ARTIFACT_DIR/summary.md"
+
+python3 "$ROOT_DIR/scripts/test_gate5c_control_contract.py"

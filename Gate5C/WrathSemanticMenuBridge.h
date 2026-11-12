@@ -20,7 +20,13 @@ int WrathIOSGate5CPointer(float *x, float *y);
 int WrathIOSGate5CNextButtonEvent(void);
 void WrathIOSGate5CSetMenuActive(int active);
 void WrathIOSTouchSetMode(int menu, int game);
+void WrathIOSTouchSetCapture(int captured);
 int WrathIOSTouchNextKey(void);
+void WrathIOSTouchTextFocus(int active);
+int WrathIOSTouchNextText(void);
+int WrathIOSTouchMenuPad(float *x,float *y);
+int WrathIOSTouchNextPadButton(void);
+const char *WrathIOSTouchActionCommand(int action,int down);
 int WrathIOSTouchTakeMenuRelease(void);
 void WrathIOSTouchFrame( float *yaw, float *pitch, float *side, float *forward, unsigned *buttons);
 

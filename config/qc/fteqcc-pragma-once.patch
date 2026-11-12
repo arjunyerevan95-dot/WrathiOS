@@ -1,0 +1,15 @@
+diff --git a/engine/qclib/qcc_pr_lex.c b/engine/qclib/qcc_pr_lex.c
+index e721e97..5a8bc85 100644
+--- a/engine/qclib/qcc_pr_lex.c
++++ b/engine/qclib/qcc_pr_lex.c
+@@ -1156,8 +1156,8 @@ static pbool QCC_PR_Precompiler(void)
+ 			}
+ 			else if (!QC_strcasecmp(qcc_token, "once"))
+ 			{
+-				struct qccincludeonced_s *onced = qccHunkAlloc(sizeof(*onced) + strlen(compilingfile));
+-				strcpy(onced->name, compilingfile);
++				struct qccincludeonced_s *onced = qccHunkAlloc(sizeof(*onced) + strlen(s_filen));
++				strcpy(onced->name, s_filen);
+ 				onced->next = qccincludeonced;
+ 				qccincludeonced = onced;
+ 			}

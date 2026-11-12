@@ -208,7 +208,7 @@ jobs:
           test -s Artifacts/gate5-menu-bootstrap/SHA256SUMS.txt
           test -s Artifacts/gate5-menu-bootstrap/summary.md
           test -s Artifacts/gate5c-semantic-tests/summary.md
-          test -s Artifacts/gate5c-semantic-menu/WrathiOSGate5C-v12-unsigned.ipa
+          test -s Artifacts/gate5c-semantic-menu/WrathiOSGate5C-v13-unsigned.ipa
           test -s Artifacts/gate5c-semantic-menu/SHA256SUMS.txt
           test -s Artifacts/gate5c-semantic-menu/summary.md
           grep -q 'Valid PK3 layout: passed' Artifacts/gate4-data-contract/summary.md

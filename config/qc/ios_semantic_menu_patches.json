@@ -24,11 +24,15 @@
     },
     {
       "path": "uielement.qc",
-      "reason": "Publish source-derived clickable bounds at the exact QC hover-computation boundary.",
+      "reason": "Publish source-derived clickable bounds at the exact QC hover-computation boundary. Keep nested STRETCH hit-test size in the same unscaled units as rendering.",
       "replacements": [
         {
           "old": "\tif ((chain.flags & UIFLAG::CLICKABLE) || (chain.flags & UIFLAG::SELECTABLE) || (chain.flags & UIFLAG::FORCECURSOR))\n\t\tui_usemouse = TRUE;\n\tchain.render(); // render the top",
           "new": "\tif ((chain.flags & UIFLAG::CLICKABLE) || (chain.flags & UIFLAG::SELECTABLE) || (chain.flags & UIFLAG::FORCECURSOR))\n\t\tui_usemouse = TRUE;\n\tif (((chain.flags & UIFLAG::CLICKABLE) || (chain.flags & UIFLAG::SELECTABLE)) && chain.m_click)\n\t\twrathios_semantic_entry(chain, master_position, tsize, chain.flags, wrathios_semantic_order++);\n\tchain.render(); // render the top"
+        },
+        {
+          "old": "\t\t\tchain.size = chain.owner.totalsize();\n\t\t}\n\t\telse if (chain.anchor)",
+          "new": "\t\t\tchain.size = chain.owner.totalsize();\n\t\t\t// WrathiOS: match UI_RenderElements child STRETCH coordinate units.\n\t\t\tchain.size[0] /= ui_scale[0];\n\t\t\tchain.size[1] /= ui_scale[1];\n\t\t}\n\t\telse if (chain.anchor)"
         }
       ]
     },

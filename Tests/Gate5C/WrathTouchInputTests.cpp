@@ -1,4 +1,6 @@
 #include "WrathTouchMath.hpp"
+#include "WrathTouchActions.hpp"
+#include <string>
 #include <cassert>
 #include <iostream>
 using namespace wrathios::touch;
@@ -7,6 +9,8 @@ int main(){
  assert(Stick({0,0}).x==0);assert(Stick({2,2}).y==0);
  auto stick=Stick({54,-54});assert(stick.x>0&&stick.y>0&&std::hypot(stick.x,stick.y)<=1.00001);
  assert(SafeDelta(-1)==0&&SafeDelta(1)==.05);
+ static_assert(ActionCount==32);
+ for(const auto &a:Actions){std::string down=a.down,up=a.up;if(!down.empty()&&down[0]=='+'){assert(!up.empty()&&up[0]=='-');assert(down.substr(1)==up.substr(1));}}
  Pointer p;p.input(.2f,.3f,1,1);p.input(.8f,.9f,2,1.1);
  assert(p.point().x==.2f&&p.next()==1);assert(p.point().x==.8f&&p.next()==2);
  assert(!p.owns(2)); // controller takeover, no permanent mouse ownership

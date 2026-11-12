@@ -1,0 +1,143 @@
+{
+  "schema_version": 1,
+  "qc_repository": "Official3DRealms/wrath-qc",
+  "qc_commit": "bf7f46792ed3ed018a3d30bf6ca773900d816de1",
+  "compiler_repository": "fte-team/fteqw",
+  "compiler_commit": "f09ac7cccd2d713ddf881d3f1324703082c2cfe4",
+  "compiler_patch": "config/qc/fteqcc-pragma-once.patch",
+  "compiler_patch_sha256": "5670e6b501a3574424bc10b5c2d8ccdd2ee533bad2bf598de97e0fa332732d60",
+  "target": "-Tq1",
+  "qc_patch_spec_sha256": "1cc6ea2a050c5d5bbe334d9e16e66e334b55b7a81b16c41d84e703c6771bfe6a",
+  "patched_sources": [
+    {
+      "path": "menuqc/menudefs.qc",
+      "reason": "Declare three Gate 5C-only menu builtins for immutable semantic snapshots.",
+      "source_sha256": "667f07ab60843fbfb62df888d905efae0fe0895267d3b3c6f8de466f28f74efb",
+      "patched_sha256": "c80e27c1a65d134ca5ae4630947bf66540654ec0e717d4a65aaa9bd5469884c1",
+      "replacements": [
+        {
+          "old_sha256": "56b5abb23283136a6a75b1c30368abf7d625c6c2e01da211f44abf13a103a786",
+          "new_sha256": "5c565e55aa58ed9e7b9737f2b417b08aa21256ce976d2ff1672be9a7d12f7497"
+        }
+      ]
+    },
+    {
+      "path": "uielement.h",
+      "reason": "Declare the per-frame semantic ordering counter beside the authentic QC UI globals.",
+      "source_sha256": "67f646fc2789b9cb48e6f13755dff289e326e91940cb9121799fbdf4dbcc6ec5",
+      "patched_sha256": "a382a9928da84e11be32fcaf60a599ac4af871937f639836784cc834a13ed802",
+      "replacements": [
+        {
+          "old_sha256": "79502eb46951e85945ebb72cbc576565944bcd639e2e06083e7b74c4fb6ccf5a",
+          "new_sha256": "3715913d8dcedbdc618836dc16cc98f8c93eb3de0b1d9ed6b9b2bb5806ffd92f"
+        }
+      ]
+    },
+    {
+      "path": "uielement.qc",
+      "reason": "Publish source-derived clickable bounds at the exact QC hover-computation boundary. Keep nested STRETCH hit-test size in the same unscaled units as rendering.",
+      "source_sha256": "9727b97d2045ff3a8d452febb4ecd84cc814b153910f8c29f542ccbb2762fd42",
+      "patched_sha256": "47b34731dd682244cf0d525f601220713a31e921a078c25961fc576d038f5c56",
+      "replacements": [
+        {
+          "old_sha256": "11421a928e6850fd7d9cf735b887ba0a3fef520f3c0b918ab5605f8b8ffb2fb8",
+          "new_sha256": "fc01ca3c7907b4a79ed871f145eea8baba255da5d2cb290d744f5087f6080916"
+        },
+        {
+          "old_sha256": "f4f67601f53e0e5b62e64c9ab231dd640c7a38251adbcf16ed77aeca022bd5fa",
+          "new_sha256": "5f69f0991ff6864fdc38ff23f44c66b7785ec2dfc97b141950aa3649987b7da0"
+        }
+      ]
+    },
+    {
+      "path": "menuqc/menu.qc",
+      "reason": "Bracket each authentic menu draw with one immutable semantic snapshot generation.",
+      "source_sha256": "bc5bf9736cba7c065ec1389bc725e442a5e9eb27d4fcb51f2d90625e9b79f489",
+      "patched_sha256": "acc3cb5fe2396634c67d5b801cf4431b7ce8fd4bf02b6099abe5080f082de678",
+      "replacements": [
+        {
+          "old_sha256": "bd47a0e451ef28b32033c10b5f47a39e1b8d72913c9f1f0cbb9510d8d78e1a73",
+          "new_sha256": "73360e93c205aac7e4d0a75c85765fd212454df8e72237b929de26d57e2944e0"
+        },
+        {
+          "old_sha256": "027f952bd68ccc0f969263c6d9aa999624dfc0fd6408b207a55477b7f30db555",
+          "new_sha256": "4deac36e4a60481d75c0c384589b6f6da36164800a31a92c1cf2afd036ed99c5"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "baseline": {
+      "sha256": "949c024eab701ae3a2dc8a35d72db38ef97e7915b2ed8fcabfa3f98b718c44b4",
+      "size": 535054,
+      "header": [
+        6,
+        49515,
+        94904,
+        40486,
+        446368,
+        7068,
+        502912,
+        186,
+        418792,
+        766,
+        144,
+        94760,
+        504400,
+        7658,
+        122
+      ],
+      "statements": 40486,
+      "max_opcode": 65
+    },
+    "patched": {
+      "sha256": "f10318db61dc037ead5228b222fa4c0dc7ef8fee5cacc76174b3a62286ab317c",
+      "size": 535118,
+      "header": [
+        6,
+        49515,
+        94904,
+        40494,
+        446432,
+        7068,
+        502976,
+        186,
+        418856,
+        766,
+        144,
+        94760,
+        504464,
+        7658,
+        122
+      ],
+      "statements": 40494,
+      "max_opcode": 65
+    },
+    "repeat": {
+      "sha256": "f10318db61dc037ead5228b222fa4c0dc7ef8fee5cacc76174b3a62286ab317c",
+      "size": 535118,
+      "header": [
+        6,
+        49515,
+        94904,
+        40494,
+        446432,
+        7068,
+        502976,
+        186,
+        418856,
+        766,
+        144,
+        94760,
+        504464,
+        7658,
+        122
+      ],
+      "statements": 40494,
+      "max_opcode": 65
+    },
+    "repeat_identical": true
+  },
+  "required_exported_field": "uielement_c::__mpartner",
+  "device_acceptance": "pending"
+}

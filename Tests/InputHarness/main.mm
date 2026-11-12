@@ -9,7 +9,8 @@
 - (BOOL)application:(UIApplication *)app didFinishLaunchingWithOptions:(NSDictionary *)options {
  (void)app;(void)options;
  self.window=[[UIWindow alloc]initWithFrame:UIScreen.mainScreen.bounds];self.window.rootViewController=[UIViewController new];[self.window makeKeyAndVisible];
- dispatch_async(dispatch_get_main_queue(),^{
+ [NSTimer scheduledTimerWithTimeInterval:0.001 repeats:NO block:^(NSTimer *timer){
+  (void)timer;
   SDL_SetMainReady();SDL_iPhoneSetEventPump(SDL_TRUE);SDL_SetHint(SDL_HINT_TOUCH_MOUSE_EVENTS,"0");
   if(SDL_Init(SDL_INIT_VIDEO)!=0)abort();
   if(!SDL_CreateWindow("Input integration test",0,0,844,390,SDL_WINDOW_SHOWN))abort();
@@ -33,7 +34,7 @@
    [[NSJSONSerialization dataWithJSONObject:state options:0 error:nil]writeToURL:[dir URLByAppendingPathComponent:[NSString stringWithFormat:@"harness-%@.json",gameplay?@"game":profile?@"profile":@"manual"]] atomically:YES];
    SDL_Delay(10);
   }}
- });
+ }];
  return YES;
 }
 - (UIInterfaceOrientationMask)application:(UIApplication *)application supportedInterfaceOrientationsForWindow:(UIWindow *)window {(void)application;(void)window;return UIInterfaceOrientationMaskLandscape;}

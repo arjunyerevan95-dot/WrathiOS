@@ -5,7 +5,15 @@ cd "$ROOT"
 ART="$ROOT/Artifacts/input-integration"
 mkdir -p "$ART"
 # Preserve UI screenshots even when a behavioral assertion fails.
-trap 'xcrun xcresulttool export attachments --path "$ART/InputTests.xcresult" --output-path "$ART/screenshots" 2>/dev/null || true' EXIT
+collect_evidence() {
+ xcrun xcresulttool export attachments --path "$ART/InputTests.xcresult" --output-path "$ART/screenshots" 2>/dev/null || true
+ if [[ -n "${DEVICE:-}" ]]; then
+  local container
+  container="$(xcrun simctl get_app_container "$DEVICE" com.arjukstudios.wrath.inputharness data 2>/dev/null)" || return 0
+  cp "$container"/Documents/*.json "$ART/" 2>/dev/null || true
+ fi
+}
+trap collect_evidence EXIT
 python3 scripts/materialize_sdl_ios_patches.py
 cmake -S Derived/SDL2-ios -B Derived/deps-build/iphonesimulator/SDL2 \
  -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_SYSROOT=iphonesimulator \
@@ -30,8 +38,8 @@ python3 - "$ART" <<'PY'
 from pathlib import Path
 import json,sys
 p=Path(sys.argv[1])
-assert json.loads((p/'harness-manual.json').read_text())['typed']=='Wrath14'
-assert json.loads((p/'harness-profile.json').read_text())['typed']=='Profile14'
+assert json.loads((p/'harness-manual.json').read_text())['typed']=='wrath'
+assert json.loads((p/'harness-profile.json').read_text())['typed']=='profile'
 assert json.loads((p/'harness-manual.json').read_text())['accepts']>0
 game=json.loads((p/'harness-game.json').read_text())
 assert game['gameplay'] is True

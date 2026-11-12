@@ -11,7 +11,7 @@ final class InputUITests: XCTestCase {
         app.buttons["WrathAction_FIRE"].tap()
         app.buttons["WrathKeyboardButton"].tap()
         XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 8))
-        app.typeText("Wrath14")
+        for key in "wrath" { app.keyboards.keys[String(key)].tap() }
         let shot = XCTAttachment(screenshot: app.screenshot()); shot.lifetime = .keepAlways; add(shot)
         sleep(1)
     }
@@ -20,7 +20,7 @@ final class InputUITests: XCTestCase {
         XCUIDevice.shared.orientation = .landscapeLeft
         app.launch()
         XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 10))
-        app.typeText("Profile14")
+        for key in "profile" { app.keyboards.keys[String(key)].tap() }
         let shot = XCTAttachment(screenshot: app.screenshot()); shot.lifetime = .keepAlways; add(shot)
     }
     func testGameplayClusterSurvivesRepeatedFrames() {

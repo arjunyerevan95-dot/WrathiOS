@@ -38,6 +38,8 @@ constexpr NSInteger tag=0x57524335;
  int _tray; BOOL _captured;
  CGFloat _controlScale,_opacity,_swipeGain,_gyroGain;
  UIView *_settingsPanel;
+ NSMutableDictionary<NSNumber *,UIAccessibilityElement *> *_accessibleButtons;
+ UIAccessibilityElement *_accessibleKeyboard;
 }
 - (void)refresh;
 - (void)reset;
@@ -54,6 +56,7 @@ constexpr NSInteger tag=0x57524335;
  self.accessibilityIdentifier=@"WrathNativeControls";
  self.backgroundColor=UIColor.clearColor;self.multipleTouchEnabled=YES;
  self.autoresizingMask=UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleHeight;
+ _accessibleButtons=[NSMutableDictionary new];
  _owners=[NSMutableDictionary new];_last=[NSMutableDictionary new];_motion=[CMMotionManager new];
  _motion.deviceMotionUpdateInterval=1.0/100;
  [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(inactive:) name:UIApplicationWillResignActiveNotification object:nil];
@@ -71,7 +74,8 @@ constexpr NSInteger tag=0x57524335;
 - (void)requestKeyboard:(BOOL)show {
  SDL_Window *window=SDL_GetKeyboardFocus();
  if(show){
-  if(SDL_IsTextInputActive()&&window&&!SDL_IsScreenKeyboardShown(window))SDL_StopTextInput();
+  // SDL reports its requested flag, not actual first-responder visibility.
+  SDL_StopTextInput();
   SDL_StartTextInput();
  }else SDL_StopTextInput();
  NSLog(@"WRATH_INPUT keyboard requested=%d active=%d shown=%d",show,SDL_IsTextInputActive(),window?SDL_IsScreenKeyboardShown(window):0);
@@ -113,9 +117,9 @@ constexpr NSInteger tag=0x57524335;
  }
  NSMutableArray *elements=[NSMutableArray new];
  for(int i=0;i<wrathios::touch::ActionCount;i++){CGRect rect=[self buttonRect:i];if(CGRectIsNull(rect))continue;
-  UIAccessibilityElement *e=[[UIAccessibilityElement alloc]initWithAccessibilityContainer:self];e.accessibilityLabel=[NSString stringWithUTF8String:wrathios::touch::Actions[i].label];e.accessibilityIdentifier=[@"WrathAction_" stringByAppendingString:e.accessibilityLabel];e.accessibilityTraits=UIAccessibilityTraitButton;e.accessibilityFrameInContainerSpace=rect;[elements addObject:e];
+  UIAccessibilityElement *e=_accessibleButtons[@(i)];if(!e){e=[[UIAccessibilityElement alloc]initWithAccessibilityContainer:self];_accessibleButtons[@(i)]=e;}e.accessibilityLabel=[NSString stringWithUTF8String:wrathios::touch::Actions[i].label];e.accessibilityIdentifier=[@"WrathAction_" stringByAppendingString:e.accessibilityLabel];e.accessibilityTraits=UIAccessibilityTraitButton;e.accessibilityFrameInContainerSpace=rect;[elements addObject:e];
  }
- if(!game){UIAccessibilityElement *e=[[UIAccessibilityElement alloc]initWithAccessibilityContainer:self];e.accessibilityLabel=@"Keyboard";e.accessibilityIdentifier=@"WrathKeyboardButton";e.accessibilityTraits=UIAccessibilityTraitButton;e.accessibilityFrameInContainerSpace=CGRectMake(self.bounds.size.width*.5-62,10,125,42);[elements addObject:e];}
+ if(!game){if(!_accessibleKeyboard)_accessibleKeyboard=[[UIAccessibilityElement alloc]initWithAccessibilityContainer:self];UIAccessibilityElement *e=_accessibleKeyboard;e.accessibilityLabel=@"Keyboard";e.accessibilityIdentifier=@"WrathKeyboardButton";e.accessibilityTraits=UIAccessibilityTraitButton;e.accessibilityFrameInContainerSpace=CGRectMake(self.bounds.size.width*.5-62,10,125,42);[elements addObject:e];}
  self.accessibilityElements=(_settingsPanel&&!_settingsPanel.hidden)?@[_settingsPanel]:elements;
  [self setNeedsDisplay];
 }

@@ -203,6 +203,11 @@ static int WrathRunHostMain(void) {
     self.sequence = 0;
 
     [[WrathDataImporter sharedImporter] inspectInstalledDataWithCompletion:^(WrathImportReport *report, NSError *error) {
+        // Host_Main never returns. Leave the importer main-queue callback first;
+        // otherwise nested SDL runloops cannot service UIKit main-queue work.
+        // SDL's own iOS launcher similarly enters from a delayed selector.
+        [NSTimer scheduledTimerWithTimeInterval:0.001 repeats:NO block:^(NSTimer *timer) {
+        (void)timer;
         if (error != nil || report == nil || !report.compatible) {
             self.startingOrActive = NO;
             [self recordFatalError:@"Imported data is absent or failed structural validation."];
@@ -288,6 +293,7 @@ static int WrathRunHostMain(void) {
             [self recordFatalError:failure];
         }
         completion([self sanitize:failure]);
+        }];
     }];
 }
 

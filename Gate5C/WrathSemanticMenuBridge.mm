@@ -17,11 +17,11 @@ struct State {
  wrathios::touch::Pointer pointer,pad;
  bool menuPad=false;float navX=0,navY=0;
  float width=640,height=480,x=0,y=0,lookX=0,lookY=0,moveX=0,moveY=0;
- unsigned buttons=0;
+ unsigned buttons=0; unsigned long long consumed=0;
  std::deque<int> keys;
 };
 State &S(){static State s;return s;}
-void ResetLocked(State &s){s.pointer.reset();s.pad.reset();s.menuPad=false;s.navX=s.navY=0;s.text.clear();s.lookX=s.lookY=s.moveX=s.moveY=0;s.buttons=0;s.keys.clear();for(int i=1;i<=wrathios::touch::ActionCount;i++)s.keys.push_back(-i);}
+void ResetLocked(State &s){s.pointer.reset();s.pad.reset();s.menuPad=false;s.navX=s.navY=0;s.text.clear();s.lookX=s.lookY=s.moveX=s.moveY=0;s.buttons=0;s.keys.clear();for(int i=1;i<=wrathios::touch::ActionCount+2;i++)s.keys.push_back(-i);}
 constexpr NSInteger tag=0x57524335;
 }
 
@@ -50,7 +50,7 @@ constexpr NSInteger tag=0x57524335;
 @implementation WrathSemanticTouchSurface
 - (instancetype)initWithFrame:(CGRect)frame {
  if(!(self=[super initWithFrame:frame]))return nil;
- NSLog(@"WRATHIOS_NATIVE_TOUCH_V15");
+ NSLog(@"WRATHIOS_NATIVE_TOUCH_V16_CONTROLLER");
  [NSUserDefaults.standardUserDefaults registerDefaults:@{@"WrathTouchScale":@1,@"WrathTouchOpacity":@.5,@"WrathTouchSwipe":@.15,@"WrathTouchGyro":@1}];
  _controlScale=[NSUserDefaults.standardUserDefaults doubleForKey:@"WrathTouchScale"];_opacity=[NSUserDefaults.standardUserDefaults doubleForKey:@"WrathTouchOpacity"];
  _swipeGain=[NSUserDefaults.standardUserDefaults doubleForKey:@"WrathTouchSwipe"];_gyroGain=[NSUserDefaults.standardUserDefaults doubleForKey:@"WrathTouchGyro"];
@@ -213,21 +213,21 @@ constexpr NSInteger tag=0x57524335;
   NSValue *key=[NSValue valueWithNonretainedObject:t];CGPoint p=[t locationInView:self];
   int owner=-1;
   if(menu){
-   CGFloat w=self.bounds.size.width,h=self.bounds.size.height;
+   CGFloat w=self.bounds.size.width;
    if(CGRectContainsPoint(CGRectMake(w*.5-62,10,125,42),p)){SDL_Window *window=SDL_GetKeyboardFocus();[self requestKeyboard:!(window&&SDL_IsScreenKeyboardShown(window))];continue;}
    int button=-1;for(int b=wrathios::touch::ActionCount-1;b>=0;b--)if(CGRectContainsPoint([self buttonRect:b],p)){button=b;break;}
    if(button==31){[self showSettings];continue;}
    if(button==6){_tray=_tray?0:1;[self setNeedsDisplay];continue;}
    if(_tray==1&&button==12){_tray=2;[self setNeedsDisplay];continue;}
    if(button==0||button==1||button==5){
-    if([_owners.allValues containsObject:@104])continue;owner=104;
-    auto &s=S();std::scoped_lock lock(s.mutex);s.menuPad=true;s.pointer.reset();s.pad.input(0,0,1,CACurrentMediaTime());
-   }else if(button==2||button==3||button==4){auto &s=S();std::scoped_lock lock(s.mutex);s.keys.push_back(4);s.keys.push_back(-4);continue;
+    if([_owners.allValues containsObject:@104])continue;owner=104;auto &s=S();std::scoped_lock lock(s.mutex);s.keys.push_back(33);
+   }else if(button==2||button==3||button==4){
+    if([_owners.allValues containsObject:@105])continue;owner=105;auto &s=S();std::scoped_lock lock(s.mutex);s.keys.push_back(34);
    }else if(button>=0){continue;
-   }else if(CGRectContainsPoint(CGRectMake(20,h-170,140,140),p)){
+   }else{
     if([_owners.allValues containsObject:@103])continue;owner=103;_navOrigin=p;
-    auto &s=S();std::scoped_lock lock(s.mutex);s.menuPad=true;s.pointer.reset();
-   }else{if([_owners.allValues containsObject:@102])continue;owner=102;[self menuPoint:p button:1];}
+    auto &s=S();std::scoped_lock lock(s.mutex);s.menuPad=true;
+   }
   }
   else {
    for(int b=wrathios::touch::ActionCount-1;b>=0;b--)if(CGRectContainsPoint([self buttonRect:b],p)){owner=b;break;}
@@ -256,7 +256,7 @@ constexpr NSInteger tag=0x57524335;
   if(owner==201)continue;
   if(owner==102)[self menuPoint:p button:0];
   else {auto &s=S();std::scoped_lock lock(s.mutex);
-   if(owner==101){s.lookX+=(p.x-last.x)*_swipeGain;s.lookY+=(p.y-last.y)*_swipeGain;}
+   if(owner==101||owner==0||owner==2){s.lookX+=(p.x-last.x)*_swipeGain;s.lookY+=(p.y-last.y)*_swipeGain;}
    if(owner==103){auto stick=wrathios::touch::Stick({p.x-_navOrigin.x,p.y-_navOrigin.y});s.navX=stick.x;s.navY=stick.y;}
    if(owner==100){auto stick=wrathios::touch::Stick({p.x-_moveOrigin.x,p.y-_moveOrigin.y});s.moveX=stick.x;s.moveY=stick.y;}
   }
@@ -277,7 +277,8 @@ constexpr NSInteger tag=0x57524335;
   auto &s=S();std::scoped_lock lock(s.mutex);
   if(owner==100)s.moveX=s.moveY=0;
   if(owner==103)s.navX=s.navY=0;
-  if(owner==104){if(cancelled)s.pad.reset();else s.pad.input(0,0,2,CACurrentMediaTime());}
+  if(owner==104)s.keys.push_back(-33);
+  if(owner==105)s.keys.push_back(-34);
   if(owner<wrathios::touch::ActionCount&&![_owners.allValues containsObject:@(owner)]){s.buttons&=~(1u<<owner);s.keys.push_back(-(owner+1));}
  }
 }
@@ -308,7 +309,7 @@ int WrathIOSGate5CNextButtonEvent(void){auto &s=S();std::scoped_lock lock(s.mute
 int WrathIOSTouchTakeMenuRelease(void){auto &s=S();std::scoped_lock lock(s.mutex);bool a=s.pointer.takeRelease(),b=s.pad.takeRelease();return a||b;}
 void WrathIOSGate5CSetMenuActive(int active){auto &s=S();{std::scoped_lock lock(s.mutex);if(s.menu!=(active!=0)){ResetLocked(s);s.menu=active!=0;if(active)s.game=false;}}Refresh();}
 void WrathIOSTouchSetMode(int menu,int game){auto &s=S();{std::scoped_lock lock(s.mutex);if(s.menu!=(menu!=0)||s.game!=(game!=0)){ResetLocked(s);s.menu=menu!=0;s.game=game!=0;}}Refresh();}
-int WrathIOSTouchNextKey(void){auto &s=S();std::scoped_lock lock(s.mutex);if(s.keys.empty())return 0;int key=s.keys.front();s.keys.pop_front();return key;}
+int WrathIOSTouchNextKey(void){auto &s=S();std::scoped_lock lock(s.mutex);if(s.keys.empty())return 0;int key=s.keys.front();unsigned long long bit=1ULL<<(abs(key)-1);if(s.consumed&bit)return 0;s.consumed|=bit;s.keys.pop_front();return key;}
 void WrathIOSTouchFrame(float *yaw,float *pitch,float *side,float *forward,unsigned *buttons){
  auto &s=S();std::scoped_lock lock(s.mutex);*yaw=s.game?s.lookX:0;*pitch=s.game?s.lookY:0;*side=s.game?s.moveX:0;*forward=s.game?s.moveY:0;*buttons=s.suspended?0:s.buttons;s.lookX=s.lookY=0;
 }
@@ -322,3 +323,5 @@ int WrathIOSTouchMenuPad(float *x,float *y){auto &s=S();std::scoped_lock lock(s.
 int WrathIOSTouchNextPadButton(void){auto &s=S();std::scoped_lock lock(s.mutex);return s.pad.next();}
 
 void WrathIOSTouchSetCapture(int captured){auto &s=S();std::scoped_lock lock(s.mutex);s.captured=captured!=0;}
+
+void WrathIOSTouchBeginControllerFrame(void){auto &s=S();std::scoped_lock lock(s.mutex);s.consumed=0;}

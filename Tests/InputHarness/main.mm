@@ -19,7 +19,7 @@
   if(!SDL_CreateWindow("Input integration test",0,0,844,390,SDL_WINDOW_SHOWN))abort();
   BOOL gameplay=[NSProcessInfo.processInfo.arguments containsObject:@"--gameplay"];
   BOOL profile=[NSProcessInfo.processInfo.arguments containsObject:@"--profile"];
-  NSMutableString *typed=[NSMutableString new];__block int accepts=0,fireDown=0,fireUp=0,jumpDown=0;__block float totalLook=0;
+  NSMutableString *typed=[NSMutableString new];__block int accepts=0,fireDown=0,fireUp=0,jumpDown=0;__block float totalLook=0,fireLook=0;
   NSURL *dir=[NSFileManager.defaultManager URLsForDirectory:NSDocumentDirectory inDomains:NSUserDomainMask].firstObject;
   // Match production bounded frame ownership: return to UIKit every tick.
   self.frameBlock = ^{ @autoreleasepool{
@@ -29,10 +29,10 @@
     if(event.type==SDL_TEXTINPUT)[typed appendString:[NSString stringWithUTF8String:event.text.text]];
     if(event.type==SDL_KEYDOWN&&event.key.keysym.sym==SDLK_BACKSPACE&&typed.length)[typed deleteCharactersInRange:NSMakeRange(typed.length-1,1)];
    }
-   int edge=WrathIOSTouchNextPadButton();if(edge==1)accepts++;
-   int key;while((key=WrathIOSTouchNextKey())){if(key==1)fireDown++;if(key==-1)fireUp++;if(key==2)jumpDown++;}
-   float yaw,pitch,side,forward;unsigned buttons;WrathIOSTouchFrame(&yaw,&pitch,&side,&forward,&buttons);totalLook+=fabsf(yaw)+fabsf(pitch);
-   NSDictionary *state=@{@"typed":typed,@"accepts":@(accepts),@"gameplay":@(gameplay),@"fireDown":@(fireDown),@"fireUp":@(fireUp),@"jumpDown":@(jumpDown),@"look":@(totalLook),@"keyboard":@(SDL_IsScreenKeyboardShown(SDL_GetKeyboardFocus()))};
+   WrathIOSTouchBeginControllerFrame();
+   int key;while((key=WrathIOSTouchNextKey())){if(key==33)accepts++;if(key==1)fireDown++;if(key==-1)fireUp++;if(key==2)jumpDown++;}
+   float yaw,pitch,side,forward;unsigned buttons;WrathIOSTouchFrame(&yaw,&pitch,&side,&forward,&buttons);totalLook+=fabsf(yaw)+fabsf(pitch);if(buttons&1)fireLook+=fabsf(yaw)+fabsf(pitch);
+   NSDictionary *state=@{@"typed":typed,@"accepts":@(accepts),@"gameplay":@(gameplay),@"fireDown":@(fireDown),@"fireUp":@(fireUp),@"jumpDown":@(jumpDown),@"look":@(totalLook),@"fireLook":@(fireLook),@"keyboard":@(SDL_IsScreenKeyboardShown(SDL_GetKeyboardFocus()))};
    [[NSJSONSerialization dataWithJSONObject:state options:0 error:nil]writeToURL:[dir URLByAppendingPathComponent:[NSString stringWithFormat:@"harness-%@.json",gameplay?@"game":profile?@"profile":@"manual"]] atomically:YES];
   }};
   self.frameLink=[CADisplayLink displayLinkWithTarget:self selector:@selector(frame:)];

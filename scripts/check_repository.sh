@@ -158,8 +158,8 @@ expected_gate5 = {
 }
 expected_gate5c = {
     "CFBundleDisplayName": "WrathiOS G5C",
-    "CFBundleShortVersionString": "0.0.15",
-    "CFBundleVersion": "15",
+    "CFBundleShortVersionString": "0.0.16",
+    "CFBundleVersion": "16",
     "UILaunchStoryboardName": "LaunchScreen",
 }
 for name, plist, expected in (("Gate 3", gate3, expected_gate3), ("Gate 4", gate4, expected_gate4), ("Gate 5", gate5, expected_gate5), ("Gate 5C", gate5c, expected_gate5c)):
@@ -280,7 +280,7 @@ grep -Fq 'GATE 5C · SEMANTIC MENU TOUCH' Gate4/WrathImportViewController.mm || 
     echo "error: Gate 5C visible launcher provenance is missing" >&2
     exit 1
 }
-grep -Fq '0.0.15 (15) · based on Gate 5A main 538a61f · semantic adapter contract v1' Gate4/WrathImportViewController.mm || {
+grep -Fq '0.0.16 (16) · based on Gate 5A main 538a61f · semantic adapter contract v1' Gate4/WrathImportViewController.mm || {
     echo "error: Gate 5C visible version/base provenance is missing" >&2
     exit 1
 }
@@ -293,8 +293,8 @@ grep -Fq 'wrathios_semantic_entry(chain, master_position, tsize' config/qc/ios_s
     echo "error: Gate 5C does not export authentic QC semantic bounds" >&2
     exit 1
 }
-grep -Fq 'WrathIOSGate5CNextButtonEvent' config/engine/ios_source_patches.json || {
-    echo "error: Gate 5C authentic pointer-hover-click bridge is missing" >&2
+grep -Fq 'WrathIOSControllerFrame' config/engine/ios_source_patches.json || {
+    echo "error: Gate 5C native Xbox controller bridge is missing" >&2
     exit 1
 }
 grep -Fq 'WRATH_ENGINE_BUILD_FLAVOR=gate5c' scripts/build_gate5c_device_semantic_menu.sh || {

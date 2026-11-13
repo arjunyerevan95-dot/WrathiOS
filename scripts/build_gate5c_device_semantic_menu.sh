@@ -9,7 +9,7 @@ PROJECT="$ROOT_DIR/WrathiOSGate5C.xcodeproj"
 APP_BUNDLE="$DERIVED_DATA/Build/Products/Debug-iphoneos/WrathiOSGate5C.app"
 BINARY="$APP_BUNDLE/WrathiOSGate5C"
 PACKAGE_ROOT="$ROOT_DIR/Derived/gate5c-package"
-IPA="$ARTIFACT_DIR/WrathiOSGate5C-v15-unsigned.ipa"
+IPA="$ARTIFACT_DIR/WrathiOSGate5C-v16-unsigned.ipa"
 
 rm -rf "$ARTIFACT_DIR" "$DERIVED_DATA" "$PROJECT" "$PACKAGE_ROOT"
 mkdir -p "$ARTIFACT_DIR"
@@ -142,7 +142,7 @@ grep -Fq 'CMMotionManager' "$ARTIFACT_DIR/strings.txt" || {
     exit 1
 }
 printf '%s\n' \
-    'v15: native absolute menu pointer, gameplay relative look, move/fire/jump and orientation-aware gyro.' \
+    'v16: native absolute menu pointer, gameplay relative look, move/fire/jump and orientation-aware gyro.' \
     'SDL accelerometer virtual joystick disabled before initialization; physical controllers retained.' \
     'Physical quality remains device-unverified.' \
     > "$ARTIFACT_DIR/native-input-audit.txt"

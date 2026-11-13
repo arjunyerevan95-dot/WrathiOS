@@ -21,6 +21,7 @@ int WrathIOSGate5CNextButtonEvent(void);
 void WrathIOSGate5CSetMenuActive(int active);
 void WrathIOSTouchSetMode(int menu, int game);
 void WrathIOSTouchSetCapture(int captured);
+void WrathIOSTouchBeginControllerFrame(void);
 int WrathIOSTouchNextKey(void);
 void WrathIOSTouchTextFocus(int active);
 int WrathIOSTouchNextText(void);

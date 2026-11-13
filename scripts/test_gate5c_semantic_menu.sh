@@ -56,3 +56,6 @@ EOF
 cat "$ARTIFACT_DIR/summary.md"
 
 python3 "$ROOT_DIR/scripts/test_gate5c_control_contract.py"
+
+python3 "$ROOT_DIR/Tests/Gate5C/test_controller_route.py"
+python3 "$ROOT_DIR/Tests/Gate5C/test_upstream_controller_handlers.py"

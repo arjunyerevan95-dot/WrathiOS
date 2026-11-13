@@ -43,7 +43,7 @@ assert json.loads((p/'harness-profile.json').read_text())['typed']=='profile'
 assert json.loads((p/'harness-manual.json').read_text())['accepts']>0
 game=json.loads((p/'harness-game.json').read_text())
 assert game['gameplay'] is True
-assert game['fireDown']>0 and game['fireUp']>0 and game['jumpDown']>0 and game['look']>0, game
+assert game['fireDown']>0 and game['fireUp']>0 and game['jumpDown']>0 and game['look']>0 and game['fireLook']>0, game
 print('Real UIKit/SDL keyboard visibility, manual/profile text delivery and sustained gameplay control tests passed')
 PY
 xcrun xcresulttool export attachments --path "$ART/InputTests.xcresult" --output-path "$ART/screenshots" || true

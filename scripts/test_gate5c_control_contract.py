@@ -6,13 +6,19 @@ r=Path(__file__).resolve().parents[1]
 spec=json.loads((r/'config/engine/ios_source_patches.json').read_text())
 menu='\n'.join(x['new'] for p in spec['patches'] if p['path']=='menu.c' for x in p['replacements'])
 assert 'WrathIOSGate5CSetMenuActive(1)' not in menu, 'in-game menu draw must not reset gameplay mode'
-assert 'MP_InputEvent(0, K_MOUSE1, 0)' in menu
+assert 'MP_InputEvent(0, K_MOUSE1, 0)' not in menu, 'no parallel mouse click injection'
 assert 'MP_KeyEvent(K_MOUSE1' not in menu, 'pinned QC legacy callbacks are empty'
 for field in ('menu_createprofile','menu_current','ui_selected','uielement_c::__mpartner'):
     assert '"'+field+'"' in menu
 assert 'WrathIOSTouchNextText()' in menu
-assert 'MP_InputEvent(0, K_X360_A, 0)' in menu
-assert 'MP_InputEvent(6, 2, x)' in menu and 'MP_InputEvent(6, 3, y)' in menu
+assert 'MP_InputEvent(0, K_X360_A, 0)' not in menu
+route=(r/'Gate5C/WrathControllerRoute.inc').read_text()
+assert 'Cbuf_AddText' not in route and 'Key_SetBinding' not in route
+assert 'Key_GetBind' in route and 'joy->is360=true' in route
+vid='\n'.join(x['new'] for p in spec['patches'] if p['path']=='vid_sdl.c' for x in p['replacements'])
+assert vid.index('WrathIOSControllerFrame(&joystate)') < vid.index('VID_ApplyJoyState(&joystate)')
+assert 'Cbuf_AddText' not in vid
+
 source=(r/'Vendor/wrath-qc/menuqc/menu.qc').read_text()
 section=source.split('keybind_t controllerdiagram_validcontrols[] = {',1)[1].split('};',1)[0]
 required=set(re.findall(r'\), "([^"]+)", 0',section))

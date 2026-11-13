@@ -24,6 +24,8 @@ jobs:
           git -C Vendor/wrath-qc remote add origin "$WRATH_QC_URL"
           git -C Vendor/wrath-qc fetch --depth 1 origin "$WRATH_QC_COMMIT"
           git -C Vendor/wrath-qc checkout --detach FETCH_HEAD
+          git clone "$WRATH_ENGINE_URL" Vendor/wrath-darkplaces
+          git -C Vendor/wrath-darkplaces checkout "$WRATH_ENGINE_COMMIT"
       - name: Test semantic menu and click pairing
         run: bash scripts/test_gate5c_semantic_menu.sh
       - uses: actions/upload-artifact@v4
@@ -58,7 +60,7 @@ jobs:
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: gate5c-v15-test-ipa
+          name: gate5c-v16-test-ipa
           path: |
             Artifacts/gate5c-semantic-menu
             Artifacts/input-integration

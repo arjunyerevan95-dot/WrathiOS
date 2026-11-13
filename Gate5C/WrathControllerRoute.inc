@@ -45,6 +45,13 @@ static const int wrath_ios_padkeys[] = {
  K_X360_RIGHT_THUMB_DOWN,K_X360_RIGHT_THUMB_UP,K_X360_RIGHT_THUMB_LEFT,K_X360_RIGHT_THUMB_RIGHT
 };
 static int wrath_ios_actionkey[34];
+static float wrath_ios_look_yaw,wrath_ios_look_pitch;
+static float wrath_ios_radial_x,wrath_ios_radial_y;
+static int wrath_ios_captured;
+void WrathIOSControllerTakeRelativeLook(float *yaw,float *pitch) {
+ *yaw=wrath_ios_look_yaw;*pitch=wrath_ios_look_pitch;
+ wrath_ios_look_yaw=wrath_ios_look_pitch=0;
+}
 static void WrathIOSControllerShutdown(void) {
  int i;
  if(wrath_ios_controller) SDL_GameControllerClose(wrath_ios_controller);
@@ -53,6 +60,7 @@ static void WrathIOSControllerShutdown(void) {
   if(SDL_JoystickGetDeviceInstanceID(i)==wrath_ios_instance){SDL_JoystickDetachVirtual(i);break;}
  wrath_ios_instance=-1;
  memset(wrath_ios_actionkey,0,sizeof(wrath_ios_actionkey));
+ wrath_ios_look_yaw=wrath_ios_look_pitch=wrath_ios_radial_x=wrath_ios_radial_y=0;wrath_ios_captured=0;
 }
 static int WrathIOSPadIndex(int key) {
  int i;for(i=0;i<24;i++)if(wrath_ios_padkeys[i]==key)return i;return -1;
@@ -110,7 +118,16 @@ static void WrathIOSControllerFrame(vid_joystate_t *joy) {
   WrathIOSTouchFrame(&yaw,&pitch,&side,&forward,&buttons);
   axes[0]=side;axes[1]=-forward;
   if(WrathIOSTouchMenuPad(&nx,&ny)){axes[2]=nx;axes[3]=-ny;}
-  if(cl.csqc_wantsmousemove){axes[2]+=yaw*.08f;axes[3]+=pitch*.08f;}
+  if(cl.csqc_wantsmousemove){
+   /* WRATH radial selects by absolute right-stick direction, not velocity.
+    * Hold the accumulated direction between events so the native radial can
+    * converge. Both swipe and gyro arrive in angular units here. */
+   if(!wrath_ios_captured)wrath_ios_radial_x=wrath_ios_radial_y=0;
+   wrath_ios_radial_x+=yaw/8.0f;wrath_ios_radial_y+=pitch/8.0f;
+   {float length=sqrtf(wrath_ios_radial_x*wrath_ios_radial_x+wrath_ios_radial_y*wrath_ios_radial_y);
+    if(length>1){wrath_ios_radial_x/=length;wrath_ios_radial_y/=length;}}
+   axes[2]=wrath_ios_radial_x;axes[3]=wrath_ios_radial_y;
+  }else wrath_ios_radial_x=wrath_ios_radial_y=0;
   for(i=0;i<14;i++)SDL_JoystickSetVirtualButton(wrath_ios_joystick,padbuttons[i],held[i]);
   axes[4]=held[14]?1:-1;axes[5]=held[15]?1:-1;
   if(held[16])axes[1]=1;
@@ -136,11 +153,11 @@ static void WrathIOSControllerFrame(vid_joystate_t *joy) {
    for(i=4;i<6;i++)if(touch.axis[i]>joy->axis[i])joy->axis[i]=touch.axis[i];
   }
  }
- /* Relative mouse is intentionally independent of held controller Fire/Alt.
-  * This is the normal engine mouse route (CSQC/zoom/sensitivity preserved),
-  * not a right-stick emulation. WRATH supports concurrent KB/M + controller. */
- if(!cl.csqc_wantsmousemove){
-  in_mouse_x += yaw / 0.05f;
-  in_mouse_y += pitch / 0.05f;
+ /* Touch/gyro are relative angles, not an emulated gamepad for aiming.
+  * CL_Input applies them at the mouse-look stage before native angle clamps,
+  * independent of physical-mouse sensitivity/acceleration/filter settings. */
+ if(!cl.csqc_wantsmousemove&&!wrath_ios_captured){
+  wrath_ios_look_yaw+=yaw;wrath_ios_look_pitch+=pitch;
  }
+ wrath_ios_captured=cl.csqc_wantsmousemove;
 }

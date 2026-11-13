@@ -167,6 +167,20 @@
           "new": "\thost_shuttingdown = true;\n\tHost_Shutdown();\n#ifdef WRATH_IOS_GATE5\n\tWrathIOSRuntimeAbort(returnvalue == 0 ? \"WRATH requested an orderly shutdown.\" : \"WRATH requested a non-zero shutdown.\");\n#else\n\texit(returnvalue);\n#endif"
         }
       ]
+    },
+    {
+      "path": "cl_input.c",
+      "reason": "Apply touch-relative angular input independent of physical mouse settings before native view clamps; artifact input remains native right-stick.",
+      "replacements": [
+        {
+          "old": "#include \"quakedef.h\"",
+          "new": "#include \"quakedef.h\"\n#ifdef WRATH_IOS_GATE5C\n#include \"WrathSemanticMenuBridge.h\"\n#endif"
+        },
+        {
+          "old": "\tif(v_flipped.integer)\n\t{",
+          "new": "#ifdef WRATH_IOS_GATE5C\n\t{float touchYaw,touchPitch;\n\t WrathIOSControllerTakeRelativeLook(&touchYaw,&touchPitch);\n\t if(!key_consoleactive && key_dest==key_game && !cl.csqc_wantsmousemove && cl_prydoncursor.integer<=0){\n\t  V_StopPitchDrift();\n\t  cl.viewangles[YAW]-=touchYaw*cl.sensitivityscale*cl.viewzoom;\n\t  cl.viewangles[PITCH]+=touchPitch*cl.sensitivityscale*cl.viewzoom;\n\t }\n\t}\n#endif\n\tif(v_flipped.integer)\n\t{"
+        }
+      ]
     }
   ]
 }

@@ -84,6 +84,11 @@ p+=function('VID_JoyState_GetAxis')+'\n'+function('VID_KeyEventForButton')+'\n'+
 p+=extract('void VID_BuildJoyState(vid_joystate_t *joystate)')+'\n'
 p+=(r/'Gate5C/WrathControllerRoute.inc').read_text()+'\n'
 p+=extract('void VID_EnableJoystick(qboolean enable)')+'\n'+extract('controllertype_t VID_ControllerType(int index)')+'\n'
+looksource=(r/'Derived/wrath-darkplaces-ios/cl_input.c').read_text()
+a=looksource.index('#ifdef WRATH_IOS_GATE5C\n\t{float touchYaw,touchPitch;')
+b=looksource.index('#endif',a)+len('#endif')
+p+='\nstatic int key_consoleactive=0,key_dest=1;enum{key_game=1,YAW=1,PITCH=0};static cvar cl_prydoncursor;void V_StopPitchDrift(){}\n'
+p+='void ApplyTouchLook(){\n'+looksource[a:b]+'\n}\n'
 p+='''int main(){
  SDL_SetHint(SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS,"1");assert(SDL_Init(SDL_INIT_JOYSTICK|SDL_INIT_GAMECONTROLLER)==0);
  // Non-controller device occupies slot zero: production must select real touch Xbox.
@@ -95,15 +100,27 @@ p+='''int main(){
  joy_axiskeyevents.integer=1;
  edges={1};look=2;move=.7;tick();assert(joy_axiskeyevents.integer==0);
  assert(joy_index.integer==1);assert(joy_active.integer==1);assert(joy_detected.integer==2);assert(VID_ControllerType(joy_index.integer)==CONTROLLER_XBOX);
- assert(std::any_of(events.begin(),events.end(),[](Event e){return e.key==K_X360_RIGHT_TRIGGER&&e.down;}));assert(in_mouse_x==40);
+ assert(std::any_of(events.begin(),events.end(),[](Event e){return e.key==K_X360_RIGHT_TRIGGER&&e.down;}));assert(wrath_ios_look_yaw==2);
  assert(cl.cmd.forwardmove>.6&&cl.cmd.sidemove>.6);
- look=3;tick();assert(in_mouse_x==100);
+ look=3;tick();assert(wrath_ios_look_yaw==5);
  binds[K_X360_RIGHT_TRIGGER]="+button3"; // release original key even after binding changes
  edges={-1};tick();assert(std::any_of(events.begin(),events.end(),[](Event e){return e.key==K_X360_RIGHT_TRIGGER&&!e.down;}));
  menu=true;nav=.4;edges={33,-33};tick();assert(events.back().key==K_X360_A&&events.back().down);
  tick();assert(events.back().key==K_X360_A&&!events.back().down);
  edges={34,-34};tick();assert(events.back().key==K_X360_B&&events.back().down);tick();assert(events.back().key==K_X360_B&&!events.back().down);
  binds[40]="impulse 10";assert(WrathIOSActionKey(5)==0);
+ // Artifact selection is an absolute native right-stick direction, held
+ // across no-motion frames and fed to native controller sampler.
+ cl.csqc_wantsmousemove=true;menu=false;nav=0;look=8;tick();
+ assert(vid_joystate.axis[2]>.99);float pending=wrath_ios_look_yaw;
+ tick();assert(vid_joystate.axis[2]>.99);assert(wrath_ios_look_yaw==pending);
+ look=-16;tick();assert(vid_joystate.axis[2]<-.99);
+ cl.csqc_wantsmousemove=false;look=1;tick();assert(vid_joystate.axis[2]==0);assert(wrath_ios_look_yaw==pending);
+ look=4;tick();assert(wrath_ios_look_yaw==pending+4);
+ float yaw,pitch;WrathIOSControllerTakeRelativeLook(&yaw,&pitch);assert(yaw==pending+4);assert(wrath_ios_look_yaw==0);
+ wrath_ios_look_yaw=15;wrath_ios_look_pitch=6;float beforeYaw=cl.viewangles[YAW];ApplyTouchLook();assert(cl.viewangles[YAW]==beforeYaw-15);assert(cl.viewangles[PITCH]==6);
+ wrath_ios_look_yaw=30;ApplyTouchLook();assert(cl.viewangles[YAW]==beforeYaw-45); // doubling slider doubles actual look
+ cl.csqc_wantsmousemove=true;wrath_ios_look_yaw=20;ApplyTouchLook();assert(cl.viewangles[YAW]==beforeYaw-45);assert(wrath_ios_look_yaw==0);cl.csqc_wantsmousemove=false;
  SDL_JoystickDetachVirtual(dummy);tick();assert(joy_index.integer==0);assert(VID_ControllerType(joy_index.integer)==CONTROLLER_XBOX);
  puts("PASS: production route, enumerated SDL Xbox, native sampler/query/apply, device-index shift, A press/release, held-fire mouse look");
  WrathIOSControllerShutdown();VID_EnableJoystick(false);assert(SDL_NumJoysticks()==0);

@@ -39,24 +39,28 @@ constexpr NSInteger tag=0x57524335;
  NSInteger _radialSelection; NSTimeInterval _artifactStart; BOOL _artifactHolding; int _radialHeld;
  CGFloat _controlScale,_opacity,_swipeGain,_gyroGain;
  UIView *_settingsPanel;
+ UIView *_layoutToolbar; BOOL _editingLayout;
+ NSMutableDictionary *_layoutPositions;
  NSMutableDictionary<NSNumber *,UIAccessibilityElement *> *_accessibleButtons;
  UIAccessibilityElement *_accessibleKeyboard;
 }
 - (void)refresh;
 - (void)reset;
 - (CGRect)buttonRect:(int)b;
+- (CGRect)defaultButtonRect:(int)b;
 - (void)requestKeyboard:(BOOL)show;
 @end
 @implementation WrathSemanticTouchSurface
 - (instancetype)initWithFrame:(CGRect)frame {
  if(!(self=[super initWithFrame:frame]))return nil;
- NSLog(@"WRATHIOS_NATIVE_TOUCH_V17_ENUMERATED_CONTROLLER");
+ NSLog(@"WRATHIOS_NATIVE_TOUCH_V18_ARTIFACT_GLYPH_CONTROLLER");
  [NSUserDefaults.standardUserDefaults registerDefaults:@{@"WrathTouchScale":@1,@"WrathTouchOpacity":@.5,@"WrathTouchSwipe":@.15,@"WrathTouchGyro":@1}];
  _controlScale=[NSUserDefaults.standardUserDefaults doubleForKey:@"WrathTouchScale"];_opacity=[NSUserDefaults.standardUserDefaults doubleForKey:@"WrathTouchOpacity"];
  _swipeGain=[NSUserDefaults.standardUserDefaults doubleForKey:@"WrathTouchSwipe"];_gyroGain=[NSUserDefaults.standardUserDefaults doubleForKey:@"WrathTouchGyro"];
  self.accessibilityIdentifier=@"WrathNativeControls";
  self.backgroundColor=UIColor.clearColor;self.multipleTouchEnabled=YES;
  self.autoresizingMask=UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleHeight;
+ _layoutPositions=[[NSUserDefaults.standardUserDefaults dictionaryForKey:@"WrathTouchLayoutV1"] mutableCopy]?:[NSMutableDictionary new];
  _accessibleButtons=[NSMutableDictionary new];
  _owners=[NSMutableDictionary new];_last=[NSMutableDictionary new];_motion=[CMMotionManager new];
  _motion.deviceMotionUpdateInterval=1.0/100;
@@ -66,6 +70,7 @@ constexpr NSInteger tag=0x57524335;
 }
 - (void)dealloc {[_motion stopDeviceMotionUpdates];[NSNotificationCenter.defaultCenter removeObserver:self];}
 - (void)reset {
+ _editingLayout=NO;_layoutToolbar.hidden=YES;
  [_owners removeAllObjects];[_last removeAllObjects];_sampleTime=0;_tray=0;_artifactHolding=NO;_radialHeld=0;_settingsPanel.hidden=YES;
  [self requestKeyboard:NO];_textFocused=NO;
  auto &s=S();std::scoped_lock lock(s.mutex);ResetLocked(s);
@@ -101,7 +106,7 @@ constexpr NSInteger tag=0x57524335;
   NSURL *directory=[NSFileManager.defaultManager URLsForDirectory:NSDocumentDirectory inDomains:NSUserDomainMask].firstObject;
   [[NSJSONSerialization dataWithJSONObject:status options:0 error:nil] writeToURL:[directory URLByAppendingPathComponent:@"WrathInputDiagnostics.json"] atomically:YES];
  }
- if(!game||captured||_gyroGain<=0||(_settingsPanel&&!_settingsPanel.hidden)){[_motion stopDeviceMotionUpdates];_sampleTime=0;}
+ if(!game||_editingLayout||_gyroGain<=0||(_settingsPanel&&!_settingsPanel.hidden)){[_motion stopDeviceMotionUpdates];_sampleTime=0;}
  else if(!_motion.deviceMotionActive&&_motion.deviceMotionAvailable){
   __weak WrathSemanticTouchSurface *weakSelf=self;
   [_motion startDeviceMotionUpdatesUsingReferenceFrame:CMAttitudeReferenceFrameXArbitraryZVertical toQueue:NSOperationQueue.mainQueue withHandler:^(CMDeviceMotion *m,NSError *error){
@@ -113,7 +118,7 @@ constexpr NSInteger tag=0x57524335;
    auto rate=wrathios::touch::Gyro(m.rotationRate.x,m.rotationRate.y,o==UIInterfaceOrientationLandscapeRight);
    if(fabs(rate.x)<.018)rate.x=0;if(fabs(rate.y)<.018)rate.y=0;
    auto &s=S();std::scoped_lock lock(s.mutex);
-   if(s.game&&!s.suspended&&!s.captured){s.lookX+=rate.x*57.2957795*dt*v->_gyroGain;s.lookY+=rate.y*57.2957795*dt*v->_gyroGain;}
+   if(s.game&&!s.suspended){s.lookX+=rate.x*57.2957795*dt*v->_gyroGain;s.lookY+=rate.y*57.2957795*dt*v->_gyroGain;}
   }];
  }
  NSMutableArray *elements=[NSMutableArray new];
@@ -121,6 +126,7 @@ constexpr NSInteger tag=0x57524335;
   UIAccessibilityElement *e=_accessibleButtons[@(i)];if(!e){e=[[UIAccessibilityElement alloc]initWithAccessibilityContainer:self];_accessibleButtons[@(i)]=e;}e.accessibilityLabel=[NSString stringWithUTF8String:wrathios::touch::Actions[i].label];e.accessibilityIdentifier=[@"WrathAction_" stringByAppendingString:e.accessibilityLabel];e.accessibilityTraits=UIAccessibilityTraitButton;e.accessibilityFrameInContainerSpace=rect;[elements addObject:e];
  }
  if(!game){if(!_accessibleKeyboard)_accessibleKeyboard=[[UIAccessibilityElement alloc]initWithAccessibilityContainer:self];UIAccessibilityElement *e=_accessibleKeyboard;e.accessibilityLabel=@"Keyboard";e.accessibilityIdentifier=@"WrathKeyboardButton";e.accessibilityTraits=UIAccessibilityTraitButton;e.accessibilityFrameInContainerSpace=CGRectMake(self.bounds.size.width*.5-62,10,125,42);[elements addObject:e];}
+ if(_editingLayout&&_layoutToolbar)[elements addObject:_layoutToolbar];
  self.accessibilityElements=(_settingsPanel&&!_settingsPanel.hidden)?@[_settingsPanel]:elements;
  if([_owners.allValues containsObject:@201]&&!_artifactHolding&&NSProcessInfo.processInfo.systemUptime-_artifactStart>.3){_artifactHolding=YES;auto &s=S();std::scoped_lock lock(s.mutex);s.keys.push_back(12);}
  [self setNeedsDisplay];
@@ -135,7 +141,7 @@ constexpr NSInteger tag=0x57524335;
 - (void)showSettings {
  [self reset];
  if(!_settingsPanel){
-  _settingsPanel=[[UIView alloc]initWithFrame:CGRectMake(0,0,320,280)];_settingsPanel.backgroundColor=[UIColor colorWithWhite:.08 alpha:.96];_settingsPanel.layer.cornerRadius=16;
+  _settingsPanel=[[UIView alloc]initWithFrame:CGRectMake(0,0,320,300)];_settingsPanel.backgroundColor=[UIColor colorWithWhite:.08 alpha:.96];_settingsPanel.layer.cornerRadius=16;
   NSArray *labels=@[@"Swipe sensitivity",@"Gyro strength (0 = off)",@"Button size",@"Button opacity"];
   float low[]={.04,0,.7,.15},high[]={.4,3,1.3,.9};
   float values[]={(float)_swipeGain,(float)_gyroGain,(float)_controlScale,(float)_opacity};
@@ -143,22 +149,57 @@ constexpr NSInteger tag=0x57524335;
    UILabel *label=[[UILabel alloc]initWithFrame:CGRectMake(15,12+i*52,290,20)];label.text=labels[i];label.textColor=UIColor.whiteColor;label.font=[UIFont systemFontOfSize:13];[_settingsPanel addSubview:label];
    UISlider *slider=[[UISlider alloc]initWithFrame:CGRectMake(15,31+i*52,290,25)];slider.minimumValue=low[i];slider.maximumValue=high[i];slider.value=values[i];slider.tag=i;[slider addTarget:self action:@selector(settingChanged:) forControlEvents:UIControlEventValueChanged];[_settingsPanel addSubview:slider];
   }
-  UIButton *done=[UIButton buttonWithType:UIButtonTypeSystem];done.frame=CGRectMake(110,230,100,40);[done setTitle:@"Done" forState:UIControlStateNormal];[done addTarget:self action:@selector(closeSettings) forControlEvents:UIControlEventTouchUpInside];[_settingsPanel addSubview:done];[self addSubview:_settingsPanel];
+  UIButton *done=[UIButton buttonWithType:UIButtonTypeSystem];done.frame=CGRectMake(210,244,100,40);[done setTitle:@"Done" forState:UIControlStateNormal];[done addTarget:self action:@selector(closeSettings) forControlEvents:UIControlEventTouchUpInside];[_settingsPanel addSubview:done];[self addSubview:_settingsPanel];
+  UIButton *edit=[UIButton buttonWithType:UIButtonTypeSystem];edit.frame=CGRectMake(15,244,180,40);[edit setTitle:@"Edit button positions" forState:UIControlStateNormal];[edit addTarget:self action:@selector(editLayout) forControlEvents:UIControlEventTouchUpInside];[_settingsPanel addSubview:edit];
  }
  _settingsPanel.center=CGPointMake(self.bounds.size.width*.5,self.bounds.size.height*.5);_settingsPanel.hidden=NO;[self bringSubviewToFront:_settingsPanel];[self refresh];
 }
+- (void)editLayout {
+ [self reset];_editingLayout=YES;
+ if(!_layoutToolbar){
+  _layoutToolbar=[[UIView alloc]initWithFrame:CGRectMake(0,0,300,44)];_layoutToolbar.backgroundColor=[UIColor colorWithWhite:.08 alpha:.95];_layoutToolbar.layer.cornerRadius=10;
+  NSArray *titles=@[@"Drag icons",@"Reset",@"Done"];SEL actions[]={NULL,@selector(resetLayout),@selector(finishLayout)};
+  for(int i=0;i<3;i++){UIButton *b=[UIButton buttonWithType:UIButtonTypeSystem];b.frame=CGRectMake(i*100,0,100,44);[b setTitle:titles[i] forState:UIControlStateNormal];if(actions[i])[b addTarget:self action:actions[i] forControlEvents:UIControlEventTouchUpInside];else b.enabled=NO;[_layoutToolbar addSubview:b];}
+  [self addSubview:_layoutToolbar];
+ }
+ _layoutToolbar.center=CGPointMake(self.bounds.size.width*.5,38);_layoutToolbar.hidden=NO;[self bringSubviewToFront:_layoutToolbar];[self refresh];
+}
+- (void)resetLayout {[_layoutPositions removeAllObjects];[NSUserDefaults.standardUserDefaults removeObjectForKey:@"WrathTouchLayoutV1"];[self setNeedsDisplay];}
+- (void)finishLayout { [NSUserDefaults.standardUserDefaults setObject:_layoutPositions forKey:@"WrathTouchLayoutV1"];_editingLayout=NO;_layoutToolbar.hidden=YES;[_owners removeAllObjects];[_last removeAllObjects];[self refresh]; }
+- (void)editTouches:(NSSet<UITouch *> *)touches phase:(int)phase {
+ for(UITouch *t in touches){NSValue *key=[NSValue valueWithNonretainedObject:t];CGPoint p=[t locationInView:self];
+  if(phase==0){for(int b=0;b<wrathios::touch::ActionCount;b++)if(CGRectContainsPoint([self buttonRect:b],p)){if(![_owners.allValues containsObject:@(b)]){_owners[key]=@(b);_last[key]=[NSValue valueWithCGPoint:p];}break;}}
+  else if(phase==1&&_owners[key]){int b=_owners[key].intValue;CGRect r=[self buttonRect:b];CGPoint last=[_last[key] CGPointValue];CGFloat w=self.bounds.size.width,h=self.bounds.size.height;
+   CGFloat x=std::clamp(CGRectGetMidX(r)+p.x-last.x,self.safeAreaInsets.left+r.size.width/2,w-self.safeAreaInsets.right-r.size.width/2);
+   CGFloat y=std::clamp(CGRectGetMidY(r)+p.y-last.y,self.safeAreaInsets.top+r.size.height/2,h-self.safeAreaInsets.bottom-r.size.height/2);
+   _layoutPositions[[@(b) stringValue]]=@[@(x/w),@(y/h)];_last[key]=[NSValue valueWithCGPoint:p];
+  }else if(phase==2){[_owners removeObjectForKey:key];[_last removeObjectForKey:key];[NSUserDefaults.standardUserDefaults setObject:_layoutPositions forKey:@"WrathTouchLayoutV1"];}
+ }[self setNeedsDisplay];
+}
 - (CGRect)buttonRect:(int)b {
+ if(_captured&&!_editingLayout&&b!=26&&b!=3&&b!=31)return CGRectNull;
+ CGRect r=[self defaultButtonRect:b];if(CGRectIsNull(r))return r;
+ NSArray *position=_layoutPositions[[@(b) stringValue]];
+ if([position isKindOfClass:NSArray.class]&&position.count==2&&[position[0] isKindOfClass:NSNumber.class]&&[position[1] isKindOfClass:NSNumber.class]){
+  CGFloat x=[position[0] doubleValue],y=[position[1] doubleValue];if(isfinite(x)&&isfinite(y)){
+   r.origin.x=std::clamp(x*self.bounds.size.width-r.size.width/2,self.safeAreaInsets.left,self.bounds.size.width-self.safeAreaInsets.right-r.size.width);
+   r.origin.y=std::clamp(y*self.bounds.size.height-r.size.height/2,self.safeAreaInsets.top,self.bounds.size.height-self.safeAreaInsets.bottom-r.size.height);
+  }
+ }return r;
+}
+- (CGRect)defaultButtonRect:(int)b {
+
  CGFloat w=self.bounds.size.width,h=self.bounds.size.height;
  CGFloat left=MAX(16,self.safeAreaInsets.left),right=MAX(16,self.safeAreaInsets.right);
  CGFloat usable=w-left-right, scale=MIN(_controlScale,1.3);
  // Approved combat hierarchy. USE sits above FIRE with a clear gap.
  auto rect=[&](CGFloat x,CGFloat y,CGFloat diameter){CGFloat d=diameter*scale;return CGRectMake(left+x*usable-d/2,y*h-d/2,d,d);};
- if(b==0)return rect(.83,.49,70);
- if(b==5)return rect(.83,.25,44);
- if(b==2)return rect(.71,.34,50);
- if(b==1)return rect(.95,.28,46);
- if(b==4)return rect(.95,.52,46);
- if(b==26&&_tray!=3)return rect(.60,.24,42);
+ if(b==0)return rect(.70,.64,64);
+ if(b==5)return rect(.84,.38,48);
+ if(b==2)return rect(.80,.57,48);
+ if(b==1)return rect(.94,.49,50);
+ if(b==4)return rect(.94,.69,48);
+ if(b==26&&_tray!=3)return rect(.84,.78,48);
  if(b==3)return CGRectMake(left,12,62,34);
  if(b==21)return CGRectMake(w-right-192,12,92,34);
  if(b==6)return CGRectMake(w-right-94,12,92,34);
@@ -193,13 +234,25 @@ constexpr NSInteger tag=0x57524335;
   [@" KEYBOARD " drawAtPoint:CGPointMake(self.bounds.size.width*.5-55,18) withAttributes:a];
   [@"MENU: FIRE / JUMP / USE = ACCEPT; ALT / CROUCH = BACK" drawAtPoint:CGPointMake(100,self.bounds.size.height-24) withAttributes:@{NSFontAttributeName:[UIFont systemFontOfSize:10],NSForegroundColorAttributeName:UIColor.whiteColor}];
  }
+ NSDictionary *symbols=@{@0:@"scope",@1:@"arrow.up",@2:@"burst",@3:@"pause.fill",@4:@"arrow.down",@5:@"hand.raised",@6:@"square.grid.2x2",@21:@"square.stack.3d.up",@26:@"diamond",@31:@"gearshape"};
  for(int i=0;i<wrathios::touch::ActionCount;i++){
-  CGRect r=[self buttonRect:i];if(CGRectIsNull(r))continue;[(i==_radialSelection&&_tray?[UIColor colorWithRed:.8 green:.35 blue:0 alpha:.8]:[UIColor colorWithWhite:0 alpha:_opacity]) setFill];[[UIBezierPath bezierPathWithRoundedRect:r cornerRadius:16] fill];
-  [[NSString stringWithUTF8String:((!_wasGame||_captured)&&i==0)?"ACCEPT":(!_wasGame&&i==2)?"BACK":(_tray==1&&i==12)?"MORE":(i==21?"WEAPONS":i==6?"UTILITIES":i==26?"ARTIFACT":i==31?"⚙":wrathios::touch::Actions[i].label)] drawInRect:CGRectInset(r,3,(r.size.height-15)/2) withAttributes:@{NSFontAttributeName:[UIFont boldSystemFontOfSize:i>=7?10:12],NSForegroundColorAttributeName:UIColor.whiteColor}];
+  CGRect r=[self buttonRect:i];if(CGRectIsNull(r))continue;
+  BOOL pressed=[_owners.allValues containsObject:@(i)]||(i==26&&_artifactHolding)||(i==_radialSelection&&_tray);
+  UIBezierPath *plate=[UIBezierPath bezierPathWithRoundedRect:r cornerRadius:MIN(14,r.size.height*.28)];
+  [(pressed?[UIColor colorWithRed:.9 green:.42 blue:.12 alpha:.65]:[UIColor colorWithWhite:.04 alpha:_opacity*.6]) setFill];[plate fill];
+  [[UIColor colorWithWhite:1 alpha:_editingLayout?.8:(pressed?.85:.25)]setStroke];plate.lineWidth=1;[plate stroke];
+  NSString *name=symbols[@(i)];if((!_wasGame||_captured)&&i==0)name=@"checkmark";if(!_wasGame&&i==2)name=@"arrow.uturn.backward";
+  UIImage *icon=name?[UIImage systemImageNamed:name withConfiguration:[UIImageSymbolConfiguration configurationWithPointSize:24 weight:UIImageSymbolWeightMedium]]:nil;
+  if(icon){CGFloat d=MIN(28,MIN(r.size.width,r.size.height)*.52);CGFloat ratio=icon.size.width/MAX(1,icon.size.height);CGSize size=ratio>1?CGSizeMake(d,d/ratio):CGSizeMake(d*ratio,d);[[icon imageWithTintColor:UIColor.whiteColor renderingMode:UIImageRenderingModeAlwaysOriginal] drawInRect:CGRectMake(CGRectGetMidX(r)-size.width/2,CGRectGetMidY(r)-size.height/2,size.width,size.height)];}
+  else {NSString *label=[NSString stringWithUTF8String:wrathios::touch::Actions[i].label];NSMutableParagraphStyle *style=[NSMutableParagraphStyle new];style.alignment=NSTextAlignmentCenter;CGFloat fontSize=11;while(fontSize>7&&[label sizeWithAttributes:@{NSFontAttributeName:[UIFont systemFontOfSize:fontSize]}].width>r.size.width-6)fontSize-=.5;
+   [label drawInRect:CGRectInset(r,3,(r.size.height-fontSize-3)/2) withAttributes:@{NSFontAttributeName:[UIFont systemFontOfSize:fontSize weight:UIFontWeightMedium],NSForegroundColorAttributeName:UIColor.whiteColor,NSParagraphStyleAttributeName:style}];}
  }
- CGPoint center=[_owners.allValues containsObject:@100]?_moveOrigin:CGPointMake(90,self.bounds.size.height-100);
- [[UIColor colorWithWhite:1 alpha:.3]setStroke];UIBezierPath *ring=[UIBezierPath bezierPathWithOvalInRect:CGRectMake(center.x-54,center.y-54,108,108)];ring.lineWidth=2;[ring stroke];
- [(_wasGame?@"MOVE":@"CURSOR") drawAtPoint:CGPointMake(65,self.bounds.size.height-95) withAttributes:@{NSFontAttributeName:[UIFont systemFontOfSize:12],NSForegroundColorAttributeName:UIColor.whiteColor}];
+ // Movement is floating: show its origin only while touched, never a fixed MOVE target.
+ if([_owners.allValues containsObject:@100]){
+  CGPoint center=_moveOrigin;[[UIColor colorWithWhite:1 alpha:.3]setStroke];UIBezierPath *ring=[UIBezierPath bezierPathWithOvalInRect:CGRectMake(center.x-44,center.y-44,88,88)];ring.lineWidth=1.5;[ring stroke];
+  [[UIColor colorWithWhite:1 alpha:.45]setFill];[[UIBezierPath bezierPathWithOvalInRect:CGRectMake(center.x-8,center.y-8,16,16)]fill];
+ }
+
 }
 - (void)menuPoint:(CGPoint)p button:(int)button {
  auto &s=S();std::scoped_lock lock(s.mutex);
@@ -208,6 +261,7 @@ constexpr NSInteger tag=0x57524335;
 
 }
 - (void)touchesBegan:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
+ if(_editingLayout){[self editTouches:touches phase:0];return;}
  (void)event;bool menu;{auto &s=S();std::scoped_lock lock(s.mutex);menu=s.menu;}
  for(UITouch *t in touches){
   NSValue *key=[NSValue valueWithNonretainedObject:t];CGPoint p=[t locationInView:self];
@@ -245,6 +299,7 @@ constexpr NSInteger tag=0x57524335;
  }
 }
 - (void)touchesMoved:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
+ if(_editingLayout){[self editTouches:touches phase:1];return;}
  (void)event;
  for(UITouch *t in touches){NSValue *key=[NSValue valueWithNonretainedObject:t];NSNumber *n=_owners[key];if(!n)continue;
   int owner=n.intValue;CGPoint p=[t locationInView:self],last=[_last[key] CGPointValue];
@@ -253,7 +308,10 @@ constexpr NSInteger tag=0x57524335;
    int held=(_radialSelection>=0&&wrathios::touch::Actions[_radialSelection].down[0]=='+')?(int)_radialSelection+1:0;
    if(held!=_radialHeld){auto &s=S();std::scoped_lock lock(s.mutex);if(_radialHeld)s.keys.push_back(-_radialHeld);if(held)s.keys.push_back(held);_radialHeld=held;}
    [self setNeedsDisplay];continue;}
-  if(owner==201)continue;
+  if(owner==201){
+   if(_artifactHolding){auto &s=S();std::scoped_lock lock(s.mutex);s.lookX+=(p.x-last.x)*_swipeGain;s.lookY+=(p.y-last.y)*_swipeGain;}
+   _last[key]=[NSValue valueWithCGPoint:p];continue;
+  }
   if(owner==102)[self menuPoint:p button:0];
   else {auto &s=S();std::scoped_lock lock(s.mutex);
    if(owner==101||owner==0||owner==2){s.lookX+=(p.x-last.x)*_swipeGain;s.lookY+=(p.y-last.y)*_swipeGain;}
@@ -264,6 +322,7 @@ constexpr NSInteger tag=0x57524335;
  }
 }
 - (void)finish:(NSSet<UITouch *> *)touches cancelled:(BOOL)cancelled {
+ if(_editingLayout){[self editTouches:touches phase:2];return;}
  for(UITouch *t in touches){NSValue *key=[NSValue valueWithNonretainedObject:t];NSNumber *n=_owners[key];if(!n)continue;int owner=n.intValue;
   if(owner==200||owner==202||owner==201){
    if(owner==201&&_artifactHolding){auto &s=S();std::scoped_lock lock(s.mutex);s.keys.push_back(-12);_artifactHolding=NO;}

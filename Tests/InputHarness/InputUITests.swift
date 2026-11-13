@@ -56,4 +56,32 @@ final class InputUITests: XCTestCase {
         XCTAssertTrue(app.sliders.firstMatch.waitForExistence(timeout: 5))
         let shot = XCTAttachment(screenshot: app.screenshot()); shot.lifetime = .keepAlways; add(shot)
     }
+    func testEditableLayoutPersistsAndResets() {
+        let app = XCUIApplication(); app.launchArguments = ["--gameplay"]
+        XCUIDevice.shared.orientation = .landscapeLeft; app.launch()
+        func edit() {
+            XCTAssertTrue(app.buttons["WrathAction_SETTINGS"].waitForExistence(timeout: 10))
+            app.buttons["WrathAction_SETTINGS"].tap()
+            app.buttons["Edit button positions"].tap()
+            XCTAssertTrue(app.buttons["Reset"].waitForExistence(timeout: 5))
+        }
+        edit()
+        app.buttons["Reset"].tap() // Isolate persisted simulator state, not production data.
+        let fire = app.buttons["WrathAction_FIRE"]
+        let baseline = fire.frame
+        let start = fire.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        start.press(forDuration: 0.2, thenDragTo: start.withOffset(CGVector(dx: -60, dy: 30)))
+        app.buttons["Done"].tap()
+        let moved = fire.frame
+        XCTAssertLessThan(moved.midX, baseline.midX - 40)
+        XCTAssertGreaterThan(moved.midY, baseline.midY + 15)
+        app.terminate(); app.launch()
+        XCTAssertTrue(app.buttons["WrathAction_FIRE"].waitForExistence(timeout: 10))
+        XCTAssertEqual(app.buttons["WrathAction_FIRE"].frame.midX, moved.midX, accuracy: 2)
+        XCTAssertEqual(app.buttons["WrathAction_FIRE"].frame.midY, moved.midY, accuracy: 2)
+        edit(); app.buttons["Reset"].tap(); app.buttons["Done"].tap()
+        XCTAssertEqual(app.buttons["WrathAction_FIRE"].frame.midX, baseline.midX, accuracy: 2)
+        XCTAssertEqual(app.buttons["WrathAction_FIRE"].frame.midY, baseline.midY, accuracy: 2)
+        let shot = XCTAttachment(screenshot: app.screenshot()); shot.lifetime = .keepAlways; add(shot)
+    }
 }

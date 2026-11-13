@@ -127,7 +127,7 @@ for title in 'Launch WRATH' 'Choose WRATH Folder' 'Remove Imported Data'; do
 done
 for marker in \
     'WRATHIOS_GATE5C_SEMANTIC_MENU_TOUCH_V1' \
-    'WRATHIOS_NATIVE_TOUCH_V15'; do
+    'WRATHIOS_NATIVE_TOUCH_V16_CONTROLLER'; do
     grep -Fq "$marker" "$ARTIFACT_DIR/strings.txt" || {
         echo "error: Gate 5C binary is missing semantic adapter marker: $marker" >&2
         exit 1
@@ -142,7 +142,7 @@ grep -Fq 'CMMotionManager' "$ARTIFACT_DIR/strings.txt" || {
     exit 1
 }
 printf '%s\n' \
-    'v16: native absolute menu pointer, gameplay relative look, move/fire/jump and orientation-aware gyro.' \
+    'v16: native Xbox controller actions and menu cursor, independent relative look, orientation-aware gyro.' \
     'SDL accelerometer virtual joystick disabled before initialization; physical controllers retained.' \
     'Physical quality remains device-unverified.' \
     > "$ARTIFACT_DIR/native-input-audit.txt"

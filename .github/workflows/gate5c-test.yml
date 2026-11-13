@@ -26,6 +26,8 @@ jobs:
           git -C Vendor/wrath-qc checkout --detach FETCH_HEAD
           git clone "$WRATH_ENGINE_URL" Vendor/wrath-darkplaces
           git -C Vendor/wrath-darkplaces checkout "$WRATH_ENGINE_COMMIT"
+      - name: Install native SDL2 controller fixture dependency
+        run: sudo apt-get update && sudo apt-get install -y libsdl2-dev
       - name: Test semantic menu and click pairing
         run: bash scripts/test_gate5c_semantic_menu.sh
       - uses: actions/upload-artifact@v4
@@ -60,7 +62,7 @@ jobs:
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: gate5c-v16-test-ipa
+          name: gate5c-v17-test-ipa
           path: |
             Artifacts/gate5c-semantic-menu
             Artifacts/input-integration

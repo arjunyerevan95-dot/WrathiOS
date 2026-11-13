@@ -50,7 +50,7 @@ constexpr NSInteger tag=0x57524335;
 @implementation WrathSemanticTouchSurface
 - (instancetype)initWithFrame:(CGRect)frame {
  if(!(self=[super initWithFrame:frame]))return nil;
- NSLog(@"WRATHIOS_NATIVE_TOUCH_V16_CONTROLLER");
+ NSLog(@"WRATHIOS_NATIVE_TOUCH_V17_ENUMERATED_CONTROLLER");
  [NSUserDefaults.standardUserDefaults registerDefaults:@{@"WrathTouchScale":@1,@"WrathTouchOpacity":@.5,@"WrathTouchSwipe":@.15,@"WrathTouchGyro":@1}];
  _controlScale=[NSUserDefaults.standardUserDefaults doubleForKey:@"WrathTouchScale"];_opacity=[NSUserDefaults.standardUserDefaults doubleForKey:@"WrathTouchOpacity"];
  _swipeGain=[NSUserDefaults.standardUserDefaults doubleForKey:@"WrathTouchSwipe"];_gyroGain=[NSUserDefaults.standardUserDefaults doubleForKey:@"WrathTouchGyro"];

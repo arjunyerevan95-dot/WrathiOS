@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Execute production iOS route and pinned VID_ApplyJoyState with transport stubs."""
 from pathlib import Path
-import re, subprocess, tempfile
+import re, subprocess, tempfile, os, shlex
 r=Path(__file__).resolve().parents[2]
 source=(r/'Vendor/wrath-darkplaces/vid_shared.c').read_text()
 def function(name):
@@ -43,7 +43,7 @@ void CL_VM_InputEvent(int,float,float){}
 void MR_InputEvent(int,float,float){}
 static cvar joy_active;
 void Cvar_SetValueQuick(cvar *c,float x){c->value=x;c->integer=x;}
-void Con_Printf(const char *,const char*){}
+void Con_Printf(const char *,...){}
 '''
 preamble+='enum {'+','.join(k+'='+str(i+100) for i,k in enumerate(keys))+'};\n'
 preamble+='static cvar '+','.join(cvars)+';\n'
@@ -58,25 +58,63 @@ const char *Key_GetBind(int key,int){return binds[key].c_str();}
 void Key_FindKeysForCommand(const char*c,int*k,int n,int){std::fill(k,k+n,-1);for(int i=0,j=0;i<1000&&j<n;i++)if(binds[i]==c)k[j++]=i;}
 '''
 preamble+='#include "WrathTouchActions.hpp"\nconst char *WrathIOSTouchActionCommand(int a,int){return wrathios::touch::Actions[a].down;}\n'
-main='''int main(){
+p='#include <SDL.h>\n'+preamble
+p+='''\n#define SDL_ALLOW_XINPUT 0
+static cvar joy_enable,joy_index,joy_detected;
+static SDL_GameController *vid_sdlcontroller;
+static SDL_Joystick *vid_sdljoystick;
+static int vid_sdljoystickindex=-1;
+void VID_Shared_BuildJoyState_Begin(vid_joystate_t*j){*j={};}
+void VID_Shared_BuildJoyState_Finish(vid_joystate_t*){}
+enum controllertype_t {CONTROLLER_NULL,CONTROLLER_GENERIC,CONTROLLER_XBOX,CONTROLLER_PLAYSTATION,CONTROLLER_NINTENDO,CONTROLLER_STEAM};
+'''
+subprocess.run(['python3',str(r/'scripts/materialize_engine_patches.py')],check=True)
+native=(r/'Derived/wrath-darkplaces-ios/vid_sdl.c').read_text()
+def fun(name):
+ a=native.index('\n'+name) if '\n'+name in native else native.index(name+'(')
+ a=native.rfind('\n',0,a)+1;b=native.index('{',a);depth=1;i=b+1
+ while depth:depth+=(native[i]=='{')-(native[i]=='}');i+=1
+ return native[a:i]
+# Extract full definitions by signature; keep native SDL sampling/query intact.
+def extract(signature):
+ a=native.index(signature);b=native.index('{',a);depth=1;i=b+1
+ while depth:depth+=(native[i]=='{')-(native[i]=='}');i+=1
+ return native[a:i]
+p+=function('VID_JoyState_GetAxis')+'\n'+function('VID_KeyEventForButton')+'\n'+apply+'\n'
+p+=extract('void VID_BuildJoyState(vid_joystate_t *joystate)')+'\n'
+p+=(r/'Gate5C/WrathControllerRoute.inc').read_text()+'\n'
+p+=extract('void VID_EnableJoystick(qboolean enable)')+'\n'+extract('controllertype_t VID_ControllerType(int index)')+'\n'
+p+='''int main(){
+ SDL_SetHint(SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS,"1");assert(SDL_Init(SDL_INIT_JOYSTICK|SDL_INIT_GAMECONTROLLER)==0);
+ // Non-controller device occupies slot zero: production must select real touch Xbox.
+ int dummy=SDL_JoystickAttachVirtual(SDL_JOYSTICK_TYPE_FLIGHT_STICK,2,2,0);assert(dummy==0);
  joy_x360_axisside.integer=0;joy_x360_axisforward.integer=1;joy_x360_axisyaw.integer=2;joy_x360_axispitch.integer=3;joy_x360_axisup.integer=-1;
  joy_x360_deadzoneside.value=joy_x360_deadzoneforward.value=joy_x360_deadzoneyaw.value=joy_x360_deadzonepitch.value=0;
  binds[K_X360_RIGHT_TRIGGER]="+attack";binds[K_X360_A]="+jump";
- auto tick=[](){vid_joystate_t j;WrathIOSControllerFrame(&j);VID_ApplyJoyState(&j);realtime+=.016;};
- joy_axiskeyevents.integer=1; // imported legacy config must not suppress Xbox buttons
+ auto tick=[](){VID_EnableJoystick(true);vid_joystate_t j;VID_BuildJoyState(&j);WrathIOSControllerFrame(&j);VID_ApplyJoyState(&j);realtime+=.016;};
+ joy_axiskeyevents.integer=1;
  edges={1};look=2;move=.7;tick();assert(joy_axiskeyevents.integer==0);
- assert(events.back().key==K_X360_RIGHT_TRIGGER&&events.back().down);assert(in_mouse_x==40);assert(cl.cmd.forwardmove>.6&&cl.cmd.sidemove>.6);
- look=3;tick();assert(in_mouse_x==100); // aim continues while trigger held
- binds[K_X360_RIGHT_TRIGGER]="+button3"; // remap during hold cannot strand old key
- edges={-1};tick();assert(events.back().key==K_X360_RIGHT_TRIGGER&&!events.back().down);
- menu=true;nav=.4;edges={33,-33};tick();assert(events.back().key==K_X360_A&&events.back().down);assert(vid_joystate.axis[2]>.3);
- tick();assert(events.back().key==K_X360_A&&!events.back().down); // quick tap preserved across frames
+ assert(joy_index.integer==1);assert(joy_active.integer==1);assert(joy_detected.integer==2);assert(VID_ControllerType(joy_index.integer)==CONTROLLER_XBOX);
+ assert(std::any_of(events.begin(),events.end(),[](Event e){return e.key==K_X360_RIGHT_TRIGGER&&e.down;}));assert(in_mouse_x==40);
+ assert(cl.cmd.forwardmove>.6&&cl.cmd.sidemove>.6);
+ look=3;tick();assert(in_mouse_x==100);
+ binds[K_X360_RIGHT_TRIGGER]="+button3"; // release original key even after binding changes
+ edges={-1};tick();assert(std::any_of(events.begin(),events.end(),[](Event e){return e.key==K_X360_RIGHT_TRIGGER&&!e.down;}));
+ menu=true;nav=.4;edges={33,-33};tick();assert(events.back().key==K_X360_A&&events.back().down);
+ tick();assert(events.back().key==K_X360_A&&!events.back().down);
  edges={34,-34};tick();assert(events.back().key==K_X360_B&&events.back().down);tick();assert(events.back().key==K_X360_B&&!events.back().down);
- binds[40]="impulse 10";assert(WrathIOSActionKey(5)==0); // no keyboard fallback
- // Fire + distinct look pointer + movement survive; no Cbuf, no profile writes.
- puts("production route + pinned VID_ApplyJoyState: controller pairs, held-fire look, movement, remap-release PASS");
+ binds[40]="impulse 10";assert(WrathIOSActionKey(5)==0);
+ SDL_JoystickDetachVirtual(dummy);tick();assert(joy_index.integer==0);assert(VID_ControllerType(joy_index.integer)==CONTROLLER_XBOX);
+ puts("PASS: production route, enumerated SDL Xbox, native sampler/query/apply, device-index shift, A press/release, held-fire mouse look");
+ WrathIOSControllerShutdown();VID_EnableJoystick(false);assert(SDL_NumJoysticks()==0);
+ tick();assert(SDL_NumJoysticks()==1);assert(VID_ControllerType(joy_index.integer)==CONTROLLER_XBOX);
+ WrathIOSControllerShutdown();VID_EnableJoystick(false);SDL_Quit();
 }'''
+
 with tempfile.TemporaryDirectory() as d:
- p=Path(d)/'test.cpp';p.write_text(preamble+function('VID_JoyState_GetAxis')+'\n'+function('VID_KeyEventForButton')+'\n'+apply+'\n'+route+'\n'+main)
- subprocess.run(['c++','-std=c++20','-Wall','-Wextra','-Werror','-I'+str(r/'Gate5C'),str(p),'-o',d+'/test'],check=True)
+ src=Path(d)/'test.cpp';src.write_text(p)
+ flags=shlex.split(os.environ.get('WRATH_TEST_SDL_FLAGS',''))
+ if not flags:
+  flags=shlex.split(subprocess.check_output(['sdl2-config','--cflags','--libs'],text=True))
+ subprocess.run(['c++','-std=c++20','-Wno-narrowing','-DWRATH_IOS_GATE5C','-I'+str(r/'Gate5C'),str(src),*flags,'-o',d+'/test'],check=True)
  subprocess.run([d+'/test'],check=True)

@@ -61,7 +61,7 @@ static NSString * const WrathStatusRemoved = @"Imported data removed";
                                    color:[UIColor colorWithWhite:0.78 alpha:1.0]];
     self.introLabel = intro;
 #ifdef WRATH_IOS_GATE5C
-    intro.text = @"0.0.16 (16) · based on Gate 5A main 538a61f · semantic adapter contract v1. Imported data remains in the existing app container.";
+    intro.text = @"0.0.17 (17) · based on Gate 5A main 538a61f · semantic adapter contract v1. Imported data remains in the existing app container.";
 #else
     intro.text = @"Choose the folder that contains kp1, or choose kp1 itself. WrathiOS validates package indexes and copies your licensed files into this app only. Nothing is uploaded or bundled into the IPA.";
 #endif
@@ -164,7 +164,7 @@ static NSString * const WrathStatusRemoved = @"Imported data removed";
                                       color:[UIColor colorWithWhite:0.5 alpha:1.0]];
     self.boundaryLabel = boundary;
 #ifdef WRATH_IOS_GATE5C
-    boundary.text = @"v16 includes the approved FPS touch layout, weapon and utility selectors, profile keyboard, and corrected gyro signs. On-device testing is still required.";
+    boundary.text = @"v17 includes the approved FPS touch layout, weapon and utility selectors, profile keyboard, and corrected gyro signs. On-device testing is still required.";
 #else
     boundary.text = self.runtimeLaunchHandler != nil
         ? @"Gate 5A starts WRATH only after Launch WRATH. This experiment targets the authentic main menu; gameplay remains out of scope."

@@ -14,7 +14,8 @@ assert 'WrathIOSTouchNextText()' in menu
 assert 'MP_InputEvent(0, K_X360_A, 0)' not in menu
 route=(r/'Gate5C/WrathControllerRoute.inc').read_text()
 assert 'Cbuf_AddText' not in route and 'Key_SetBinding' not in route
-assert 'Key_GetBind' in route and 'joy->is360=true' in route
+assert 'Key_GetBind' in route and 'SDL_JoystickAttachVirtualEx' in route
+assert 'VID_BuildJoyState(&touch)' in route and 'joy->is360=true' not in route
 vid='\n'.join(x['new'] for p in spec['patches'] if p['path']=='vid_sdl.c' for x in p['replacements'])
 assert vid.index('WrathIOSControllerFrame(&joystate)') < vid.index('VID_ApplyJoyState(&joystate)')
 assert 'Cbuf_AddText' not in vid

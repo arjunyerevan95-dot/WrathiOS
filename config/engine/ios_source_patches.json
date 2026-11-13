@@ -93,6 +93,14 @@
         {
           "old": "void VID_BuildJoyState(vid_joystate_t *joystate)",
           "new": "#ifdef WRATH_IOS_GATE5C\n#include \"WrathControllerRoute.inc\"\n#endif\n\nvoid VID_BuildJoyState(vid_joystate_t *joystate)"
+        },
+        {
+          "old": "void VID_EnableJoystick(qboolean enable)\n{",
+          "new": "void VID_EnableJoystick(qboolean enable)\n{\n#ifdef WRATH_IOS_GATE5C\n\tif(enable) WrathIOSControllerPrepare();\n#endif"
+        },
+        {
+          "old": "void VID_Shutdown (void)\n{\n\tVID_EnableJoystick(false);",
+          "new": "void VID_Shutdown (void)\n{\n#ifdef WRATH_IOS_GATE5C\n\tWrathIOSControllerShutdown();\n#endif\n\tVID_EnableJoystick(false);"
         }
       ]
     },

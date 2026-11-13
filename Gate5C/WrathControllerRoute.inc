@@ -1,6 +1,8 @@
 /* Included by pinned vid_sdl.c. Virtual controls join the same Xbox state used
  * by SDL GameController and Windows XInput, before VID_ApplyJoyState.
  * No Cbuf action dispatch, binding writes, or menu-VM state manipulation. */
+/* Defined by vid_shared.c, not exported by upstream vid.h. */
+extern cvar_t joy_axiskeyevents;
 static const int wrath_ios_padkeys[] = {
  K_X360_DPAD_UP,K_X360_DPAD_DOWN,K_X360_DPAD_LEFT,K_X360_DPAD_RIGHT,
  K_X360_START,K_X360_BACK,K_X360_LEFT_THUMB,K_X360_RIGHT_THUMB,
@@ -14,7 +16,7 @@ static int WrathIOSPadIndex(int key) {
  int i;for(i=0;i<24;i++)if(wrath_ios_padkeys[i]==key)return i;return -1;
 }
 static int WrathIOSActionKey(int action) {
- char command[128]; const char *raw; size_t n; int i,keys[8];
+ char command[128]; const char *raw; size_t n; int i;
  if(action==32)return K_X360_A;
  if(action==33)return K_X360_B;
  if(action==3)return K_X360_START;
@@ -25,12 +27,9 @@ static int WrathIOSActionKey(int action) {
  /* Strip the legacy synthetic key ID, not the number in an impulse. */
  if(command[0]=='+'){char *space=strchr(command,' ');if(space)*space=0;}
  for(i=0;i<24;i++){const char *bind=Key_GetBind(wrath_ios_padkeys[i],-1);if(bind&&!strcmp(bind,command))return wrath_ios_padkeys[i];}
- /* Auxiliary radial actions can exceed a controller's button count. Resolve
-  * their actual loaded keyboard bind rather than inventing one or executing
-  * the command. Combat always prefers the actual controller preset. */
- Key_FindKeysForCommand(command,keys,8,-1);
- for(i=0;i<8;i++)if(keys[i]>0)return keys[i];
- Con_Printf("WRATH touch action has no loaded binding: %s\n",command);
+ /* Controller-only: surface missing bindings rather than falling back to
+  * keyboard or direct commands. Only swipe/gyro uses relative mouse. */
+ Con_Printf("WRATH touch action has no loaded controller binding: %s\n",command);
  return 0;
 }
 static void WrathIOSControllerFrame(vid_joystate_t *joy) {

@@ -8,9 +8,8 @@ v16 merges virtual controls into `vid_joystate_t` immediately before the pinned
 `VID_ApplyJoyState`, the shared SDL GameController/Windows XInput path. It resolves
 named actions against loaded controller bindings first, and retains the chosen key
 until release even if a profile/remap changes. There are no binding writes.
-Auxiliary radial actions absent from the controller preset resolve their existing
-keyboard binding through normal `Key_Event`, not Cbuf command injection; unbound
-actions log a diagnostic rather than invent a binding. Relative mouse aiming is
+Controller-only actions: missing controller bindings log a diagnostic and remain
+unbound; there is no keyboard fallback. Relative mouse aiming is
 independent of Fire/Alt, including dragging the held button itself, as requested.
 
 Menus use paired native Xbox A/B and the game's right-stick cursor semantics.

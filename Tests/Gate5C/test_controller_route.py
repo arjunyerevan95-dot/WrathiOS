@@ -31,6 +31,7 @@ using qboolean=bool;
 #define CONFIG_MENU 1
 #define bound(a,b,c) std::clamp((float)(b),(float)(a),(float)(c))
 struct cvar { int integer=0;float value=1;};
+using cvar_t=cvar;
 struct vid_joystate_t {bool is360=false;float axis[16]={};int button[36]={};};
 static vid_joystate_t vid_joystate;
 static double realtime=0;
@@ -71,6 +72,7 @@ main='''int main(){
  menu=true;nav=.4;edges={33,-33};tick();assert(events.back().key==K_X360_A&&events.back().down);assert(vid_joystate.axis[2]>.3);
  tick();assert(events.back().key==K_X360_A&&!events.back().down); // quick tap preserved across frames
  edges={34,-34};tick();assert(events.back().key==K_X360_B&&events.back().down);tick();assert(events.back().key==K_X360_B&&!events.back().down);
+ binds[40]="impulse 10";assert(WrathIOSActionKey(5)==0); // no keyboard fallback
  // Fire + distinct look pointer + movement survive; no Cbuf, no profile writes.
  puts("production route + pinned VID_ApplyJoyState: controller pairs, held-fire look, movement, remap-release PASS");
 }'''

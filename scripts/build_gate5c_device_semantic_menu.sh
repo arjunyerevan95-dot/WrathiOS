@@ -9,7 +9,7 @@ PROJECT="$ROOT_DIR/WrathiOSGate5C.xcodeproj"
 APP_BUNDLE="$DERIVED_DATA/Build/Products/Debug-iphoneos/WrathiOSGate5C.app"
 BINARY="$APP_BUNDLE/WrathiOSGate5C"
 PACKAGE_ROOT="$ROOT_DIR/Derived/gate5c-package"
-IPA="$ARTIFACT_DIR/WrathiOSGate5C-v20-${WRATH_RENDERER:-gles}-unsigned.ipa"
+IPA="$ARTIFACT_DIR/WrathiOSGate5C-v21-${WRATH_RENDERER:-gles}-unsigned.ipa"
 
 rm -rf "$ARTIFACT_DIR" "$DERIVED_DATA" "$PROJECT" "$PACKAGE_ROOT"
 mkdir -p "$ARTIFACT_DIR"

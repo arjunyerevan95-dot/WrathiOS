@@ -64,3 +64,5 @@ python3 "$ROOT_DIR/Tests/Gate5C/test_upstream_controller_handlers.py"
 "$ARTIFACT_DIR/WrathReadableDimensionsTests" | tee "$ARTIFACT_DIR/readability-results.txt"
 
 python3 "$ROOT_DIR/Tests/Gate5C/test_backend_selection.py"
+
+python3 "$ROOT_DIR/Tests/Gate5C/test_zink_loader_order.py"

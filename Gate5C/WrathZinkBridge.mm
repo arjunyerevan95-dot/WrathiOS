@@ -18,7 +18,8 @@ void WrathZinkGetDrawableSize(SDL_Window*,int*w,int*h){if(w)*w=width;if(h)*h=hei
 static void *(*createContext)(const int*,void*);
 static unsigned char (*makeCurrent)(void*,void*,unsigned,int,int);
 static void *(*getProc)(const char*);
-int WrathZinkLoadLibrary(const char*){return 0;}
+static int WrathZinkEnsureLibrary(void);
+int WrathZinkLoadLibrary(const char*){return WrathZinkEnsureLibrary();}
 int WrathZinkSetAttribute(SDL_GLattr,int){return 0;}
 int WrathZinkGetAttribute(SDL_GLattr a,int*v){
  if(!v)return -1;
@@ -30,7 +31,10 @@ int WrathZinkSetSwapInterval(int interval){return presenter?SDL_RenderSetVSync(p
 SDL_Window *WrathZinkCreateWindow(const char*n,int x,int y,int w,int h,Uint32 f){
  return SDL_CreateWindow(n,x,y,w,h,(f&~SDL_WINDOW_OPENGL)|SDL_WINDOW_ALLOW_HIGHDPI);
 }
-void *WrathZinkGetProcAddress(const char*n){return getProc?getProc(n):nullptr;}
+void *WrathZinkGetProcAddress(const char*n){
+ if(WrathZinkEnsureLibrary()!=0)return nullptr;
+ return getProc(n);
+}
 void WrathZinkDrain(void){if(context&&getProc){auto finish=(void(*)(void))getProc("glFinish");if(finish)finish();}}
 void WrathZinkDestroyWindow(SDL_Window*w){
  WrathZinkDrain();if(texture)SDL_DestroyTexture(texture);texture=nullptr;
@@ -39,7 +43,8 @@ void WrathZinkDestroyWindow(SDL_Window*w){
  free(pixels);pixels=nullptr;SDL_DestroyWindow(w);
  // Keep loaded modules alive: driver worker threads can outlive a context.
 }
-SDL_GLContext WrathZinkCreateContext(SDL_Window*w){
+static int WrathZinkEnsureLibrary(void){
+ if(mesa&&createContext&&makeCurrent&&getProc&&destroyContext)return 0;
  NSString *dir=NSBundle.mainBundle.privateFrameworksPath;
  const char *vk=[[dir stringByAppendingPathComponent:@"libMoltenVK.dylib"] fileSystemRepresentation];
  unsetenv("MESA_GL_VERSION_OVERRIDE");unsetenv("MESA_GLSL_VERSION_OVERRIDE");
@@ -47,12 +52,16 @@ SDL_GLContext WrathZinkCreateContext(SDL_Window*w){
  setenv("MESA_SHADER_CACHE_DISABLE","true",1);
  // Do not override reported GL/GLSL versions or advertise unsupported capabilities.
  mesa=dlopen([[dir stringByAppendingPathComponent:@"libOSMesa.dylib"] fileSystemRepresentation],RTLD_NOW|RTLD_LOCAL);
- if(!mesa){SDL_SetError("OSMesa load failed: %s",dlerror());return nullptr;}
+ if(!mesa){SDL_SetError("OSMesa load failed: %s",dlerror());return -1;}
  createContext=(void*(*)(const int*,void*))dlsym(mesa,"OSMesaCreateContextAttribs");
  makeCurrent=(unsigned char(*)(void*,void*,unsigned,int,int))dlsym(mesa,"OSMesaMakeCurrent");
  getProc=(void*(*)(const char*))dlsym(mesa,"OSMesaGetProcAddress");
  destroyContext=(void(*)(void*))dlsym(mesa,"OSMesaDestroyContext");
- if(!createContext||!makeCurrent||!getProc||!destroyContext){SDL_SetError("Incomplete OSMesa entry points");return nullptr;}
+ if(!createContext||!makeCurrent||!getProc||!destroyContext){SDL_SetError("Incomplete OSMesa entry points");return -1;}
+ return 0;
+}
+SDL_GLContext WrathZinkCreateContext(SDL_Window*w){
+ if(WrathZinkEnsureLibrary()!=0)return nullptr;
  SDL_GetWindowSize(w,&width,&height);
  // Render at 2x UIKit points, preserving the original logical UI coordinates.
  width*=2;height*=2;

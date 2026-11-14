@@ -73,6 +73,9 @@ final class InputUITests: XCTestCase {
         let shot = XCTAttachment(screenshot: app.screenshot()); shot.lifetime = .keepAlways; add(shot)
     }
     func testEditableLayoutPersistsAndResets() {
+        // Hosted AX completed relaunch/persistence at107s; second editor open
+        // reached118s before the default120s watchdog. Keep all reset assertions.
+        executionTimeAllowance = 180
         let app = XCUIApplication(); app.launchArguments = ["--gameplay"]
         XCUIDevice.shared.orientation = .landscapeLeft; app.launch()
         func edit() {
@@ -107,3 +110,4 @@ final class InputUITests: XCTestCase {
         let shot = XCTAttachment(screenshot: app.screenshot()); shot.lifetime = .keepAlways; add(shot)
     }
 }
+

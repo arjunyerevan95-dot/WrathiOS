@@ -33,14 +33,20 @@ cmake -S Derived/SDL2-ios -B Derived/deps-build/iphonesimulator/SDL2 \
 cmake --build Derived/deps-build/iphonesimulator/SDL2 --target install --parallel 3
 xcodegen generate --spec project-input-harness.yml
 # XCTest needs a fresh UI session, not an arbitrary preinstalled simulator.
-# Match an installed iPhone/runtime pair, as the GLES3 probe does, so the
-# globally newest device type cannot select an incompatible runtime.
+# Match both the installed device type and the active Xcode SDK. A newer
+# global runtime may boot while XCTest's older accessibility agent stalls.
 xcrun simctl list -j > "$ART/simulators.json"
-read -r RUNTIME DEVICE_TYPE < <(python3 - "$ART/simulators.json" <<'PY'
+SDK_VERSION="$(xcrun --sdk iphonesimulator --show-sdk-version)"
+printf '%s\n' "$SDK_VERSION" > "$ART/simulator-sdk-version.txt"
+XCODE_DEVELOPER_PATH="${DEVELOPER_DIR:-$(xcode-select -p)}"
+if [[ "$XCODE_DEVELOPER_PATH" == *.app ]]; then XCODE_DEVELOPER_PATH+="/Contents/Developer"; fi
+printf '%s\n' "$XCODE_DEVELOPER_PATH" > "$ART/xcode-developer-path.txt"
+read -r RUNTIME DEVICE_TYPE < <(python3 - "$ART/simulators.json" "$SDK_VERSION" <<'PY'
 import json,sys
 j=json.load(open(sys.argv[1]))
-r=sorted((x for x in j['runtimes'] if x.get('isAvailable') and x['identifier'].startswith('com.apple.CoreSimulator.SimRuntime.iOS-')),key=lambda x:tuple(map(int,x['version'].split('.'))))
-assert r, 'An available iOS runtime is required'
+sdk=tuple(map(int,sys.argv[2].split('.')[:2]))
+r=sorted((x for x in j['runtimes'] if x.get('isAvailable') and x['identifier'].startswith('com.apple.CoreSimulator.SimRuntime.iOS-') and tuple(map(int,x['version'].split('.')[:2]))==sdk),key=lambda x:tuple(map(int,x['version'].split('.'))))
+assert r, f'An available iOS runtime matching Simulator SDK {sys.argv[2]} is required'
 pairs=[(runtime['identifier'],device['deviceTypeIdentifier'])
        for runtime in r for device in j['devices'].get(runtime['identifier'],[])
        if device.get('isAvailable') and device.get('deviceTypeIdentifier')
@@ -54,7 +60,7 @@ echo "Input UI simulator: $DEVICE ($DEVICE_TYPE, $RUNTIME)"
 defaults write com.apple.iphonesimulator ConnectHardwareKeyboard -bool NO
 xcrun simctl boot "$DEVICE"
 # Bring up Simulator's UI session before XCTest waits for accessibility.
-open -a Simulator --args -CurrentDeviceUDID "$DEVICE"
+open -a "$XCODE_DEVELOPER_PATH/Applications/Simulator.app" --args -CurrentDeviceUDID "$DEVICE"
 xcrun simctl bootstatus "$DEVICE" -b
 FILTER=()
 if [[ "${WRATH_UI_SCOPE:-all}" == editor ]]; then

@@ -158,8 +158,8 @@ expected_gate5 = {
 }
 expected_gate5c = {
     "CFBundleDisplayName": "WrathiOS G5C",
-    "CFBundleShortVersionString": "0.0.18",
-    "CFBundleVersion": "18",
+    "CFBundleShortVersionString": "0.0.20",
+    "CFBundleVersion": "20",
     "UILaunchStoryboardName": "LaunchScreen",
 }
 for name, plist, expected in (("Gate 3", gate3, expected_gate3), ("Gate 4", gate4, expected_gate4), ("Gate 5", gate5, expected_gate5), ("Gate 5C", gate5c, expected_gate5c)):
@@ -280,7 +280,7 @@ grep -Fq 'GATE 5C · SEMANTIC MENU TOUCH' Gate4/WrathImportViewController.mm || 
     echo "error: Gate 5C visible launcher provenance is missing" >&2
     exit 1
 }
-grep -Fq '0.0.18 (18) · based on Gate 5A main 538a61f · semantic adapter contract v1' Gate4/WrathImportViewController.mm || {
+grep -Fq '0.0.20 (20) · based on Gate 5A main 538a61f · semantic adapter contract v1' Gate4/WrathImportViewController.mm || {
     echo "error: Gate 5C visible version/base provenance is missing" >&2
     exit 1
 }

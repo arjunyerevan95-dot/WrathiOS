@@ -195,6 +195,16 @@
           "new": "#ifdef WRATH_IOS_ZINK\n\t/* The shipped menu derives con dimensions as half the scene size. Our Zink\n\t * scene is 2x UIKit points: keep that stock UI in its old logical space,\n\t * so text gains samples, not half-sized targets. Non-default custom sizes\n\t * are untouched; set wrathios_readable_ui 0 to opt out. */\n\t{\n\t\tWrathReadableDimensions ui = WrathReadableUI(vid.width, vid.height,\n\t\t\tvid_conwidth.value, vid_conheight.value, Cvar_VariableValueOr(\"wrathios_readable_ui\", 1) != 0);\n\t\tif (ui.width != vid_conwidth.value) Cvar_SetValueQuick(&vid_conwidth, ui.width);\n\t\tif (ui.height != vid_conheight.value) Cvar_SetValueQuick(&vid_conheight, ui.height);\n\t}\n#endif\n\t\tprog->ExecuteProgram(prog, PRVM_clientfunction(CSQC_UpdateView), \"QC function CSQC_UpdateView is missing\");"
         }
       ]
+    },
+    {
+      "path": "quakedef.h",
+      "reason": "Zink is desktop OpenGL on iOS; do not silently redefine GLES after command-line selection. Device crash v19 entered GLES_Init with an OSMesa context.",
+      "replacements": [
+        {
+          "old": "# define DP_OS_STR\t\t\"iphoneos\"\n# define USE_GLES2\t\t1",
+          "new": "# define DP_OS_STR\t\t\"iphoneos\"\n# ifndef WRATH_IOS_ZINK\n#  define USE_GLES2\t\t1\n# endif"
+        }
+      ]
     }
   ]
 }

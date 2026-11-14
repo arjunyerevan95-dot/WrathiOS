@@ -50,7 +50,7 @@ def main() -> int:
 
     if OUTPUT.exists():
         shutil.rmtree(OUTPUT)
-    OUTPUT.mkdir(parents=True)
+    shutil.copytree(UPSTREAM, OUTPUT, ignore=shutil.ignore_patterns(".git"))
     REPORT.parent.mkdir(parents=True, exist_ok=True)
 
     records: list[dict[str, object]] = []

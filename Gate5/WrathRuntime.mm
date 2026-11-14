@@ -144,7 +144,7 @@ static int WrathRunHostMain(void) {
     }
     NSDictionary *document = @{
         @"schema": @1,
-        @"version": @"0.0.5 (5)",
+        @"version": [NSString stringWithFormat:@"%@ (%@)", NSBundle.mainBundle.infoDictionary[@"CFBundleShortVersionString"] ?: @"unknown", NSBundle.mainBundle.infoDictionary[@"CFBundleVersion"] ?: @"unknown"],
         @"entries": self.entries
     };
     NSError *jsonError = nil;

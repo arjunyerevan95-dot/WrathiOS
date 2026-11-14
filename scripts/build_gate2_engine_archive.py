@@ -105,6 +105,7 @@ def main() -> int:
         "-D__KERNEL_STRICT_NAMES=1",
         f"-DSVNREVISION={ENGINE_COMMIT}",
         f"-DBUILDTYPE={ {'gate2': 'ios_gate2', 'gate5': 'ios_gate5a', 'gate5c': 'ios_gate5c'}[BUILD_FLAVOR] }",
+        f"-I{PATCHED_ENGINE}",
         f"-I{ENGINE}",
         f"-I{SDL / 'include'}",
         f"-I{DEPS_PREFIX / 'include'}",
@@ -126,6 +127,7 @@ def main() -> int:
                 "-DWRATH_IOS_GATE5C=1",
                 f"-I{ROOT / 'Gate5C'}",
                 "-include", str(ROOT / "Gate5C" / "WrathSemanticMenuBridge.h"),
+                "-include", str(ROOT / "Gate5C" / "WrathBackendContract.h"),
             ])
 
     manifest_paths = [
@@ -142,7 +144,9 @@ def main() -> int:
             raise ValueError(f"unexpected engine manifest path: {manifest_path}")
         relative = Path(manifest_path.removeprefix(ENGINE_PREFIX))
         patched_source = PATCHED_ENGINE / relative
-        source = patched_source if patched_source.is_file() else ENGINE / relative
+        if not patched_source.is_file():
+            raise RuntimeError(f"Missing materialized source: {relative}")
+        source = patched_source
         object_path = OBJECT_DIR / f"{index:03d}-{relative.stem}.o"
         bridge = ["-include", str(ROOT / "Gate5C/WrathZinkBridge.h")] if os.environ.get("WRATH_RENDERER") == "zink" and relative.name == "vid_sdl.c" else []
         command = [*common, *bridge, "-c", str(source), "-o", str(object_path)]

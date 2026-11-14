@@ -42,6 +42,7 @@ void WrathZinkDestroyWindow(SDL_Window*w){
 SDL_GLContext WrathZinkCreateContext(SDL_Window*w){
  NSString *dir=NSBundle.mainBundle.privateFrameworksPath;
  const char *vk=[[dir stringByAppendingPathComponent:@"libMoltenVK.dylib"] fileSystemRepresentation];
+ unsetenv("MESA_GL_VERSION_OVERRIDE");unsetenv("MESA_GLSL_VERSION_OVERRIDE");
  setenv("GALLIUM_DRIVER","zink",1);setenv("ZINK_VULKAN_LIBRARY",vk,1);
  setenv("MESA_SHADER_CACHE_DISABLE","true",1);
  // Do not override reported GL/GLSL versions or advertise unsupported capabilities.

@@ -9,7 +9,7 @@ PROJECT="$ROOT_DIR/WrathiOSGate5C.xcodeproj"
 APP_BUNDLE="$DERIVED_DATA/Build/Products/Debug-iphoneos/WrathiOSGate5C.app"
 BINARY="$APP_BUNDLE/WrathiOSGate5C"
 PACKAGE_ROOT="$ROOT_DIR/Derived/gate5c-package"
-IPA="$ARTIFACT_DIR/WrathiOSGate5C-v19-${WRATH_RENDERER:-gles}-unsigned.ipa"
+IPA="$ARTIFACT_DIR/WrathiOSGate5C-v20-${WRATH_RENDERER:-gles}-unsigned.ipa"
 
 rm -rf "$ARTIFACT_DIR" "$DERIVED_DATA" "$PROJECT" "$PACKAGE_ROOT"
 mkdir -p "$ARTIFACT_DIR"
@@ -72,6 +72,15 @@ file "$BINARY" | tee "$ARTIFACT_DIR/file.txt"
 lipo -info "$BINARY" | tee "$ARTIFACT_DIR/architecture.txt"
 otool -L "$BINARY" | tee "$ARTIFACT_DIR/dynamic-dependencies.txt"
 nm -gU "$BINARY" > "$ARTIFACT_DIR/global-symbols.txt"
+if [[ "${WRATH_RENDERER:-gles}" == zink ]]; then
+    grep -Eq ' _GL_Init$' "$ARTIFACT_DIR/global-symbols.txt"
+    if grep -Eq ' _GLES_Init$' "$ARTIFACT_DIR/global-symbols.txt"; then
+        echo "error: Zink binary contains GLES_Init" >&2; exit 1
+    fi
+else
+    grep -Eq ' _GLES_Init$' "$ARTIFACT_DIR/global-symbols.txt"
+fi
+
 plutil -p "$APP_BUNDLE/Info.plist" > "$ARTIFACT_DIR/Info.plist.txt"
 strings -a "$BINARY" > "$ARTIFACT_DIR/strings.txt"
 find "$APP_BUNDLE" -print | sed "s#^$APP_BUNDLE#.#" | sort > "$ARTIFACT_DIR/bundle-inventory.txt"

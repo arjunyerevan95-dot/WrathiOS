@@ -13,7 +13,16 @@ collect_evidence() {
   cp "$container"/Documents/*.json "$ART/" 2>/dev/null || true
  fi
 }
-trap collect_evidence EXIT
+cleanup() {
+ local status=$?
+ collect_evidence
+ if [[ -n "${DEVICE:-}" ]]; then
+  xcrun simctl shutdown "$DEVICE" >/dev/null 2>&1 || true
+  xcrun simctl delete "$DEVICE" >/dev/null 2>&1 || true
+ fi
+ return "$status"
+}
+trap cleanup EXIT
 python3 scripts/materialize_sdl_ios_patches.py
 cmake -S Derived/SDL2-ios -B Derived/deps-build/iphonesimulator/SDL2 \
  -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_SYSROOT=iphonesimulator \
@@ -23,9 +32,29 @@ cmake -S Derived/SDL2-ios -B Derived/deps-build/iphonesimulator/SDL2 \
  -DSDL_INSTALL_TESTS=OFF -DSDL2_DISABLE_SDL2MAIN=ON -DSDL_WERROR=OFF
 cmake --build Derived/deps-build/iphonesimulator/SDL2 --target install --parallel 3
 xcodegen generate --spec project-input-harness.yml
-DEVICE="$(xcrun simctl list devices available -j | python3 -c 'import sys,json;d=json.load(sys.stdin);print(next(v["udid"] for k,vs in d["devices"].items() if "iOS" in k for v in vs if v.get("isAvailable") and "iPhone" in v["name"]))')"
+# XCTest needs a fresh UI session, not an arbitrary preinstalled simulator.
+# Match an installed iPhone/runtime pair, as the GLES3 probe does, so the
+# globally newest device type cannot select an incompatible runtime.
+xcrun simctl list -j > "$ART/simulators.json"
+read -r RUNTIME DEVICE_TYPE < <(python3 - "$ART/simulators.json" <<'PY'
+import json,sys
+j=json.load(open(sys.argv[1]))
+r=sorted((x for x in j['runtimes'] if x.get('isAvailable') and x['identifier'].startswith('com.apple.CoreSimulator.SimRuntime.iOS-')),key=lambda x:tuple(map(int,x['version'].split('.'))))
+assert r, 'An available iOS runtime is required'
+pairs=[(runtime['identifier'],device['deviceTypeIdentifier'])
+       for runtime in r for device in j['devices'].get(runtime['identifier'],[])
+       if device.get('isAvailable') and device.get('deviceTypeIdentifier')
+       and device.get('name','').startswith('iPhone')]
+assert pairs, 'An available compatible iPhone/runtime pair is required'
+print(*pairs[-1])
+PY
+)
+DEVICE="$(xcrun simctl create "WRATH-input-tests-$$" "$DEVICE_TYPE" "$RUNTIME")"
+echo "Input UI simulator: $DEVICE ($DEVICE_TYPE, $RUNTIME)"
 defaults write com.apple.iphonesimulator ConnectHardwareKeyboard -bool NO
-xcrun simctl boot "$DEVICE" 2>/dev/null || true
+xcrun simctl boot "$DEVICE"
+# Bring up Simulator's UI session before XCTest waits for accessibility.
+open -a Simulator --args -CurrentDeviceUDID "$DEVICE"
 xcrun simctl bootstatus "$DEVICE" -b
 FILTER=()
 if [[ "${WRATH_UI_SCOPE:-all}" == editor ]]; then

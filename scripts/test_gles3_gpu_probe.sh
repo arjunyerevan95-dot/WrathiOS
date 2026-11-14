@@ -25,10 +25,15 @@ read -r RUNTIME DEVICE < <(python3 - "$OUT/simulators.json" <<'PY'
 import json,sys
 j=json.load(open(sys.argv[1]))
 r=sorted((x for x in j['runtimes'] if x.get('isAvailable') and x['identifier'].startswith('com.apple.CoreSimulator.SimRuntime.iOS-')),key=lambda x:tuple(map(int,x['version'].split('.'))))
-d=[x for x in j['devicetypes'] if x['name'].startswith('iPhone')]
-assert r and d, 'An available iOS runtime and iPhone device type are required'
-# Choose a currently installed recent iPhone; unsupported pairing fails rather than skips.
-print(r[-1]['identifier'],d[-1]['identifier'])
+assert r, 'An available iOS runtime is required'
+# Use a known compatible existing runtime/type pairing, not the last globally
+# advertised device type (which can require a newer runtime than installed).
+pairs=[(runtime['identifier'],device['deviceTypeIdentifier'])
+       for runtime in r for device in j['devices'].get(runtime['identifier'],[])
+       if device.get('isAvailable') and device.get('deviceTypeIdentifier')
+       and device.get('name','').startswith('iPhone')]
+assert pairs, 'An available compatible iPhone/runtime pair is required'
+print(*pairs[-1])
 PY
 )
 UDID=$(xcrun simctl create "WRATH-GLES3-probe-$$" "$DEVICE" "$RUNTIME")

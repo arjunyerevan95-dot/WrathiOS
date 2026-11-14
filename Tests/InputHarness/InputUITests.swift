@@ -1,6 +1,21 @@
 import XCTest
 final class InputUITests: XCTestCase {
-    override func setUpWithError() throws { continueAfterFailure = false }
+    override func setUpWithError() throws {
+        continueAfterFailure = false
+        // Each case owns its app lifetime. A prior settings modal must not remain
+        // onscreen while the next case starts; within-case persistence is retained.
+        XCUIApplication().terminate()
+    }
+    override func tearDownWithError() throws { XCUIApplication().terminate() }
+    func waitForForegroundLandscape(_ app: XCUIApplication) {
+        XCTAssertTrue(app.wait(for: .runningForeground, timeout: 10))
+        let ready = NSPredicate { _, _ in
+            let frame = app.windows.firstMatch.frame
+            return frame.width > frame.height && frame.height > 100
+        }
+        expectation(for: ready, evaluatedWith: app)
+        waitForExpectations(timeout: 10)
+    }
     func dismissKeyboardTutorial(_ app: XCUIApplication) {
         // Fresh iOS Simulator keyboards cover the keys with this one-time
         // QuickPath explanation. Dismiss only that observed non-binding notice.
@@ -23,16 +38,19 @@ final class InputUITests: XCTestCase {
         let app = XCUIApplication()
         XCUIDevice.shared.orientation = .landscapeLeft
         app.launch()
+        waitForForegroundLandscape(app)
         XCTAssertTrue(app.buttons["WrathKeyboardButton"].waitForExistence(timeout: 10))
         for name in ["FIRE", "ALT", "JUMP", "CROUCH", "USE", "NEXT WEP",  "USE ART","USE ART", "ACTIONS", "SETTINGS"] {
             XCTAssertTrue(app.buttons["WrathAction_" + name].exists, "Menu cluster: " + name)
         }
+        XCTAssertFalse(app.sliders.firstMatch.exists, "Fresh manual case must not inherit the Settings modal")
+        XCTAssertTrue(app.buttons["WrathAction_FIRE"].isHittable)
         app.buttons["WrathAction_FIRE"].tap()
         app.buttons["WrathKeyboardButton"].tap()
         XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 8))
         dismissKeyboardTutorial(app)
         typeVisibleKeyboard("wrath", into: app)
-        let shot = XCTAttachment(screenshot: app.screenshot()); shot.lifetime = .keepAlways; add(shot)
+        let shot = XCTAttachment(screenshot: XCUIScreen.main.screenshot()); shot.lifetime = .keepAlways; add(shot)
         sleep(1)
     }
     func testAutomaticProfileKeyboardInSDLHostLoop() {
@@ -43,14 +61,16 @@ final class InputUITests: XCTestCase {
         let app = XCUIApplication(); app.launchArguments = ["--profile"]
         XCUIDevice.shared.orientation = .landscapeLeft
         app.launch()
+        waitForForegroundLandscape(app)
         XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 10))
         dismissKeyboardTutorial(app)
         typeVisibleKeyboard("profile", into: app)
-        let shot = XCTAttachment(screenshot: app.screenshot()); shot.lifetime = .keepAlways; add(shot)
+        let shot = XCTAttachment(screenshot: XCUIScreen.main.screenshot()); shot.lifetime = .keepAlways; add(shot)
     }
     func testGameplayClusterSurvivesRepeatedFrames() {
         let app = XCUIApplication(); app.launchArguments = ["--gameplay"]
         XCUIDevice.shared.orientation = .landscapeLeft; app.launch()
+        waitForForegroundLandscape(app)
         for name in ["FIRE","ALT","JUMP","CROUCH","USE","NEXT WEP","USE ART","ACTIONS","SETTINGS"] {
             XCTAssertTrue(app.buttons["WrathAction_" + name].waitForExistence(timeout: 10), name)
         }
@@ -70,7 +90,7 @@ final class InputUITests: XCTestCase {
         start.press(forDuration: 0.05, thenDragTo: end)
         app.buttons["WrathAction_SETTINGS"].tap()
         XCTAssertTrue(app.sliders.firstMatch.waitForExistence(timeout: 5))
-        let shot = XCTAttachment(screenshot: app.screenshot()); shot.lifetime = .keepAlways; add(shot)
+        let shot = XCTAttachment(screenshot: XCUIScreen.main.screenshot()); shot.lifetime = .keepAlways; add(shot)
     }
     func testEditableLayoutPersistsAndResets() {
         // Hosted AX completed relaunch/persistence at107s; second editor open
@@ -78,6 +98,7 @@ final class InputUITests: XCTestCase {
         executionTimeAllowance = 180
         let app = XCUIApplication(); app.launchArguments = ["--gameplay"]
         XCUIDevice.shared.orientation = .landscapeLeft; app.launch()
+        waitForForegroundLandscape(app)
         func edit() {
             XCTAssertTrue(app.buttons["WrathAction_SETTINGS"].waitForExistence(timeout: 10))
             app.buttons["WrathAction_SETTINGS"].tap()
@@ -99,6 +120,7 @@ final class InputUITests: XCTestCase {
         XCTAssertLessThan(moved.midX, baseline.midX - 40)
         XCTAssertGreaterThan(moved.midY, baseline.midY + 15)
         app.terminate(); app.launch()
+        waitForForegroundLandscape(app)
         XCTAssertTrue(app.buttons["WrathAction_FIRE"].waitForExistence(timeout: 10))
         XCTAssertEqual(app.buttons["WrathAction_FIRE"].frame.midX, moved.midX, accuracy: 2)
         XCTAssertEqual(app.buttons["WrathAction_FIRE"].frame.midY, moved.midY, accuracy: 2)
@@ -107,7 +129,6 @@ final class InputUITests: XCTestCase {
         XCTAssertEqual(app.buttons["WrathAction_FIRE"].frame.midX, baseline.midX, accuracy: 2)
         XCTAssertEqual(app.buttons["WrathAction_FIRE"].frame.midY, baseline.midY, accuracy: 2)
         XCTAssertEqual(app.buttons["WrathAction_FIRE"].frame.width, baseline.width, accuracy: 2)
-        let shot = XCTAttachment(screenshot: app.screenshot()); shot.lifetime = .keepAlways; add(shot)
+        let shot = XCTAttachment(screenshot: XCUIScreen.main.screenshot()); shot.lifetime = .keepAlways; add(shot)
     }
 }
-

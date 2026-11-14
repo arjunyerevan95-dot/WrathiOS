@@ -41,7 +41,7 @@ constexpr NSInteger tag=0x57524335;
  UIView *_settingsPanel;
  UIView *_layoutToolbar; BOOL _editingLayout; UISlider *_buttonSize; int _layoutSelection;
  NSMutableDictionary *_layoutPositions;
- UIPinchGestureRecognizer *_layoutPinch; NSArray *_pinchOriginal; int _pinchButton; CGFloat _pinchStartSize;
+ UIPinchGestureRecognizer *_layoutPinch; NSArray *_pinchOriginal; int _pinchButton; CGFloat _pinchStartSize; CGPoint _pinchCenter;
  NSMutableDictionary<NSNumber *,UIAccessibilityElement *> *_accessibleButtons;
  UIAccessibilityElement *_accessibleKeyboard;
 }
@@ -199,6 +199,7 @@ constexpr NSInteger tag=0x57524335;
   if(!_editingLayout||_pinchButton<0)return;
   _layoutSelection=_pinchButton;_pinchOriginal=[_layoutPositions[[@(_pinchButton) stringValue]] copy];
   _pinchStartSize=_pinchOriginal.count==3?[_pinchOriginal[2] doubleValue]:1;
+  CGRect rect=[self buttonRect:_pinchButton];_pinchCenter=CGPointMake(CGRectGetMidX(rect),CGRectGetMidY(rect));
   [_owners removeAllObjects];[_last removeAllObjects];_buttonSize.enabled=YES;
  }
  if(_pinchButton<0)return;
@@ -219,7 +220,8 @@ constexpr NSInteger tag=0x57524335;
 - (void)resizeSelectedButton:(UISlider *)sender {
  if(_layoutSelection<0)return;
  int b=_layoutSelection;CGRect rect=[self buttonRect:b];
- CGFloat x=CGRectGetMidX(rect)/self.bounds.size.width,y=CGRectGetMidY(rect)/self.bounds.size.height;
+ CGPoint center=_pinchButton==b?_pinchCenter:CGPointMake(CGRectGetMidX(rect),CGRectGetMidY(rect));
+ CGFloat x=center.x/self.bounds.size.width,y=center.y/self.bounds.size.height;
  _layoutPositions[[@(b) stringValue]]=@[@(x),@(y),@(sender.value)];
  [NSUserDefaults.standardUserDefaults setObject:_layoutPositions forKey:@"WrathTouchLayoutV1"];
  [self refresh];
@@ -227,7 +229,11 @@ constexpr NSInteger tag=0x57524335;
 - (void)resetLayout {_layoutPinch.enabled=NO;_layoutPinch.enabled=_editingLayout;[_layoutPositions removeAllObjects];_layoutSelection=-1;_buttonSize.enabled=NO;[NSUserDefaults.standardUserDefaults removeObjectForKey:@"WrathTouchLayoutV1"];[self setNeedsDisplay];}
 - (void)finishLayout { [NSUserDefaults.standardUserDefaults setObject:_layoutPositions forKey:@"WrathTouchLayoutV1"];_layoutPinch.enabled=NO;_editingLayout=NO;_layoutToolbar.hidden=YES;[_owners removeAllObjects];[_last removeAllObjects];[self refresh]; }
 - (void)editTouches:(NSSet<UITouch *> *)touches phase:(int)phase {
- if(_layoutPinch.state==UIGestureRecognizerStateBegan||_layoutPinch.state==UIGestureRecognizerStateChanged)return;
+ // A pinch moves its fingers before UIKit recognizes it. Those early moves
+ // must not pass through the one-finger drag path while the state is Possible.
+ if(_layoutPinch.numberOfTouches>1||_layoutPinch.state==UIGestureRecognizerStateBegan||_layoutPinch.state==UIGestureRecognizerStateChanged){
+  [_owners removeAllObjects];[_last removeAllObjects];return;
+ }
  for(UITouch *t in touches){NSValue *key=[NSValue valueWithNonretainedObject:t];CGPoint p=[t locationInView:self];
   if(phase==0){for(int b=0;b<wrathios::touch::ActionCount;b++)if(CGRectContainsPoint([self buttonRect:b],p)){if(![_owners.allValues containsObject:@(b)]){_owners[key]=@(b);_last[key]=[NSValue valueWithCGPoint:p];_layoutSelection=b;NSArray *saved=_layoutPositions[[@(b) stringValue]];_buttonSize.value=saved.count==3?[saved[2] floatValue]:1;_buttonSize.enabled=YES;}break;}}
   else if(phase==1&&_owners[key]){int b=_owners[key].intValue;CGRect r=[self buttonRect:b];CGPoint last=[_last[key] CGPointValue];CGFloat w=self.bounds.size.width,h=self.bounds.size.height;

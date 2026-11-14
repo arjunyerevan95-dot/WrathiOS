@@ -61,7 +61,7 @@ static NSString * const WrathStatusRemoved = @"Imported data removed";
                                    color:[UIColor colorWithWhite:0.78 alpha:1.0]];
     self.introLabel = intro;
 #ifdef WRATH_IOS_GATE5C
-    intro.text = @"0.0.21 (20) · based on Gate 5A main 538a61f · semantic adapter contract v1. Imported data remains in the existing app container.";
+    intro.text = @"0.0.22 (20) · based on Gate 5A main 538a61f · semantic adapter contract v1. Imported data remains in the existing app container.";
 #else
     intro.text = @"Choose the folder that contains kp1, or choose kp1 itself. WrathiOS validates package indexes and copies your licensed files into this app only. Nothing is uploaded or bundled into the IPA.";
 #endif

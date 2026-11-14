@@ -65,7 +65,7 @@ jobs:
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: gate5c-v21-test-ipas
+          name: gate5c-v22-test-ipas
           path: |
             Artifacts/gate5c-semantic-menu
             Artifacts/gate5c-gles-rollback

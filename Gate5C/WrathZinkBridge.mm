@@ -8,6 +8,57 @@
 #include <cstdlib>
 #include <cstring>
 #include <cstdio>
+#include <mach/mach.h>
+#include <os/proc.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <atomic>
+#include "WrathMemoryCutoff.h"
+
+// Zink-only diagnostic cutoff. A large driver allocation can still outrun this
+// sampler. Abrupt exit deliberately stops driver workers; it is not a graceful
+// save. Never enable this path on the GLES rollback.
+static std::atomic<int> memoryStage{0};
+static dispatch_source_t memoryTimer,memoryLogTimer;
+static int memoryFD=-1;
+static std::atomic<uint64_t> memoryPeak{0},memoryFootprint{0},memoryAvailable{0};
+static bool WrathMemorySample(void) {
+ task_vm_info_data_t info={};mach_msg_type_number_t count=TASK_VM_INFO_COUNT;
+ bool valid=task_info(mach_task_self(),TASK_VM_INFO,(task_info_t)&info,&count)==KERN_SUCCESS;
+ uint64_t footprint=valid?info.phys_footprint:0,available=os_proc_available_memory();
+ if(footprint>memoryPeak.load())memoryPeak=footprint;
+ memoryFootprint=footprint;memoryAvailable=available;
+ bool stop=WrathMemoryShouldStop(valid,footprint,available);
+ return !stop;
+}
+static void WrathMemoryWriteLastSample(void) {
+ // Separate serial queue: slow storage must never stall the cutoff sampler.
+ char line[384];int n=snprintf(line,sizeof(line),"{\"stage\":%d,\"footprint\":%llu,\"peak\":%llu,\"available\":%llu}\n",memoryStage.load(),(unsigned long long)memoryFootprint.load(),(unsigned long long)memoryPeak.load(),(unsigned long long)memoryAvailable.load());
+ if(memoryFD>=0&&n>0){pwrite(memoryFD,line,(size_t)n,0);ftruncate(memoryFD,n);}
+}
+static bool WrathStartMemoryCutoff(void) {
+ if(memoryTimer)return true;
+ NSString *base=NSSearchPathForDirectoriesInDomains(NSApplicationSupportDirectory,NSUserDomainMask,YES).firstObject;
+ NSString *dir=[base stringByAppendingPathComponent:@"WrathiOS/Runtime"];
+ if(![[NSFileManager defaultManager] createDirectoryAtPath:dir withIntermediateDirectories:YES attributes:nil error:nullptr])return false;
+ memoryFD=open([[dir stringByAppendingPathComponent:@"zink-memory.json"] fileSystemRepresentation],O_CREAT|O_TRUNC|O_WRONLY,0600);
+ if(memoryFD<0||!WrathMemorySample())return false;
+ dispatch_queue_t queue=dispatch_queue_create("wrath.zink.memory-cutoff",dispatch_queue_attr_make_with_qos_class(DISPATCH_QUEUE_SERIAL,QOS_CLASS_USER_INITIATED,0));
+ memoryTimer=dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER,0,0,queue);
+ if(!memoryTimer)return false;
+ dispatch_source_set_timer(memoryTimer,dispatch_time(DISPATCH_TIME_NOW,0),20*NSEC_PER_MSEC,2*NSEC_PER_MSEC);
+ dispatch_source_set_event_handler(memoryTimer,^{if(!WrathMemorySample())_Exit(78);});
+ dispatch_resume(memoryTimer);
+ dispatch_queue_t logQueue=dispatch_queue_create("wrath.zink.memory-log",DISPATCH_QUEUE_SERIAL);
+ memoryLogTimer=dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER,0,0,logQueue);
+ if(memoryLogTimer){
+  dispatch_source_set_timer(memoryLogTimer,dispatch_time(DISPATCH_TIME_NOW,0),250*NSEC_PER_MSEC,10*NSEC_PER_MSEC);
+  dispatch_source_set_event_handler(memoryLogTimer,^{WrathMemoryWriteLastSample();});
+  dispatch_resume(memoryLogTimer);
+ }
+ return true;
+}
+
 static void *mesa,*context;
 static void (*destroyContext)(void*);
 static SDL_Renderer *presenter;
@@ -45,6 +96,8 @@ void WrathZinkDestroyWindow(SDL_Window*w){
 }
 static int WrathZinkEnsureLibrary(void){
  if(mesa&&createContext&&makeCurrent&&getProc&&destroyContext)return 0;
+ if(!WrathStartMemoryCutoff()){SDL_SetError("Zink memory telemetry unavailable or insufficient headroom");return -1;}
+ memoryStage=1;
  NSString *dir=NSBundle.mainBundle.privateFrameworksPath;
  const char *vk=[[dir stringByAppendingPathComponent:@"libMoltenVK.dylib"] fileSystemRepresentation];
  unsetenv("MESA_GL_VERSION_OVERRIDE");unsetenv("MESA_GLSL_VERSION_OVERRIDE");
@@ -63,11 +116,11 @@ static int WrathZinkEnsureLibrary(void){
 SDL_GLContext WrathZinkCreateContext(SDL_Window*w){
  if(WrathZinkEnsureLibrary()!=0)return nullptr;
  SDL_GetWindowSize(w,&width,&height);
- // Render at 2x UIKit points, preserving the original logical UI coordinates.
- width*=2;height*=2;
+ // Diagnostic candidate: one scene pixel per UIKit point, no 2x amplification.
+ memoryStage=2;
  if(width<1||height<1||width>4096||height>4096){SDL_SetError("Invalid scene size");return nullptr;}
  const int attributes[]={0x22,0x1908,0x30,24,0x31,8,0x33,0x35,0x36,2,0x37,1,0};
- context=createContext(attributes,nullptr);pixels=(unsigned char*)calloc((size_t)width*height,4);
+ context=createContext(attributes,nullptr);memoryStage=3;pixels=(unsigned char*)calloc((size_t)width*height,4);
  if(!context||!pixels||!makeCurrent(context,pixels,0x1401,width,height)){SDL_SetError("Desktop compatibility context unavailable");return nullptr;}
  auto gs=(const unsigned char*(*)(unsigned))getProc("glGetString");
  const char *renderer=gs?(const char*)gs(0x1F01):nullptr;
@@ -82,11 +135,13 @@ SDL_GLContext WrathZinkCreateContext(SDL_Window*w){
  SDL_RenderSetLogicalSize(presenter,width,height);
  texture=SDL_CreateTexture(presenter,SDL_PIXELFORMAT_RGBA32,SDL_TEXTUREACCESS_STREAMING,width,height);
  if(!texture)return nullptr;
+ memoryStage=4;
  fprintf(stderr,"WRATH Zink experimental: %s; %s; %dx%d CPU readback to Metal\n",renderer,version,width,height);
  return context;
 }
 void WrathZinkSwapWindow(SDL_Window*){
  if(!context||!texture||UIApplication.sharedApplication.applicationState!=UIApplicationStateActive)return;
+ memoryStage=5;
  auto read=(void(*)(int,int,int,int,unsigned,unsigned,void*))getProc("glReadPixels");if(!read)return;
  read(0,0,width,height,0x1908,0x1401,pixels);
  SDL_SetRenderDrawColor(presenter,0,0,0,255);

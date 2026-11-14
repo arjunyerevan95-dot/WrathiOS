@@ -66,3 +66,7 @@ python3 "$ROOT_DIR/Tests/Gate5C/test_upstream_controller_handlers.py"
 python3 "$ROOT_DIR/Tests/Gate5C/test_backend_selection.py"
 
 python3 "$ROOT_DIR/Tests/Gate5C/test_zink_loader_order.py"
+
+"${CXX:-c++}" -std=c++17 -Wall -Wextra -Werror -I"$ROOT_DIR/Gate5C" "$ROOT_DIR/Tests/Gate5C/WrathMemoryCutoffTests.cpp" -o "$ARTIFACT_DIR/WrathMemoryCutoffTests"
+"$ARTIFACT_DIR/WrathMemoryCutoffTests"
+python3 "$ROOT_DIR/Tests/Gate5C/test_memory_cutoff_no_io.py"

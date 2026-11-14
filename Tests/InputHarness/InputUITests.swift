@@ -52,6 +52,10 @@ final class InputUITests: XCTestCase {
         sleep(1)
     }
     func testAutomaticProfileKeyboardInSDLHostLoop() {
+        // Measured hosted simulator run completed native key delivery + screenshot
+        // at117.5s, then crossed120s during teardown. Exact SDL receipt was
+        // "profile". Permit bounded AX overhead without weakening assertions.
+        executionTimeAllowance = 180
         let app = XCUIApplication(); app.launchArguments = ["--profile"]
         XCUIDevice.shared.orientation = .landscapeLeft
         app.launch()

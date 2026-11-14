@@ -98,6 +98,23 @@ def main() -> int:
             return fail(f"expected exactly one {label} patch site, found {count}")
         text = text.replace(old, new, 1)
 
+    # GLES3 resolution is a fraction of native pixels, not UIKit points.
+    gltarget = DERIVED / "src/video/uikit/SDL_uikitopengles.m"
+    gltext = gltarget.read_text(encoding="utf-8")
+    old_scale = "            scale = data.uiwindow.screen.nativeScale;"
+    new_scale = old_scale + """
+            if (major >= 3) {
+                NSNumber *saved = [[NSUserDefaults standardUserDefaults] objectForKey:@"WrathRenderScaleV1"];
+                double fraction = saved ? saved.doubleValue : 1.0;
+                if (fabs(fraction - 0.67) < 0.001) fraction = 0.67;
+                else if (fabs(fraction - 0.5) < 0.001) fraction = 0.5;
+                else fraction = 1.0;
+                scale *= fraction;
+            }"""
+    if gltext.count(old_scale) != 1:
+        return fail("expected exactly one GLES drawable scale site")
+    gltarget.write_text(gltext.replace(old_scale, new_scale), encoding="utf-8")
+
     target.write_text(text, encoding="utf-8")
     print(f"materialized SDL2 iOS patches at {DERIVED.relative_to(ROOT)}")
     print(f"patched {TARGET_RELATIVE}")

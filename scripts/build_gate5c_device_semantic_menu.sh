@@ -9,7 +9,7 @@ PROJECT="$ROOT_DIR/WrathiOSGate5C.xcodeproj"
 APP_BUNDLE="$DERIVED_DATA/Build/Products/Debug-iphoneos/WrathiOSGate5C.app"
 BINARY="$APP_BUNDLE/WrathiOSGate5C"
 PACKAGE_ROOT="$ROOT_DIR/Derived/gate5c-package"
-IPA="$ARTIFACT_DIR/WrathiOSGate5C-v22-${WRATH_RENDERER:-gles}-unsigned.ipa"
+IPA="$ARTIFACT_DIR/WrathiOSGate5C-v23-${WRATH_RENDERER:-gles}-unsigned.ipa"
 
 rm -rf "$ARTIFACT_DIR" "$DERIVED_DATA" "$PROJECT" "$PACKAGE_ROOT"
 mkdir -p "$ARTIFACT_DIR"
@@ -36,6 +36,7 @@ command -v xcodegen >/dev/null 2>&1 || {
 cd "$ROOT_DIR"
 case "${WRATH_RENDERER:-gles}" in
   gles) renderer_define= ;;
+  gles3) renderer_define=WRATH_IOS_GLES3=1 ;;
   zink) renderer_define=WRATH_IOS_ZINK=1 ;;
   *) echo "Invalid renderer" >&2; exit 2 ;;
 esac

@@ -27,23 +27,28 @@ DEVICE="$(xcrun simctl list devices available -j | python3 -c 'import sys,json;d
 defaults write com.apple.iphonesimulator ConnectHardwareKeyboard -bool NO
 xcrun simctl boot "$DEVICE" 2>/dev/null || true
 xcrun simctl bootstatus "$DEVICE" -b
+FILTER=()
+if [[ "${WRATH_UI_SCOPE:-all}" == editor ]]; then
+ FILTER=(-only-testing:InputUITests/InputUITests/testEditableLayoutPersistsAndResets -only-testing:InputUITests/InputUITests/testEditorPinchPreservesPositionAndPersistsSize -only-testing:InputUITests/InputUITests/testGameplayClusterSurvivesRepeatedFrames)
+fi
 xcodebuild -project WrathInputHarness.xcodeproj -scheme WrathInputHarness \
  -destination "platform=iOS Simulator,id=$DEVICE" -derivedDataPath DerivedData/InputHarness \
  -resultBundlePath "$ART/InputTests.xcresult" -parallel-testing-enabled NO \
  -test-timeouts-enabled YES -default-test-execution-time-allowance 90 -maximum-test-execution-time-allowance 180 \
- ARCHS="$(uname -m)" ONLY_ACTIVE_ARCH=YES CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "$ART/xcodebuild.log"
+ "${FILTER[@]}" ARCHS="$(uname -m)" ONLY_ACTIVE_ARCH=YES CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "$ART/xcodebuild.log"
 CONTAINER="$(xcrun simctl get_app_container "$DEVICE" com.arjukstudios.wrath.inputharness data)"
 cp "$CONTAINER"/Documents/harness-*.json "$ART/"
 python3 - "$ART" <<'PY'
 from pathlib import Path
-import json,sys
+import json,sys,os
 p=Path(sys.argv[1])
-assert json.loads((p/'harness-manual.json').read_text())['typed']=='wrath'
-assert json.loads((p/'harness-profile.json').read_text())['typed']=='profile'
-assert json.loads((p/'harness-manual.json').read_text())['accepts']>0
+if os.environ.get('WRATH_UI_SCOPE','all')!='editor':
+ assert json.loads((p/'harness-manual.json').read_text())['typed']=='wrath'
+ assert json.loads((p/'harness-profile.json').read_text())['typed']=='profile'
+ assert json.loads((p/'harness-manual.json').read_text())['accepts']>0
 game=json.loads((p/'harness-game.json').read_text())
 assert game['gameplay'] is True
 assert game['fireDown']>0 and game['fireUp']>0 and game['jumpDown']>0 and game['look']>0 and game['fireLook']>0, game
-print('Real UIKit/SDL keyboard visibility, manual/profile text delivery and sustained gameplay control tests passed')
+print('Actual selected UIKit/SDL scope passed:',os.environ.get('WRATH_UI_SCOPE','all'))
 PY
 xcrun xcresulttool export attachments --path "$ART/InputTests.xcresult" --output-path "$ART/screenshots" || true

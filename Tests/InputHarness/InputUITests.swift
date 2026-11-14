@@ -131,4 +131,28 @@ final class InputUITests: XCTestCase {
         XCTAssertEqual(app.buttons["WrathAction_FIRE"].frame.width, baseline.width, accuracy: 2)
         let shot = XCTAttachment(screenshot: XCUIScreen.main.screenshot()); shot.lifetime = .keepAlways; add(shot)
     }
+    func testEditorPinchPreservesPositionAndPersistsSize() {
+        executionTimeAllowance = 180
+        let app = XCUIApplication(); app.launchArguments = ["--gameplay"]
+        XCUIDevice.shared.orientation = .landscapeLeft; app.launch()
+        waitForForegroundLandscape(app)
+        app.buttons["WrathAction_SETTINGS"].tap()
+        app.buttons["Edit button positions"].tap()
+        app.buttons["Reset"].tap()
+        let fire = app.buttons["WrathAction_FIRE"]
+        let before = fire.frame
+        let unchanged = app.buttons["WrathAction_JUMP"].frame
+        fire.tap() // Individual selection, not global-size control.
+        fire.pinch(withScale: 1.5, velocity: 1)
+        let after = fire.frame
+        XCTAssertEqual(app.buttons["WrathAction_JUMP"].frame, unchanged)
+        XCTAssertGreaterThan(after.width, before.width * 1.1)
+        XCTAssertLessThanOrEqual(after.width, before.width * 1.8 + 2)
+        XCTAssertEqual(after.midX, before.midX, accuracy: 2)
+        XCTAssertEqual(after.midY, before.midY, accuracy: 2)
+        app.buttons["Done"].tap()
+        app.terminate(); app.launch(); waitForForegroundLandscape(app)
+        XCTAssertEqual(app.buttons["WrathAction_FIRE"].frame.width, after.width, accuracy: 2)
+    }
+
 }

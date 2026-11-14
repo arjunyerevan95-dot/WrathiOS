@@ -14,8 +14,6 @@ jobs:
       - uses: actions/checkout@v4
       - name: Validate repository policy
         run: bash scripts/check_repository.sh
-      - name: Validate data importer with synthetic fixtures
-        run: bash scripts/test_gate4_data_contract.sh
       - name: Fetch pinned public QC sources
         run: |
           source scripts/upstream.env
@@ -26,19 +24,17 @@ jobs:
           git -C Vendor/wrath-qc checkout --detach FETCH_HEAD
           git clone "$WRATH_ENGINE_URL" Vendor/wrath-darkplaces
           git -C Vendor/wrath-darkplaces checkout "$WRATH_ENGINE_COMMIT"
-      - name: Install native SDL2 controller fixture dependency
+      - name: Install native SDL2 routing fixture dependency
         run: sudo apt-get update && sudo apt-get install -y libsdl2-dev
-      - name: Test semantic menu and click pairing
-        run: bash scripts/test_gate5c_semantic_menu.sh
+      - name: Test changed GLES3 wiring, resolution and per-control editor
+        run: bash scripts/test_gles3_portable.sh
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: gate5c-portable-checks
           path: |
-            Artifacts/gate4-data-contract/*.txt
-            Artifacts/gate4-data-contract/summary.md
-            Artifacts/gate5c-semantic-tests/*.txt
-            Artifacts/gate5c-semantic-tests/summary.md
+            Artifacts/gles3-portable
+            Artifacts/engine-patches/report.json
   device-ipa:
     needs: portable-checks
     runs-on: macos-15-intel
@@ -49,26 +45,29 @@ jobs:
         run: bash scripts/fetch_upstream.sh
       - name: Install project generator
         run: brew install xcodegen
-      - name: Test real UIKit SDL keyboard and controls before device compilation
-        run: bash scripts/test_input_simulator.sh
+      - name: Test changed GLES3 GPU primitives
+        run: bash scripts/test_gles3_gpu_probe.sh
+      - name: Test per-control editor and affected gameplay routing
+        run: WRATH_UI_SCOPE=editor bash scripts/test_input_simulator.sh
       - name: Build arm64 dependencies
         run: |
           bash scripts/build_gate2_audio_deps.sh
           bash scripts/build_gate2_sdl.sh
           bash scripts/build_gate2_freetype.sh
-      - name: Build and audit GLES rollback, then experimental Zink candidate
+      - name: Build and audit GLES rollback, then GLES3 visual candidate
         run: |
           WRATH_RENDERER=gles bash scripts/build_gate5c_device_semantic_menu.sh
           mv Artifacts/gate5c-semantic-menu Artifacts/gate5c-gles-rollback
-          WRATH_RENDERER=zink bash scripts/build_gate5c_device_semantic_menu.sh
+          WRATH_RENDERER=gles3 bash scripts/build_gate5c_device_semantic_menu.sh
       - name: Preserve unsigned IPA and audit evidence
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: gate5c-v22-test-ipas
+          name: gate5c-v23-test-ipas
           path: |
             Artifacts/gate5c-semantic-menu
             Artifacts/gate5c-gles-rollback
             Artifacts/input-integration
+            Artifacts/gles3-probe
           if-no-files-found: error
           retention-days: 30

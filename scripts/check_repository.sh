@@ -159,7 +159,7 @@ expected_gate5 = {
 expected_gate5c = {
     "CFBundleDisplayName": "WrathiOS G5C",
     "CFBundleShortVersionString": "0.0.22",
-    "CFBundleVersion": "22",
+    "CFBundleVersion": "23",
     "UILaunchStoryboardName": "LaunchScreen",
 }
 for name, plist, expected in (("Gate 3", gate3, expected_gate3), ("Gate 4", gate4, expected_gate4), ("Gate 5", gate5, expected_gate5), ("Gate 5C", gate5c, expected_gate5c)):

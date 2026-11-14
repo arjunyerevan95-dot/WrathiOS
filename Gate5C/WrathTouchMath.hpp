@@ -13,6 +13,14 @@ inline Vector Stick(Vector delta,double radius=54) {
  double magnitude=std::min(1.0,(length/radius-.12)/.88);
  return {delta.x/length*magnitude,-delta.y/length*magnitude};
 }
+constexpr double SwipeMaximum=2.0;
+constexpr double GyroMaximum=5.0;
+inline double PinchSize(double initial,double scale){
+ if(!std::isfinite(initial))initial=1;
+ initial=std::clamp(initial,.65,1.8);
+ if(!std::isfinite(scale)||scale<=0)return initial;
+ return std::clamp(initial*scale,.65,1.8);
+}
 inline double SafeDelta(double dt){return std::clamp(dt,0.0,.05);}
 }
 

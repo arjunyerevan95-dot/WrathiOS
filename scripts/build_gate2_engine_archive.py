@@ -111,11 +111,13 @@ def main() -> int:
         f"-I{DEPS_PREFIX / 'include'}",
         f"-I{DEPS_PREFIX / 'include' / 'freetype2'}",
     ]
-    if os.environ.get("WRATH_RENDERER", "gles") not in ("gles", "zink"):
+    if os.environ.get("WRATH_RENDERER", "gles") not in ("gles", "gles3", "zink"):
         raise RuntimeError("Unknown WRATH renderer")
     if os.environ.get("WRATH_RENDERER", "gles") == "zink":
         common.remove("-DUSE_GLES2=1")
         common.append("-DWRATH_IOS_ZINK=1")
+    if os.environ.get("WRATH_RENDERER", "gles") == "gles3":
+        common.append("-DWRATH_IOS_GLES3=1")
     if BUILD_FLAVOR in {"gate5", "gate5c"}:
         common.extend([
             "-DWRATH_IOS_GATE5=1",

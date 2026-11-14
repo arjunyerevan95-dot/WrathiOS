@@ -25,7 +25,7 @@ void ResetLocked(State &s){s.pointer.reset();s.pad.reset();s.menuPad=false;s.nav
 constexpr NSInteger tag=0x57524335;
 }
 
-@interface WrathSemanticTouchSurface : UIView {
+@interface WrathSemanticTouchSurface : UIView <UIGestureRecognizerDelegate> {
  NSMutableDictionary<NSValue *,NSNumber *> *_owners;
  NSMutableDictionary<NSValue *,NSValue *> *_last;
  CGPoint _moveOrigin,_navOrigin;
@@ -41,6 +41,7 @@ constexpr NSInteger tag=0x57524335;
  UIView *_settingsPanel;
  UIView *_layoutToolbar; BOOL _editingLayout; UISlider *_buttonSize; int _layoutSelection;
  NSMutableDictionary *_layoutPositions;
+ UIPinchGestureRecognizer *_layoutPinch; NSArray *_pinchOriginal; int _pinchButton; CGFloat _pinchStartSize;
  NSMutableDictionary<NSNumber *,UIAccessibilityElement *> *_accessibleButtons;
  UIAccessibilityElement *_accessibleKeyboard;
 }
@@ -61,6 +62,8 @@ constexpr NSInteger tag=0x57524335;
  self.backgroundColor=UIColor.clearColor;self.multipleTouchEnabled=YES;
  self.autoresizingMask=UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleHeight;
  _layoutPositions=[[NSUserDefaults.standardUserDefaults dictionaryForKey:@"WrathTouchLayoutV1"] mutableCopy]?:[NSMutableDictionary new];
+ _layoutPinch=[[UIPinchGestureRecognizer alloc]initWithTarget:self action:@selector(pinchLayout:)];
+ _layoutPinch.delegate=self;_layoutPinch.enabled=NO;_layoutPinch.cancelsTouchesInView=YES;[self addGestureRecognizer:_layoutPinch];_pinchButton=-1;
  _accessibleButtons=[NSMutableDictionary new];
  _owners=[NSMutableDictionary new];_last=[NSMutableDictionary new];_motion=[CMMotionManager new];
  _motion.deviceMotionUpdateInterval=1.0/100;
@@ -70,7 +73,7 @@ constexpr NSInteger tag=0x57524335;
 }
 - (void)dealloc {[_motion stopDeviceMotionUpdates];[NSNotificationCenter.defaultCenter removeObserver:self];}
 - (void)reset {
- _editingLayout=NO;_layoutToolbar.hidden=YES;
+ _layoutPinch.enabled=NO;_editingLayout=NO;_layoutToolbar.hidden=YES;
  [_owners removeAllObjects];[_last removeAllObjects];_sampleTime=0;_tray=0;_artifactHolding=NO;_radialHeld=0;_settingsPanel.hidden=YES;
  [self requestKeyboard:NO];_textFocused=NO;
  auto &s=S();std::scoped_lock lock(s.mutex);ResetLocked(s);
@@ -137,25 +140,35 @@ constexpr NSInteger tag=0x57524335;
  if(slider.tag==0)_swipeGain=value;if(slider.tag==1)_gyroGain=value;if(slider.tag==2)_controlScale=value;if(slider.tag==3)_opacity=value;
  [self refresh];
 }
+- (void)resolutionChanged:(UISegmentedControl *)sender {
+ const double scales[]={1.0,.67,.5};NSInteger i=sender.selectedSegmentIndex;
+ if(i>=0&&i<3)[NSUserDefaults.standardUserDefaults setDouble:scales[i] forKey:@"WrathRenderScaleV1"];
+}
 - (void)closeSettings { _settingsPanel.hidden=YES;[self refresh]; }
 - (void)showSettings {
  [self reset];
  if(!_settingsPanel){
-  _settingsPanel=[[UIView alloc]initWithFrame:CGRectMake(0,0,320,300)];_settingsPanel.backgroundColor=[UIColor colorWithWhite:.08 alpha:.96];_settingsPanel.layer.cornerRadius=16;
+  _settingsPanel=[[UIView alloc]initWithFrame:CGRectMake(0,0,320,350)];_settingsPanel.backgroundColor=[UIColor colorWithWhite:.08 alpha:.96];_settingsPanel.layer.cornerRadius=16;
   NSArray *labels=@[@"Swipe sensitivity",@"Gyro strength (0 = off)",@"Button size",@"Button opacity"];
-  float low[]={.04,0,.7,.15},high[]={.4,3,1.3,.9};
+  float low[]={.04,0,.7,.15},high[]={(float)wrathios::touch::SwipeMaximum,(float)wrathios::touch::GyroMaximum,1.3,.9};
   float values[]={(float)_swipeGain,(float)_gyroGain,(float)_controlScale,(float)_opacity};
   for(int i=0;i<4;i++){
    UILabel *label=[[UILabel alloc]initWithFrame:CGRectMake(15,12+i*52,290,20)];label.text=labels[i];label.textColor=UIColor.whiteColor;label.font=[UIFont systemFontOfSize:13];[_settingsPanel addSubview:label];
    UISlider *slider=[[UISlider alloc]initWithFrame:CGRectMake(15,31+i*52,290,25)];slider.minimumValue=low[i];slider.maximumValue=high[i];slider.value=values[i];slider.tag=i;[slider addTarget:self action:@selector(settingChanged:) forControlEvents:UIControlEventValueChanged];[_settingsPanel addSubview:slider];
   }
-  UIButton *done=[UIButton buttonWithType:UIButtonTypeSystem];done.frame=CGRectMake(210,244,100,40);[done setTitle:@"Done" forState:UIControlStateNormal];[done addTarget:self action:@selector(closeSettings) forControlEvents:UIControlEventTouchUpInside];[_settingsPanel addSubview:done];[self addSubview:_settingsPanel];
-  UIButton *edit=[UIButton buttonWithType:UIButtonTypeSystem];edit.frame=CGRectMake(15,244,180,40);[edit setTitle:@"Edit button positions" forState:UIControlStateNormal];[edit addTarget:self action:@selector(editLayout) forControlEvents:UIControlEventTouchUpInside];[_settingsPanel addSubview:edit];
+#ifdef WRATH_IOS_GLES3
+  UILabel *resolutionLabel=[[UILabel alloc]initWithFrame:CGRectMake(15,220,290,20)];resolutionLabel.text=@"Resolution (restart to apply)";resolutionLabel.textColor=UIColor.whiteColor;resolutionLabel.font=[UIFont systemFontOfSize:13];[_settingsPanel addSubview:resolutionLabel];
+  UISegmentedControl *resolution=[[UISegmentedControl alloc]initWithItems:@[@"Native",@"67%",@"50%"]];resolution.frame=CGRectMake(15,246,290,32);resolution.accessibilityIdentifier=@"WrathRenderResolution";
+  NSNumber *saved=[NSUserDefaults.standardUserDefaults objectForKey:@"WrathRenderScaleV1"];double value=saved?saved.doubleValue:1.0;
+  resolution.selectedSegmentIndex=fabs(value-.67)<.001?1:(fabs(value-.5)<.001?2:0);[resolution addTarget:self action:@selector(resolutionChanged:) forControlEvents:UIControlEventValueChanged];[_settingsPanel addSubview:resolution];
+#endif
+  UIButton *done=[UIButton buttonWithType:UIButtonTypeSystem];done.frame=CGRectMake(210,298,100,40);[done setTitle:@"Done" forState:UIControlStateNormal];[done addTarget:self action:@selector(closeSettings) forControlEvents:UIControlEventTouchUpInside];[_settingsPanel addSubview:done];[self addSubview:_settingsPanel];
+  UIButton *edit=[UIButton buttonWithType:UIButtonTypeSystem];edit.frame=CGRectMake(15,298,180,40);[edit setTitle:@"Edit button positions" forState:UIControlStateNormal];[edit addTarget:self action:@selector(editLayout) forControlEvents:UIControlEventTouchUpInside];[_settingsPanel addSubview:edit];
  }
  _settingsPanel.center=CGPointMake(self.bounds.size.width*.5,self.bounds.size.height*.5);_settingsPanel.hidden=NO;[self bringSubviewToFront:_settingsPanel];[self refresh];
 }
 - (void)editLayout {
- [self reset];_editingLayout=YES;_layoutSelection=-1;
+ [self reset];_editingLayout=YES;_layoutPinch.enabled=YES;_layoutSelection=-1;
  if(!_layoutToolbar){
   _layoutToolbar=[[UIView alloc]initWithFrame:CGRectMake(0,0,450,44)];_layoutToolbar.backgroundColor=[UIColor colorWithWhite:.08 alpha:.95];_layoutToolbar.layer.cornerRadius=10;
   NSArray *titles=@[@"Drag icons",@"Reset",@"Done"];SEL actions[]={NULL,@selector(resetLayout),@selector(finishLayout)};
@@ -166,6 +179,43 @@ constexpr NSInteger tag=0x57524335;
  _buttonSize.enabled=NO;_buttonSize.value=1;
  _layoutToolbar.center=CGPointMake(self.bounds.size.width*.5,38);_layoutToolbar.hidden=NO;[self bringSubviewToFront:_layoutToolbar];[self refresh];
 }
+- (BOOL)gestureRecognizer:(UIGestureRecognizer *)gesture shouldReceiveTouch:(UITouch *)touch {
+ if(gesture!=_layoutPinch)return YES;
+ return _editingLayout&&![touch.view isDescendantOfView:_layoutToolbar]&&![touch.view isDescendantOfView:_settingsPanel];
+}
+- (BOOL)gestureRecognizerShouldBegin:(UIGestureRecognizer *)gesture {
+ if(gesture!=_layoutPinch)return YES;
+ if(!_editingLayout||gesture.numberOfTouches!=2)return NO;
+ // A pinch must start on a control, not an arbitrary gameplay/look area.
+ for(NSUInteger i=0;i<2;i++)for(int b=0;b<wrathios::touch::ActionCount;b++)
+  if(CGRectContainsPoint([self buttonRect:b],[gesture locationOfTouch:i inView:self]))return YES;
+ return NO;
+}
+- (void)pinchLayout:(UIPinchGestureRecognizer *)gesture {
+ if(gesture.state==UIGestureRecognizerStateBegan){
+  _pinchButton=-1;
+  for(NSUInteger i=0;i<gesture.numberOfTouches&&_pinchButton<0;i++)for(int b=0;b<wrathios::touch::ActionCount;b++)
+   if(CGRectContainsPoint([self buttonRect:b],[gesture locationOfTouch:i inView:self])){_pinchButton=b;break;}
+  if(!_editingLayout||_pinchButton<0)return;
+  _layoutSelection=_pinchButton;_pinchOriginal=[_layoutPositions[[@(_pinchButton) stringValue]] copy];
+  _pinchStartSize=_pinchOriginal.count==3?[_pinchOriginal[2] doubleValue]:1;
+  [_owners removeAllObjects];[_last removeAllObjects];_buttonSize.enabled=YES;
+ }
+ if(_pinchButton<0)return;
+ if(gesture.state==UIGestureRecognizerStateCancelled||gesture.state==UIGestureRecognizerStateFailed){
+  NSString *key=[@(_pinchButton) stringValue];
+  if(_pinchOriginal)_layoutPositions[key]=_pinchOriginal;else [_layoutPositions removeObjectForKey:key];
+  _buttonSize.value=_pinchStartSize;
+ }else if(_editingLayout&&(gesture.state==UIGestureRecognizerStateBegan||gesture.state==UIGestureRecognizerStateChanged||gesture.state==UIGestureRecognizerStateEnded)){
+  _buttonSize.value=wrathios::touch::PinchSize(_pinchStartSize,gesture.scale);
+  [self resizeSelectedButton:_buttonSize];
+ }
+ if(gesture.state==UIGestureRecognizerStateEnded||gesture.state==UIGestureRecognizerStateCancelled||gesture.state==UIGestureRecognizerStateFailed){
+  [NSUserDefaults.standardUserDefaults setObject:_layoutPositions forKey:@"WrathTouchLayoutV1"];
+  _pinchOriginal=nil;_pinchButton=-1;[_owners removeAllObjects];[_last removeAllObjects];
+ }
+ [self refresh];
+}
 - (void)resizeSelectedButton:(UISlider *)sender {
  if(_layoutSelection<0)return;
  int b=_layoutSelection;CGRect rect=[self buttonRect:b];
@@ -174,9 +224,10 @@ constexpr NSInteger tag=0x57524335;
  [NSUserDefaults.standardUserDefaults setObject:_layoutPositions forKey:@"WrathTouchLayoutV1"];
  [self refresh];
 }
-- (void)resetLayout {[_layoutPositions removeAllObjects];_layoutSelection=-1;_buttonSize.enabled=NO;[NSUserDefaults.standardUserDefaults removeObjectForKey:@"WrathTouchLayoutV1"];[self setNeedsDisplay];}
-- (void)finishLayout { [NSUserDefaults.standardUserDefaults setObject:_layoutPositions forKey:@"WrathTouchLayoutV1"];_editingLayout=NO;_layoutToolbar.hidden=YES;[_owners removeAllObjects];[_last removeAllObjects];[self refresh]; }
+- (void)resetLayout {_layoutPinch.enabled=NO;_layoutPinch.enabled=_editingLayout;[_layoutPositions removeAllObjects];_layoutSelection=-1;_buttonSize.enabled=NO;[NSUserDefaults.standardUserDefaults removeObjectForKey:@"WrathTouchLayoutV1"];[self setNeedsDisplay];}
+- (void)finishLayout { [NSUserDefaults.standardUserDefaults setObject:_layoutPositions forKey:@"WrathTouchLayoutV1"];_layoutPinch.enabled=NO;_editingLayout=NO;_layoutToolbar.hidden=YES;[_owners removeAllObjects];[_last removeAllObjects];[self refresh]; }
 - (void)editTouches:(NSSet<UITouch *> *)touches phase:(int)phase {
+ if(_layoutPinch.state==UIGestureRecognizerStateBegan||_layoutPinch.state==UIGestureRecognizerStateChanged)return;
  for(UITouch *t in touches){NSValue *key=[NSValue valueWithNonretainedObject:t];CGPoint p=[t locationInView:self];
   if(phase==0){for(int b=0;b<wrathios::touch::ActionCount;b++)if(CGRectContainsPoint([self buttonRect:b],p)){if(![_owners.allValues containsObject:@(b)]){_owners[key]=@(b);_last[key]=[NSValue valueWithCGPoint:p];_layoutSelection=b;NSArray *saved=_layoutPositions[[@(b) stringValue]];_buttonSize.value=saved.count==3?[saved[2] floatValue]:1;_buttonSize.enabled=YES;}break;}}
   else if(phase==1&&_owners[key]){int b=_owners[key].intValue;CGRect r=[self buttonRect:b];CGPoint last=[_last[key] CGPointValue];CGFloat w=self.bounds.size.width,h=self.bounds.size.height;
@@ -399,3 +450,5 @@ int WrathIOSTouchNextPadButton(void){auto &s=S();std::scoped_lock lock(s.mutex);
 void WrathIOSTouchSetCapture(int captured){auto &s=S();std::scoped_lock lock(s.mutex);s.captured=captured!=0;}
 
 void WrathIOSTouchBeginControllerFrame(void){auto &s=S();std::scoped_lock lock(s.mutex);s.consumed=0;}
+
+void WrathIOSLogicalWindowSize(int *width,int *height){SDL_Window *window=SDL_GetKeyboardFocus();if(window)SDL_GetWindowSize(window,width,height);else{if(width)*width=0;if(height)*height=0;}}

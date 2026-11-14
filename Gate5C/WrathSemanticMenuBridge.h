@@ -31,6 +31,7 @@ int WrathIOSTouchMenuPad(float *x,float *y);
 int WrathIOSTouchNextPadButton(void);
 const char *WrathIOSTouchActionCommand(int action,int down);
 int WrathIOSTouchTakeMenuRelease(void);
+void WrathIOSLogicalWindowSize(int *width,int *height);
 void WrathIOSTouchFrame( float *yaw, float *pitch, float *side, float *forward, unsigned *buttons);
 
 #ifdef __cplusplus

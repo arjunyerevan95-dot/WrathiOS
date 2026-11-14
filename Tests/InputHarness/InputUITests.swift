@@ -7,6 +7,34 @@ final class InputUITests: XCTestCase {
         let notice = app.staticTexts["Speed up your typing by sliding your finger across the letters to compose a word."]
         if notice.waitForExistence(timeout: 2) { app.buttons["Continue"].tap() }
     }
+    func typeVisibleKeyboard(_ text: String, into app: XCUIApplication) {
+        // SDL deliberately keeps its UITextField hidden/zero-sized. XCTest's
+        // typeText requires an AX-focused text field and cannot target it.
+        // Tap the real native keyboard using four observed row-anchor frames.
+        // This still exercises UIKit -> SDL -> the exact text receipt assertions.
+        let keys = app.keyboards.firstMatch.keys
+        let q = keys["q"].frame, p = keys["p"].frame
+        let a = keys["a"].frame, z = keys["z"].frame
+        XCTAssertFalse(q.isEmpty); XCTAssertFalse(p.isEmpty)
+        XCTAssertFalse(a.isEmpty); XCTAssertFalse(z.isEmpty)
+        let pitch = (p.midX - q.midX) / 9
+        XCTAssertGreaterThan(pitch, 0)
+        let origin = app.coordinate(withNormalizedOffset: .zero)
+        let appFrame = app.frame
+        let rows: [(String, CGRect)] = [("qwertyuiop", q), ("asdfghjkl", a), ("zxcvbnm", z)]
+        for character in text {
+            var point: CGPoint?
+            for (letters, anchor) in rows {
+                if let column = Array(letters).firstIndex(of: character) {
+                    point = CGPoint(x: anchor.midX + CGFloat(column) * pitch, y: anchor.midY)
+                    break
+                }
+            }
+            guard let point else { XCTFail("Unsupported keyboard character"); return }
+            origin.withOffset(CGVector(dx: point.x - appFrame.minX,
+                                       dy: point.y - appFrame.minY)).tap()
+        }
+    }
     func testManualKeyboardInSDLHostLoop() {
         let app = XCUIApplication()
         XCUIDevice.shared.orientation = .landscapeLeft
@@ -19,7 +47,7 @@ final class InputUITests: XCTestCase {
         app.buttons["WrathKeyboardButton"].tap()
         XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 8))
         dismissKeyboardTutorial(app)
-        app.typeText("wrath")
+        typeVisibleKeyboard("wrath", into: app)
         let shot = XCTAttachment(screenshot: app.screenshot()); shot.lifetime = .keepAlways; add(shot)
         sleep(1)
     }
@@ -29,7 +57,7 @@ final class InputUITests: XCTestCase {
         app.launch()
         XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 10))
         dismissKeyboardTutorial(app)
-        app.typeText("profile")
+        typeVisibleKeyboard("profile", into: app)
         let shot = XCTAttachment(screenshot: app.screenshot()); shot.lifetime = .keepAlways; add(shot)
     }
     func testGameplayClusterSurvivesRepeatedFrames() {

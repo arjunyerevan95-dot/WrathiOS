@@ -90,7 +90,7 @@ required_stages=(
     'SDL main readiness established'
     'SDL initialized'
     'Video subsystem initialized'
-    'GLES context created'
+    'Graphics context created'
     'WRATH filesystem initialization entered'
     'kp1 package discovery entered'
     'QuakeC VM loading entered'

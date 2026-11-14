@@ -110,6 +110,11 @@ def main() -> int:
         f"-I{DEPS_PREFIX / 'include'}",
         f"-I{DEPS_PREFIX / 'include' / 'freetype2'}",
     ]
+    if os.environ.get("WRATH_RENDERER", "gles") not in ("gles", "zink"):
+        raise RuntimeError("Unknown WRATH renderer")
+    if os.environ.get("WRATH_RENDERER", "gles") == "zink":
+        common.remove("-DUSE_GLES2=1")
+        common.append("-DWRATH_IOS_ZINK=1")
     if BUILD_FLAVOR in {"gate5", "gate5c"}:
         common.extend([
             "-DWRATH_IOS_GATE5=1",
@@ -139,7 +144,8 @@ def main() -> int:
         patched_source = PATCHED_ENGINE / relative
         source = patched_source if patched_source.is_file() else ENGINE / relative
         object_path = OBJECT_DIR / f"{index:03d}-{relative.stem}.o"
-        command = [*common, "-c", str(source), "-o", str(object_path)]
+        bridge = ["-include", str(ROOT / "Gate5C/WrathZinkBridge.h")] if os.environ.get("WRATH_RENDERER") == "zink" and relative.name == "vid_sdl.c" else []
+        command = [*common, *bridge, "-c", str(source), "-o", str(object_path)]
         completed = run(command)
         status = "pass" if completed.returncode == 0 else "fail"
         if completed.returncode == 0:

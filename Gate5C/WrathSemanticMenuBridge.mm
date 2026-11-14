@@ -39,7 +39,7 @@ constexpr NSInteger tag=0x57524335;
  NSInteger _radialSelection; NSTimeInterval _artifactStart; BOOL _artifactHolding; int _radialHeld;
  CGFloat _controlScale,_opacity,_swipeGain,_gyroGain;
  UIView *_settingsPanel;
- UIView *_layoutToolbar; BOOL _editingLayout;
+ UIView *_layoutToolbar; BOOL _editingLayout; UISlider *_buttonSize; int _layoutSelection;
  NSMutableDictionary *_layoutPositions;
  NSMutableDictionary<NSNumber *,UIAccessibilityElement *> *_accessibleButtons;
  UIAccessibilityElement *_accessibleKeyboard;
@@ -155,24 +155,34 @@ constexpr NSInteger tag=0x57524335;
  _settingsPanel.center=CGPointMake(self.bounds.size.width*.5,self.bounds.size.height*.5);_settingsPanel.hidden=NO;[self bringSubviewToFront:_settingsPanel];[self refresh];
 }
 - (void)editLayout {
- [self reset];_editingLayout=YES;
+ [self reset];_editingLayout=YES;_layoutSelection=-1;
  if(!_layoutToolbar){
-  _layoutToolbar=[[UIView alloc]initWithFrame:CGRectMake(0,0,300,44)];_layoutToolbar.backgroundColor=[UIColor colorWithWhite:.08 alpha:.95];_layoutToolbar.layer.cornerRadius=10;
+  _layoutToolbar=[[UIView alloc]initWithFrame:CGRectMake(0,0,450,44)];_layoutToolbar.backgroundColor=[UIColor colorWithWhite:.08 alpha:.95];_layoutToolbar.layer.cornerRadius=10;
   NSArray *titles=@[@"Drag icons",@"Reset",@"Done"];SEL actions[]={NULL,@selector(resetLayout),@selector(finishLayout)};
-  for(int i=0;i<3;i++){UIButton *b=[UIButton buttonWithType:UIButtonTypeSystem];b.frame=CGRectMake(i*100,0,100,44);[b setTitle:titles[i] forState:UIControlStateNormal];if(actions[i])[b addTarget:self action:actions[i] forControlEvents:UIControlEventTouchUpInside];else b.enabled=NO;[_layoutToolbar addSubview:b];}
+  for(int i=0;i<3;i++){UIButton *b=[UIButton buttonWithType:UIButtonTypeSystem];b.frame=CGRectMake(i*80,0,80,44);[b setTitle:titles[i] forState:UIControlStateNormal];if(actions[i])[b addTarget:self action:actions[i] forControlEvents:UIControlEventTouchUpInside];else b.enabled=NO;[_layoutToolbar addSubview:b];}
+  _buttonSize=[[UISlider alloc]initWithFrame:CGRectMake(245,0,195,44)];_buttonSize.minimumValue=.65;_buttonSize.maximumValue=1.8;_buttonSize.accessibilityIdentifier=@"WrathSelectedButtonSize";_buttonSize.accessibilityLabel=@"Selected button size";[_buttonSize addTarget:self action:@selector(resizeSelectedButton:) forControlEvents:UIControlEventValueChanged];[_layoutToolbar addSubview:_buttonSize];
   [self addSubview:_layoutToolbar];
  }
+ _buttonSize.enabled=NO;_buttonSize.value=1;
  _layoutToolbar.center=CGPointMake(self.bounds.size.width*.5,38);_layoutToolbar.hidden=NO;[self bringSubviewToFront:_layoutToolbar];[self refresh];
 }
-- (void)resetLayout {[_layoutPositions removeAllObjects];[NSUserDefaults.standardUserDefaults removeObjectForKey:@"WrathTouchLayoutV1"];[self setNeedsDisplay];}
+- (void)resizeSelectedButton:(UISlider *)sender {
+ if(_layoutSelection<0)return;
+ int b=_layoutSelection;CGRect rect=[self buttonRect:b];
+ CGFloat x=CGRectGetMidX(rect)/self.bounds.size.width,y=CGRectGetMidY(rect)/self.bounds.size.height;
+ _layoutPositions[[@(b) stringValue]]=@[@(x),@(y),@(sender.value)];
+ [NSUserDefaults.standardUserDefaults setObject:_layoutPositions forKey:@"WrathTouchLayoutV1"];
+ [self refresh];
+}
+- (void)resetLayout {[_layoutPositions removeAllObjects];_layoutSelection=-1;_buttonSize.enabled=NO;[NSUserDefaults.standardUserDefaults removeObjectForKey:@"WrathTouchLayoutV1"];[self setNeedsDisplay];}
 - (void)finishLayout { [NSUserDefaults.standardUserDefaults setObject:_layoutPositions forKey:@"WrathTouchLayoutV1"];_editingLayout=NO;_layoutToolbar.hidden=YES;[_owners removeAllObjects];[_last removeAllObjects];[self refresh]; }
 - (void)editTouches:(NSSet<UITouch *> *)touches phase:(int)phase {
  for(UITouch *t in touches){NSValue *key=[NSValue valueWithNonretainedObject:t];CGPoint p=[t locationInView:self];
-  if(phase==0){for(int b=0;b<wrathios::touch::ActionCount;b++)if(CGRectContainsPoint([self buttonRect:b],p)){if(![_owners.allValues containsObject:@(b)]){_owners[key]=@(b);_last[key]=[NSValue valueWithCGPoint:p];}break;}}
+  if(phase==0){for(int b=0;b<wrathios::touch::ActionCount;b++)if(CGRectContainsPoint([self buttonRect:b],p)){if(![_owners.allValues containsObject:@(b)]){_owners[key]=@(b);_last[key]=[NSValue valueWithCGPoint:p];_layoutSelection=b;NSArray *saved=_layoutPositions[[@(b) stringValue]];_buttonSize.value=saved.count==3?[saved[2] floatValue]:1;_buttonSize.enabled=YES;}break;}}
   else if(phase==1&&_owners[key]){int b=_owners[key].intValue;CGRect r=[self buttonRect:b];CGPoint last=[_last[key] CGPointValue];CGFloat w=self.bounds.size.width,h=self.bounds.size.height;
    CGFloat x=std::clamp(CGRectGetMidX(r)+p.x-last.x,self.safeAreaInsets.left+r.size.width/2,w-self.safeAreaInsets.right-r.size.width/2);
    CGFloat y=std::clamp(CGRectGetMidY(r)+p.y-last.y,self.safeAreaInsets.top+r.size.height/2,h-self.safeAreaInsets.bottom-r.size.height/2);
-   _layoutPositions[[@(b) stringValue]]=@[@(x/w),@(y/h)];_last[key]=[NSValue valueWithCGPoint:p];
+   NSArray *saved=_layoutPositions[[@(b) stringValue]];NSNumber *size=saved.count==3?saved[2]:@1;_layoutPositions[[@(b) stringValue]]=@[@(x/w),@(y/h),size];_last[key]=[NSValue valueWithCGPoint:p];
   }else if(phase==2){[_owners removeObjectForKey:key];[_last removeObjectForKey:key];[NSUserDefaults.standardUserDefaults setObject:_layoutPositions forKey:@"WrathTouchLayoutV1"];}
  }[self setNeedsDisplay];
 }
@@ -180,7 +190,12 @@ constexpr NSInteger tag=0x57524335;
  if(_captured&&!_editingLayout&&b!=26&&b!=3&&b!=31)return CGRectNull;
  CGRect r=[self defaultButtonRect:b];if(CGRectIsNull(r))return r;
  NSArray *position=_layoutPositions[[@(b) stringValue]];
- if([position isKindOfClass:NSArray.class]&&position.count==2&&[position[0] isKindOfClass:NSNumber.class]&&[position[1] isKindOfClass:NSNumber.class]){
+ if([position isKindOfClass:NSArray.class]&&(position.count==2||position.count==3)&&[position[0] isKindOfClass:NSNumber.class]&&[position[1] isKindOfClass:NSNumber.class]){
+  CGFloat factor=position.count==3&&[position[2] isKindOfClass:NSNumber.class]?[position[2] doubleValue]:1;
+  if(!isfinite(factor))factor=1;factor=std::clamp(factor,(CGFloat).65,(CGFloat)1.8);
+  CGFloat maxW=MAX(1,self.bounds.size.width-self.safeAreaInsets.left-self.safeAreaInsets.right);
+  CGFloat maxH=MAX(1,self.bounds.size.height-self.safeAreaInsets.top-self.safeAreaInsets.bottom);
+  r.size.width=MIN(r.size.width*factor,maxW);r.size.height=MIN(r.size.height*factor,maxH);
   CGFloat x=[position[0] doubleValue],y=[position[1] doubleValue];if(isfinite(x)&&isfinite(y)){
    r.origin.x=std::clamp(x*self.bounds.size.width-r.size.width/2,self.safeAreaInsets.left,self.bounds.size.width-self.safeAreaInsets.right-r.size.width);
    r.origin.y=std::clamp(y*self.bounds.size.height-r.size.height/2,self.safeAreaInsets.top,self.bounds.size.height-self.safeAreaInsets.bottom-r.size.height);

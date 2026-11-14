@@ -1,3 +1,6 @@
+#ifdef WRATH_IOS_ZINK
+#import "../Gate5C/WrathZinkBridge.h"
+#endif
 // SPDX-License-Identifier: GPL-2.0-only
 #import "WrathRuntime.h"
 
@@ -289,6 +292,7 @@ static int WrathRunHostMain(void) {
 }
 
 - (void)runFrame:(CADisplayLink *)link {
+    if(UIApplication.sharedApplication.applicationState != UIApplicationStateActive)return;
     (void)link;
     // A normal frame returns. Keep the fatal-error recovery target active only
     // while inside engine code; no setjmp target survives across UIKit callbacks.
@@ -301,6 +305,9 @@ static int WrathRunHostMain(void) {
 }
 
 - (void)recordLifecycleEvent:(NSString *)event {
+#ifdef WRATH_IOS_ZINK
+    if([event isEqualToString:@"Runtime pause requested"])WrathZinkDrain();
+#endif
     if (self.startingOrActive) {
         [self recordStage:event detail:@"SDL/UIKit lifecycle notification observed."];
     }

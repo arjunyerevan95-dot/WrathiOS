@@ -9,7 +9,7 @@ PROJECT="$ROOT_DIR/WrathiOSGate5C.xcodeproj"
 APP_BUNDLE="$DERIVED_DATA/Build/Products/Debug-iphoneos/WrathiOSGate5C.app"
 BINARY="$APP_BUNDLE/WrathiOSGate5C"
 PACKAGE_ROOT="$ROOT_DIR/Derived/gate5c-package"
-IPA="$ARTIFACT_DIR/WrathiOSGate5C-v18-unsigned.ipa"
+IPA="$ARTIFACT_DIR/WrathiOSGate5C-v19-${WRATH_RENDERER:-gles}-unsigned.ipa"
 
 rm -rf "$ARTIFACT_DIR" "$DERIVED_DATA" "$PROJECT" "$PACKAGE_ROOT"
 mkdir -p "$ARTIFACT_DIR"
@@ -34,6 +34,11 @@ command -v xcodegen >/dev/null 2>&1 || {
 }
 
 cd "$ROOT_DIR"
+case "${WRATH_RENDERER:-gles}" in
+  gles) renderer_define= ;;
+  zink) renderer_define=WRATH_IOS_ZINK=1 ;;
+  *) echo "Invalid renderer" >&2; exit 2 ;;
+esac
 python3 scripts/materialize_gate5c_menu_qc.py
 WRATH_ENGINE_BUILD_FLAVOR=gate5c python3 scripts/build_gate2_engine_archive.py
 xcodegen generate --spec project-gate5c.yml
@@ -46,6 +51,7 @@ xcodebuild \
     -sdk iphoneos \
     -destination 'generic/platform=iOS' \
     -derivedDataPath "$DERIVED_DATA" \
+    WRATH_RENDERER_DEFINE="$renderer_define" \
     CODE_SIGNING_ALLOWED=NO \
     build 2>&1 | tee "$LOG"
 
@@ -54,6 +60,9 @@ xcodebuild \
     exit 1
 }
 
+if [[ "${WRATH_RENDERER:-gles}" == zink ]]; then
+    bash scripts/package_zink_libraries.sh "$APP_BUNDLE" "$ARTIFACT_DIR"
+fi
 # Preserve the compiled app if a later audit/package step fails; avoid recompiling
 # only to recover identical bytes. This contains no licensed game data.
 mkdir -p "$ARTIFACT_DIR/recovery"
@@ -102,7 +111,7 @@ required_stages=(
     'SDL main readiness established'
     'SDL initialized'
     'Video subsystem initialized'
-    'GLES context created'
+    'Graphics context created'
     'WRATH filesystem initialization entered'
     'kp1 package discovery entered'
     'QuakeC VM loading entered'
@@ -284,7 +293,8 @@ cat > "$ARTIFACT_DIR/summary.md" <<EOF
 - Native UIKit controls and authentic menu pointer/click symbols: present
 - Derived menu QC source: pinned and provenance-checked
 - Semantic bounds: retained for provenance only, not required by native pointer delivery
-- Dynamic dependencies: system-only
+- App link dependencies: system-only; optional renderer libraries documented separately
+- Renderer candidate: ${WRATH_RENDERER:-gles}; device-unverified
 - Adaptive launch storyboard: packaged
 - Orientation: landscape-only
 - Commercial WRATH data: absent

@@ -1,0 +1,56 @@
+{
+  "source_ipa_url": "https://github.com/thebcd69/bcd-games/releases/download/v0.1.653/BCD.ipa",
+  "source_ipa_sha256": "a19306da887f4849043e56c498fa61caa59a2c14e6bff66394433f8221dd362b",
+  "source_ipa_bytes": 194520705,
+  "release_tag": "v0.1.653",
+  "release_tag_commit": "c3c2d152fca4d491b703b910d112ab54299c36c1",
+  "origin": "Hash-pinned upstream release, NOT the in-progress custom fork build. Release association is not reproducible-build proof.",
+  "validation_limits": [
+    "No standalone iOS load/context/presentation test performed.",
+    "No GL4.3, compute or SSBO capability established.",
+    "Mach-O structure inspected; no independent native codesign verification performed.",
+    "Re-sign for the consuming native app; preserve notices and review license obligations."
+  ],
+  "not_included": [
+    "BCD app executable",
+    "Wine binaries or source",
+    "GPL build scripts"
+  ],
+  "files": {
+    "gl/libOSMesa.dylib": {
+      "bytes": 14747072,
+      "sha256": "6e053b92c2d700ae2a4d670bfc5cff614b1a2fa42fa7916135f6522d14ef6ed0",
+      "source_member": "Payload/Madeira.app/gl/libOSMesa.dylib"
+    },
+    "gl/libMoltenVK.dylib": {
+      "bytes": 4873280,
+      "sha256": "6e1f5dbfee5ed888ac60f06c78e2931f0f56f543b02f127cf22fde249c54d5c9",
+      "source_member": "Payload/Madeira.app/gl/libMoltenVK.dylib"
+    },
+    "licenses/Mesa-license.rst": {
+      "bytes": 1816,
+      "sha256": "0d1a0472ecc81830e75c20d59b0ea02841e3db21255e0ebad97ab682c54d6615",
+      "source_member": "Payload/Madeira.app/licenses/Mesa-license.rst"
+    },
+    "licenses/MoltenVK-Apache-2.0.txt": {
+      "bytes": 11358,
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+      "source_member": "Payload/Madeira.app/licenses/MoltenVK-Apache-2.0.txt"
+    },
+    "licenses/SPIRV-Cross-Apache-2.0.txt": {
+      "bytes": 11358,
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+      "source_member": "Payload/Madeira.app/licenses/SPIRV-Cross-Apache-2.0.txt"
+    },
+    "licenses/SPIRV-Tools-Apache-2.0.txt": {
+      "bytes": 11358,
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+      "source_member": "Payload/Madeira.app/licenses/SPIRV-Tools-Apache-2.0.txt"
+    },
+    "licenses/cereal-BSD-3-Clause.txt": {
+      "bytes": 1542,
+      "sha256": "58604a126af6a671ea390ee3d5b3e42228aa59b2858fb7af1d5b20b31739ccbb",
+      "source_member": "Payload/Madeira.app/licenses/cereal-BSD-3-Clause.txt"
+    }
+  }
+}

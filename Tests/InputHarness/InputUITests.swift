@@ -19,7 +19,7 @@ final class InputUITests: XCTestCase {
         app.buttons["WrathKeyboardButton"].tap()
         XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 8))
         dismissKeyboardTutorial(app)
-        for key in "wrath" { app.keyboards.keys[String(key)].tap() }
+        app.typeText("wrath")
         let shot = XCTAttachment(screenshot: app.screenshot()); shot.lifetime = .keepAlways; add(shot)
         sleep(1)
     }
@@ -29,7 +29,7 @@ final class InputUITests: XCTestCase {
         app.launch()
         XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 10))
         dismissKeyboardTutorial(app)
-        for key in "profile" { app.keyboards.keys[String(key)].tap() }
+        app.typeText("profile")
         let shot = XCTAttachment(screenshot: app.screenshot()); shot.lifetime = .keepAlways; add(shot)
     }
     func testGameplayClusterSurvivesRepeatedFrames() {
@@ -71,17 +71,23 @@ final class InputUITests: XCTestCase {
         let baseline = fire.frame
         let start = fire.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
         start.press(forDuration: 0.2, thenDragTo: start.withOffset(CGVector(dx: -60, dy: 30)))
+        let size = app.sliders["WrathSelectedButtonSize"]
+        XCTAssertTrue(size.isEnabled)
+        size.adjust(toNormalizedSliderPosition: 0.75)
         app.buttons["Done"].tap()
         let moved = fire.frame
+        XCTAssertGreaterThan(moved.width, baseline.width * 1.3)
         XCTAssertLessThan(moved.midX, baseline.midX - 40)
         XCTAssertGreaterThan(moved.midY, baseline.midY + 15)
         app.terminate(); app.launch()
         XCTAssertTrue(app.buttons["WrathAction_FIRE"].waitForExistence(timeout: 10))
         XCTAssertEqual(app.buttons["WrathAction_FIRE"].frame.midX, moved.midX, accuracy: 2)
         XCTAssertEqual(app.buttons["WrathAction_FIRE"].frame.midY, moved.midY, accuracy: 2)
+        XCTAssertEqual(app.buttons["WrathAction_FIRE"].frame.width, moved.width, accuracy: 2)
         edit(); app.buttons["Reset"].tap(); app.buttons["Done"].tap()
         XCTAssertEqual(app.buttons["WrathAction_FIRE"].frame.midX, baseline.midX, accuracy: 2)
         XCTAssertEqual(app.buttons["WrathAction_FIRE"].frame.midY, baseline.midY, accuracy: 2)
+        XCTAssertEqual(app.buttons["WrathAction_FIRE"].frame.width, baseline.width, accuracy: 2)
         let shot = XCTAttachment(screenshot: app.screenshot()); shot.lifetime = .keepAlways; add(shot)
     }
 }

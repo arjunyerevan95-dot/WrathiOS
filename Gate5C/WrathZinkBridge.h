@@ -13,12 +13,14 @@ int WrathZinkSetAttribute(SDL_GLattr,int);
 int WrathZinkGetAttribute(SDL_GLattr,int*);
 int WrathZinkSetSwapInterval(int);
 void WrathZinkDrain(void);
+void WrathZinkGetDrawableSize(SDL_Window*,int*,int*);
 #ifdef __cplusplus
 }
 #endif
 #if defined(WRATH_IOS_ZINK) && !defined(WRATH_ZINK_IMPL)
 #define SDL_DestroyWindow WrathZinkDestroyWindow
 #define SDL_CreateWindow WrathZinkCreateWindow
+#define SDL_GL_GetDrawableSize WrathZinkGetDrawableSize
 #define SDL_GL_CreateContext WrathZinkCreateContext
 #define SDL_GL_GetProcAddress WrathZinkGetProcAddress
 #define SDL_GL_SwapWindow WrathZinkSwapWindow

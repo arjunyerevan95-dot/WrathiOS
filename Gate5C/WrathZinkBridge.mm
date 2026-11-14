@@ -14,6 +14,7 @@ static SDL_Renderer *presenter;
 static SDL_Texture *texture;
 static unsigned char *pixels;
 static int width,height;
+void WrathZinkGetDrawableSize(SDL_Window*,int*w,int*h){if(w)*w=width;if(h)*h=height;}
 static void *(*createContext)(const int*,void*);
 static unsigned char (*makeCurrent)(void*,void*,unsigned,int,int);
 static void *(*getProc)(const char*);
@@ -52,6 +53,8 @@ SDL_GLContext WrathZinkCreateContext(SDL_Window*w){
  destroyContext=(void(*)(void*))dlsym(mesa,"OSMesaDestroyContext");
  if(!createContext||!makeCurrent||!getProc||!destroyContext){SDL_SetError("Incomplete OSMesa entry points");return nullptr;}
  SDL_GetWindowSize(w,&width,&height);
+ // Render at 2x UIKit points, preserving the original logical UI coordinates.
+ width*=2;height*=2;
  if(width<1||height<1||width>4096||height>4096){SDL_SetError("Invalid scene size");return nullptr;}
  const int attributes[]={0x22,0x1908,0x30,24,0x31,8,0x33,0x35,0x36,2,0x37,1,0};
  context=createContext(attributes,nullptr);pixels=(unsigned char*)calloc((size_t)width*height,4);
@@ -60,7 +63,7 @@ SDL_GLContext WrathZinkCreateContext(SDL_Window*w){
  const char *renderer=gs?(const char*)gs(0x1F01):nullptr;
  const char *version=gs?(const char*)gs(0x1F02):nullptr;
  int major=0,minor=0;if(version)sscanf(version,"%d.%d",&major,&minor);
- if(!renderer||(!strstr(renderer,"zink")&&!strstr(renderer,"Zink"))||major<2||(major==2&&minor<1)){
+ if(!renderer||(!strstr(renderer,"zink")&&!strstr(renderer,"Zink"))||strstr(renderer,"llvmpipe")||strstr(renderer,"lavapipe")||major<2||(major==2&&minor<1)){
   SDL_SetError("Expected hardware Zink desktop GL >=2.1, got %s / %s",renderer?renderer:"none",version?version:"none");return nullptr;
  }
  SDL_SetHint(SDL_HINT_RENDER_DRIVER,"metal");SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY,"linear");

@@ -59,3 +59,6 @@ python3 "$ROOT_DIR/scripts/test_gate5c_control_contract.py"
 
 python3 "$ROOT_DIR/Tests/Gate5C/test_controller_route.py"
 python3 "$ROOT_DIR/Tests/Gate5C/test_upstream_controller_handlers.py"
+
+"${CXX:-c++}" -std=c++20 -Wall -Wextra -Werror -I"$ROOT_DIR/Gate5C" "$ROOT_DIR/Tests/Gate5C/WrathReadableDimensionsTests.cpp" -o "$ARTIFACT_DIR/WrathReadableDimensionsTests"
+"$ARTIFACT_DIR/WrathReadableDimensionsTests" | tee "$ARTIFACT_DIR/readability-results.txt"

@@ -16,7 +16,7 @@
         },
         {
           "old": "\tprog->ExecuteProgram(prog, PRVM_menufunction(m_draw),\"m_draw() required\");",
-          "new": "#ifdef WRATH_IOS_GATE5C\n\t{\n\t\tfloat x, y;\n\t\tint c;\n\t\twhile ((c = WrathIOSTouchNextText()) != 0)\n\t\t{\n\t\t\tMP_InputEvent(0, c == 8 ? K_BACKSPACE : c, c == 8 ? 0 : c);\n\t\t\tMP_InputEvent(1, c == 8 ? K_BACKSPACE : c, c == 8 ? 0 : c);\n\t\t}\n\t}\n#endif\n\tprog->ExecuteProgram(prog, PRVM_menufunction(m_draw),\"m_draw() required\");\n#ifdef WRATH_IOS_GATE5C\n\t/* MP_Draw also renders the in-game HUD: never force menu mode here. */\n\tWrathIOSGate5CSetMenuActive(key_dest == key_menu || key_dest == key_menu_grabbed);\n\t{\n\t\tint create = PRVM_ED_FindGlobalOffset(prog, \"menu_createprofile\");\n\t\tint current = PRVM_ED_FindGlobalOffset(prog, \"menu_current\");\n\t\tint selected = PRVM_ED_FindGlobalOffset(prog, \"ui_selected\");\n\t\tint partner = PRVM_ED_FindFieldOffset(prog, \"uielement_c::__mpartner\");\n\t\tint focused = 0;\n\t\tif ((key_dest == key_menu || key_dest == key_menu_grabbed) && create >= 0 && current >= 0 && selected >= 0 && partner >= 0)\n\t\t{\n\t\t\tint entity = PRVM_GLOBALFIELDEDICT(create);\n\t\t\tif (entity > 0 && entity < prog->num_edicts && entity == PRVM_GLOBALFIELDEDICT(current))\n\t\t\t\tfocused = PRVM_GLOBALFIELDEDICT(selected) == PRVM_EDICTFIELDEDICT(PRVM_EDICT_NUM(entity), partner);\n\t\t}\n\t\tWrathIOSTouchTextFocus(focused);\n\t}\n#endif\n#ifdef WRATH_IOS_GATE5\n\t{\n\t\tstatic qboolean wrath_ios_menu_frame_recorded = false;\n\t\tif (!wrath_ios_menu_frame_recorded)\n\t\t{\n\t\t\twrath_ios_menu_frame_recorded = true;\n\t\t\tWrathIOSRuntimeStage(\"Main menu reached\", \"The authentic menu VM completed its first draw.\");\n\t\t}\n\t}\n#endif"
+          "new": "#ifdef WRATH_IOS_ZINK\n\t/* The shipped menu derives con dimensions as half the scene size. Our Zink\n\t * scene is 2x UIKit points: keep that stock UI in its old logical space,\n\t * so text gains samples, not half-sized targets. Non-default custom sizes\n\t * are untouched; set wrathios_readable_ui 0 to opt out. */\n\t{\n\t\tWrathReadableDimensions ui = WrathReadableUI(vid.width, vid.height,\n\t\t\tvid_conwidth.value, vid_conheight.value, Cvar_VariableValueOr(\"wrathios_readable_ui\", 1) != 0);\n\t\tif (ui.width != vid_conwidth.value) Cvar_SetValueQuick(&vid_conwidth, ui.width);\n\t\tif (ui.height != vid_conheight.value) Cvar_SetValueQuick(&vid_conheight, ui.height);\n\t}\n#endif\n#ifdef WRATH_IOS_GATE5C\n\t{\n\t\tfloat x, y;\n\t\tint c;\n\t\twhile ((c = WrathIOSTouchNextText()) != 0)\n\t\t{\n\t\t\tMP_InputEvent(0, c == 8 ? K_BACKSPACE : c, c == 8 ? 0 : c);\n\t\t\tMP_InputEvent(1, c == 8 ? K_BACKSPACE : c, c == 8 ? 0 : c);\n\t\t}\n\t}\n#endif\n\tprog->ExecuteProgram(prog, PRVM_menufunction(m_draw),\"m_draw() required\");\n#ifdef WRATH_IOS_GATE5C\n\t/* MP_Draw also renders the in-game HUD: never force menu mode here. */\n\tWrathIOSGate5CSetMenuActive(key_dest == key_menu || key_dest == key_menu_grabbed);\n\t{\n\t\tint create = PRVM_ED_FindGlobalOffset(prog, \"menu_createprofile\");\n\t\tint current = PRVM_ED_FindGlobalOffset(prog, \"menu_current\");\n\t\tint selected = PRVM_ED_FindGlobalOffset(prog, \"ui_selected\");\n\t\tint partner = PRVM_ED_FindFieldOffset(prog, \"uielement_c::__mpartner\");\n\t\tint focused = 0;\n\t\tif ((key_dest == key_menu || key_dest == key_menu_grabbed) && create >= 0 && current >= 0 && selected >= 0 && partner >= 0)\n\t\t{\n\t\t\tint entity = PRVM_GLOBALFIELDEDICT(create);\n\t\t\tif (entity > 0 && entity < prog->num_edicts && entity == PRVM_GLOBALFIELDEDICT(current))\n\t\t\t\tfocused = PRVM_GLOBALFIELDEDICT(selected) == PRVM_EDICTFIELDEDICT(PRVM_EDICT_NUM(entity), partner);\n\t\t}\n\t\tWrathIOSTouchTextFocus(focused);\n\t}\n#endif\n#ifdef WRATH_IOS_GATE5\n\t{\n\t\tstatic qboolean wrath_ios_menu_frame_recorded = false;\n\t\tif (!wrath_ios_menu_frame_recorded)\n\t\t{\n\t\t\twrath_ios_menu_frame_recorded = true;\n\t\t\tWrathIOSRuntimeStage(\"Main menu reached\", \"The authentic menu VM completed its first draw.\");\n\t\t}\n\t}\n#endif"
         },
         {
           "old": "\tprog->globals.fp[OFS_PARM0] = (prvm_vec_t) mode;\n\tprog->ExecuteProgram(prog, PRVM_menufunction(m_toggle),\"m_toggle(float mode) required\");",
@@ -72,7 +72,7 @@
         },
         {
           "old": "\tif (context == NULL)\n\t{\n\t\tCon_Printf(\"Failed to initialize OpenGL context: %s\\n\", SDL_GetError());\n\t\tVID_Shutdown();\n\t\treturn false;\n\t}\n#endif",
-          "new": "\tif (context == NULL)\n\t{\n\t\tCon_Printf(\"Failed to initialize OpenGL context: %s\\n\", SDL_GetError());\n\t\tVID_Shutdown();\n\t\treturn false;\n\t}\n#ifdef WRATH_IOS_GATE5\n\tWrathIOSRuntimeStage(\"Graphics context created\", \"Renderer context creation passed; backend recorded separately.\");\n#endif\n#endif"
+          "new": "\tif (context == NULL)\n\t{\n\t\tCon_Printf(\"Failed to initialize OpenGL context: %s\\n\", SDL_GetError());\n\t\tVID_Shutdown();\n\t\treturn false;\n\t}\n#ifdef WRATH_IOS_GATE5\n\tWrathIOSRuntimeStage(\"Graphics context created\", \"Renderer context creation passed; backend recorded separately.\");\n#endif\n#endif\n#ifdef WRATH_IOS_ZINK\n\tSDL_GL_GetDrawableSize(window, &mode->width, &mode->height);\n#endif"
         },
         {
           "old": "\tif (vid_touchscreen.integer)\n\t{",
@@ -101,6 +101,10 @@
         {
           "old": "void VID_Shutdown (void)\n{\n\tVID_EnableJoystick(false);",
           "new": "void VID_Shutdown (void)\n{\n#ifdef WRATH_IOS_GATE5C\n\tWrathIOSControllerShutdown();\n#endif\n\tVID_EnableJoystick(false);"
+        },
+        {
+          "old": "\t\t\t\t\t\t\tvid.width = event.window.data1;\n\t\t\t\t\t\t\tvid.height = event.window.data2;",
+          "new": "\t\t\t\t\t\t\tvid.width = event.window.data1;\n\t\t\t\t\t\t\tvid.height = event.window.data2;\n#ifdef WRATH_IOS_ZINK\n\t\t\t\t\t\t\tSDL_GL_GetDrawableSize(window, &vid.width, &vid.height);\n#endif"
         }
       ]
     },
@@ -179,6 +183,16 @@
         {
           "old": "\tif(v_flipped.integer)\n\t{",
           "new": "#ifdef WRATH_IOS_GATE5C\n\t{float touchYaw,touchPitch;\n\t WrathIOSControllerTakeRelativeLook(&touchYaw,&touchPitch);\n\t if(!key_consoleactive && key_dest==key_game && !cl.csqc_wantsmousemove && cl_prydoncursor.integer<=0){\n\t  V_StopPitchDrift();\n\t  cl.viewangles[YAW]-=touchYaw*cl.sensitivityscale*cl.viewzoom;\n\t  cl.viewangles[PITCH]+=touchPitch*cl.sensitivityscale*cl.viewzoom;\n\t }\n\t}\n#endif\n\tif(v_flipped.integer)\n\t{"
+        }
+      ]
+    },
+    {
+      "path": "csprogs.c",
+      "reason": "Preserve stock logical HUD size under 2x experimental Zink scene; do not enlarge custom console dimensions.",
+      "replacements": [
+        {
+          "old": "\t\tprog->ExecuteProgram(prog, PRVM_clientfunction(CSQC_UpdateView), \"QC function CSQC_UpdateView is missing\");",
+          "new": "#ifdef WRATH_IOS_ZINK\n\t/* The shipped menu derives con dimensions as half the scene size. Our Zink\n\t * scene is 2x UIKit points: keep that stock UI in its old logical space,\n\t * so text gains samples, not half-sized targets. Non-default custom sizes\n\t * are untouched; set wrathios_readable_ui 0 to opt out. */\n\t{\n\t\tWrathReadableDimensions ui = WrathReadableUI(vid.width, vid.height,\n\t\t\tvid_conwidth.value, vid_conheight.value, Cvar_VariableValueOr(\"wrathios_readable_ui\", 1) != 0);\n\t\tif (ui.width != vid_conwidth.value) Cvar_SetValueQuick(&vid_conwidth, ui.width);\n\t\tif (ui.height != vid_conheight.value) Cvar_SetValueQuick(&vid_conheight, ui.height);\n\t}\n#endif\n\t\tprog->ExecuteProgram(prog, PRVM_clientfunction(CSQC_UpdateView), \"QC function CSQC_UpdateView is missing\");"
         }
       ]
     }

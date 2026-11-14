@@ -19,3 +19,8 @@ Remaining BEFORE publication:
 4. Device tests for real rendering, artifact selection/gyro, profile/save load, drag/resize persistence and readability. No success/performance claim beforehand.
 
 Paths private outside repo must remain private. Do not copy retail game data or logs. No phone use by this worker.
+
+## Readability implementation follow-up
+Zink scene buffers now use 2x UIKit-point dimensions. The original menu computes console dimensions as half scene resolution, which otherwise shrinks text when scene resolution rises. A pure C helper recognizes only that stock dimension pair and retains its previous logical point-space size; custom pairs and explicit wrathios_readable_ui=0 are untouched. Engine menu and CSQC paths share the helper. Native menu pointer already maps normalized touch to vid_conwidth/height, so hit coordinates follow the same logical space. SDL resize notifications cannot overwrite the Zink buffer dimensions with UIKit points. Test covers physical text size, idempotence, custom dimensions and opt-out. This is higher-resolution scene/UI rendering, NOT separate native-resolution HUD composition, and can increase GPU/readback cost. GLES rollback retains old scene density.
+
+Full repository checks pass on Windows; MSVC touch and readability tests pass. Actual UIKit/iOS build remains CI-only and phone results unverified.

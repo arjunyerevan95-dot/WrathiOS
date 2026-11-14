@@ -1,4 +1,5 @@
 #pragma once
+#include "WrathReadableDimensions.h"
 
 #ifdef __cplusplus
 extern "C" {

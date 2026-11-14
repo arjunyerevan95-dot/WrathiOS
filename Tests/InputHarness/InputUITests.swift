@@ -8,34 +8,18 @@ final class InputUITests: XCTestCase {
         if notice.waitForExistence(timeout: 2) { app.buttons["Continue"].tap() }
     }
     func typeVisibleKeyboard(_ text: String, into app: XCUIApplication) {
-        // SDL deliberately keeps its UITextField hidden/zero-sized. XCTest's
-        // typeText requires an AX-focused text field and cannot target it.
-        // Tap the real native keyboard using four observed row-anchor frames.
-        // This still exercises UIKit -> SDL -> the exact text receipt assertions.
-        let keys = app.keyboards.firstMatch.keys
-        let q = keys["q"].frame, p = keys["p"].frame
-        let a = keys["a"].frame, z = keys["z"].frame
-        XCTAssertFalse(q.isEmpty); XCTAssertFalse(p.isEmpty)
-        XCTAssertFalse(a.isEmpty); XCTAssertFalse(z.isEmpty)
-        let pitch = (p.midX - q.midX) / 9
-        XCTAssertGreaterThan(pitch, 0)
-        let origin = app.coordinate(withNormalizedOffset: .zero)
-        let appFrame = app.frame
-        let rows: [(String, CGRect)] = [("qwertyuiop", q), ("asdfghjkl", a), ("zxcvbnm", z)]
+        // SDL intentionally keeps its backing UITextField hidden. Tap actual
+        // native keys, re-resolving each target after predictive-bar/layout changes.
+        // Cached row geometry delivered only the first manual character in CI.
+        // The complete UIKit -> SDL receipts remain mandatory after XCTest.
         for character in text {
-            var point: CGPoint?
-            for (letters, anchor) in rows {
-                if let column = Array(letters).firstIndex(of: character) {
-                    point = CGPoint(x: anchor.midX + CGFloat(column) * pitch, y: anchor.midY)
-                    break
-                }
-            }
-            guard let point else { XCTFail("Unsupported keyboard character"); return }
-            origin.withOffset(CGVector(dx: point.x - appFrame.minX,
-                                       dy: point.y - appFrame.minY)).tap()
+            let key = app.keyboards.firstMatch.keys[String(character)]
+            XCTAssertTrue(key.waitForExistence(timeout: 5))
+            key.tap()
         }
     }
     func testManualKeyboardInSDLHostLoop() {
+        executionTimeAllowance = 180
         let app = XCUIApplication()
         XCUIDevice.shared.orientation = .landscapeLeft
         app.launch()

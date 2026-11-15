@@ -32,6 +32,16 @@ int WrathIOSTouchNextPadButton(void);
 const char *WrathIOSTouchActionCommand(int action,int down);
 int WrathIOSTouchTakeMenuRelease(void);
 void WrathIOSLogicalWindowSize(int *width,int *height);
+int WrathIOSTouchArtifactStick(float *x,float *y);
+#ifdef WRATH_IOS_GLES3
+int WrathIOSPreferredMSAASamples(int configured);
+int WrathIOSPreferredFXAA(int configured);
+int WrathIOSGraphicsRequestedSamples(void);
+int WrathIOSGraphicsActiveSamples(void);
+int WrathIOSGraphicsFXAA(void);
+void WrathIOSGraphicsSetSamples(int samples);
+void WrathIOSGraphicsSetFXAA(int enabled);
+#endif
 void WrathIOSTouchFrame( float *yaw, float *pitch, float *side, float *forward, unsigned *buttons);
 
 #ifdef __cplusplus

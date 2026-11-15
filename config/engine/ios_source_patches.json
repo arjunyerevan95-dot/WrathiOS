@@ -136,7 +136,15 @@
         },
         {
           "old": "void GLES_Init(void)\n{",
-          "new": "#ifdef WRATH_IOS_GLES3\n#include <SDL_syswm.h>\nvoid WrathGLES3BindFramebuffer(GLenum target, GLuint framebuffer) {\n if(framebuffer==0){\n  SDL_SysWMinfo wm; SDL_VERSION(&wm.version);\n  if(!SDL_GetWindowWMInfo(window,&wm)||wm.subsystem!=SDL_SYSWM_UIKIT||!wm.info.uikit.framebuffer)\n   Sys_Error(\"WRATH GLES3: missing UIKit screen framebuffer\");\n  framebuffer=wm.info.uikit.framebuffer;\n }\n glBindFramebuffer(target,framebuffer);\n}\n#endif\nvoid GLES_Init(void)\n{"
+          "new": "#ifdef WRATH_IOS_GLES3\n#include <SDL_syswm.h>\nvoid WrathGLES3BindFramebuffer(GLenum target, GLuint framebuffer) {\n if(framebuffer==0){\n  SDL_SysWMinfo wm; SDL_VERSION(&wm.version);\n  if(!SDL_GetWindowWMInfo(window,&wm)||wm.subsystem!=SDL_SYSWM_UIKIT||!wm.info.uikit.framebuffer)\n   Sys_Error(\"WRATH GLES3: missing UIKit screen framebuffer\");\n  framebuffer=wm.info.uikit.framebuffer;\n }\n glBindFramebuffer(target,framebuffer);\n}\n#include \"WrathGLES3Resolve.h\"\nvoid WrathGLES3CopyTexSubImage2D(GLenum target, GLint level, GLint xo, GLint yo, GLint x, GLint y, GLsizei width, GLsizei height) {\n SDL_SysWMinfo wm; int drawableWidth=0,drawableHeight=0; SDL_VERSION(&wm.version);\n if(!SDL_GetWindowWMInfo(window,&wm)||wm.subsystem!=SDL_SYSWM_UIKIT)\n  Sys_Error(\"WRATH GLES3: missing UIKit resolve information\");\n SDL_GL_GetDrawableSize(window,&drawableWidth,&drawableHeight);\n WrathGLES3CopyResolvedToTexture(target,level,xo,yo,x,y,width,height,wm.info.uikit.framebuffer,wm.info.uikit.resolveFramebuffer,drawableWidth,drawableHeight);\n}\nint WrathIOSGraphicsRequestedSamples(void){return (int)Cvar_VariableValue(\"vid_samples\");}\nint WrathIOSGraphicsActiveSamples(void){return vid.samples;}\nint WrathIOSGraphicsFXAA(void){return Cvar_VariableValue(\"r_fxaa\")!=0;}\nvoid WrathIOSGraphicsSetSamples(int samples){if(samples==1||samples==2||samples==4)Cvar_SetValue(\"vid_samples\",samples);}\nvoid WrathIOSGraphicsSetFXAA(int enabled){Cvar_SetValue(\"r_fxaa\",enabled!=0);}\n\n#endif\nvoid GLES_Init(void)\n{"
+        },
+        {
+          "old": "\tvid.forcetextype = TEXTYPE_RGBA;",
+          "new": "\tvid.forcetextype = TEXTYPE_RGBA;\n#ifdef WRATH_IOS_GLES3\n {GLint samples=0;WrathGLES3BindFramebuffer(GL_FRAMEBUFFER,0);glGetIntegerv(GL_SAMPLES,&samples);vid.samples=samples>1?samples:1;}\n Cvar_SetValue(\"r_fxaa\",WrathIOSPreferredFXAA((int)Cvar_VariableValue(\"r_fxaa\")));\n Con_Printf(\"WRATH GLES3 active MSAA: %d samples; FXAA requested: %d\\n\",vid.samples,WrathIOSGraphicsFXAA());\n#endif"
+        },
+        {
+          "old": "\t\tSDL_GL_SetAttribute (SDL_GL_MULTISAMPLESAMPLES, mode->samples);\n\t}",
+          "new": "\t\tSDL_GL_SetAttribute (SDL_GL_MULTISAMPLESAMPLES, mode->samples);\n\t}\n#ifdef WRATH_IOS_GLES3\n else {SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS,0);SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES,0);}\n#endif"
         }
       ]
     },
@@ -249,6 +257,10 @@
         {
           "old": "#define qglBindFramebuffer glBindFramebuffer",
           "new": "#ifdef WRATH_IOS_GLES3\nvoid WrathGLES3BindFramebuffer(GLenum target, GLuint framebuffer);\n#define qglBindFramebuffer WrathGLES3BindFramebuffer\n#else\n#define qglBindFramebuffer glBindFramebuffer\n#endif"
+        },
+        {
+          "old": "#define qglCopyTexSubImage2D glCopyTexSubImage2D",
+          "new": "#ifdef WRATH_IOS_GLES3\nvoid WrathGLES3CopyTexSubImage2D(GLenum target, GLint level, GLint xo, GLint yo, GLint x, GLint y, GLsizei width, GLsizei height);\n#define qglCopyTexSubImage2D WrathGLES3CopyTexSubImage2D\n#else\n#define qglCopyTexSubImage2D glCopyTexSubImage2D\n#endif"
         }
       ]
     },
@@ -409,6 +421,28 @@
         {
           "old": "\tif(fnt->ft2)\n\t{\n\t\tfor (i = 0; i < MAX_FONT_SIZES; ++i)",
           "new": "\tif(fnt->ft2)\n\t{\n#ifdef WRATH_IOS_GLES3 /* demand font atlases */\n\t\tmemcpy(fnt->ft2->ios_image_widths, fnt->width_of, sizeof(fnt->ft2->ios_image_widths));\n#endif /* demand font atlases */\n\t\tfor (i = 0; i < MAX_FONT_SIZES; ++i)"
+        }
+      ]
+    },
+    {
+      "path": "vid_shared.c",
+      "replacements": [
+        {
+          "old": "cvar_t vid_samples = {CVAR_SAVE, \"vid_samples\", \"1\", \"how many anti-aliasing samples per pixel to request from the graphics driver (4 is recommended, 1 is faster)\"};",
+          "new": "#ifdef WRATH_IOS_GLES3\ncvar_t vid_samples = {CVAR_SAVE, \"vid_samples\", \"2\", \"how many anti-aliasing samples per pixel to request from the graphics driver (4 is recommended, 1 is faster)\"};\n#else\ncvar_t vid_samples = {CVAR_SAVE, \"vid_samples\", \"1\", \"how many anti-aliasing samples per pixel to request from the graphics driver (4 is recommended, 1 is faster)\"};\n#endif"
+        },
+        {
+          "old": "\n\tsuccess = VID_Mode(vid_fullscreen.integer, vid_width.integer, vid_height.integer, vid_bitsperpixel.integer, vid_refreshrate.value, vid_stereobuffer.integer, vid_samples.integer);",
+          "new": "\n#ifdef WRATH_IOS_GLES3\n {extern int WrathIOSPreferredMSAASamples(int configured);Cvar_SetValueQuick(&vid_samples,WrathIOSPreferredMSAASamples(vid_samples.integer));}\n#endif\n\tsuccess = VID_Mode(vid_fullscreen.integer, vid_width.integer, vid_height.integer, vid_bitsperpixel.integer, vid_refreshrate.value, vid_stereobuffer.integer, vid_samples.integer);"
+        }
+      ]
+    },
+    {
+      "path": "model_brush.c",
+      "replacements": [
+        {
+          "old": "cvar_t r_fxaa = {CVAR_SAVE, \"r_fxaa\", \"0\", \"fast approximate anti aliasing\"};",
+          "new": "#ifdef WRATH_IOS_GLES3\ncvar_t r_fxaa = {CVAR_SAVE, \"r_fxaa\", \"1\", \"fast approximate anti aliasing\"};\n#else\ncvar_t r_fxaa = {CVAR_SAVE, \"r_fxaa\", \"0\", \"fast approximate anti aliasing\"};\n#endif"
         }
       ]
     }

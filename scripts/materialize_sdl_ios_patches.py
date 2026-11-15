@@ -98,17 +98,17 @@ def main() -> int:
             return fail(f"expected exactly one {label} patch site, found {count}")
         text = text.replace(old, new, 1)
 
+    # Use the same scale policy as the settings UI; no preference is written.
+    shutil.copyfile(ROOT / "Gate5C/WrathMobileGraphics.h", DERIVED / "include/WrathMobileGraphics.h")
     # GLES3 resolution is a fraction of native pixels, not UIKit points.
     gltarget = DERIVED / "src/video/uikit/SDL_uikitopengles.m"
     gltext = gltarget.read_text(encoding="utf-8")
+    gltext = gltext.replace('#include "SDL_loadso.h"', '#include "SDL_loadso.h"\n#include "WrathMobileGraphics.h"', 1)
     old_scale = "            scale = data.uiwindow.screen.nativeScale;"
     new_scale = old_scale + """
             if (major >= 3) {
                 NSNumber *saved = [[NSUserDefaults standardUserDefaults] objectForKey:@"WrathRenderScaleV1"];
-                double fraction = saved ? saved.doubleValue : 1.0;
-                if (fabs(fraction - 0.67) < 0.001) fraction = 0.67;
-                else if (fabs(fraction - 0.5) < 0.001) fraction = 0.5;
-                else fraction = 1.0;
+                double fraction = WrathMobileRenderScale(saved != nil, saved.doubleValue);
                 scale *= fraction;
             }"""
     if gltext.count(old_scale) != 1:

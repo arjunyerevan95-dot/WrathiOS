@@ -5,6 +5,7 @@
 #import <SDL.h>
 #include "WrathTouchMath.hpp"
 #include "WrathTouchActions.hpp"
+#include "WrathMobileGraphics.h"
 #include <deque>
 #include <mutex>
 
@@ -13,6 +14,7 @@ using wrathios::touch::PointerEvent;
 struct State {
  std::mutex mutex;
  bool menu=false,game=false,suspended=false,textFocus=false,captured=false;
+ bool artifactHeld=false,artifactPad=false;float artifactX=0,artifactY=0;
  std::deque<int> text;
  wrathios::touch::Pointer pointer,pad;
  bool menuPad=false;float navX=0,navY=0;
@@ -21,7 +23,7 @@ struct State {
  std::deque<int> keys;
 };
 State &S(){static State s;return s;}
-void ResetLocked(State &s){s.pointer.reset();s.pad.reset();s.menuPad=false;s.navX=s.navY=0;s.text.clear();s.lookX=s.lookY=s.moveX=s.moveY=0;s.buttons=0;s.keys.clear();for(int i=1;i<=wrathios::touch::ActionCount+2;i++)s.keys.push_back(-i);}
+void ResetLocked(State &s){s.artifactHeld=false;s.artifactX=s.artifactY=0;s.pointer.reset();s.pad.reset();s.menuPad=false;s.navX=s.navY=0;s.text.clear();s.lookX=s.lookY=s.moveX=s.moveY=0;s.buttons=0;s.keys.clear();for(int i=1;i<=wrathios::touch::ActionCount+2;i++)s.keys.push_back(-i);}
 constexpr NSInteger tag=0x57524335;
 }
 
@@ -43,11 +45,14 @@ constexpr NSInteger tag=0x57524335;
  NSMutableDictionary *_layoutPositions;
  UIPinchGestureRecognizer *_layoutPinch; NSArray *_pinchOriginal; int _pinchButton; CGFloat _pinchStartSize; CGPoint _pinchCenter;
  NSMutableDictionary<NSNumber *,UIAccessibilityElement *> *_accessibleButtons;
- UIAccessibilityElement *_accessibleKeyboard;
+ UIAccessibilityElement *_accessibleKeyboard,*_accessibleArtifactStick;
+ CGPoint _artifactOrigin;
 }
 - (void)refresh;
 - (void)reset;
 - (CGRect)buttonRect:(int)b;
+- (CGPoint)artifactStickCenter;
+- (void)artifactPoint:(CGPoint)p relativeTo:(CGPoint)origin;
 - (CGRect)defaultButtonRect:(int)b;
 - (void)requestKeyboard:(BOOL)show;
 @end
@@ -121,7 +126,7 @@ constexpr NSInteger tag=0x57524335;
    auto rate=wrathios::touch::Gyro(m.rotationRate.x,m.rotationRate.y,o==UIInterfaceOrientationLandscapeRight);
    if(fabs(rate.x)<.018)rate.x=0;if(fabs(rate.y)<.018)rate.y=0;
    auto &s=S();std::scoped_lock lock(s.mutex);
-   if(s.game&&!s.suspended){s.lookX+=rate.x*57.2957795*dt*v->_gyroGain;s.lookY+=rate.y*57.2957795*dt*v->_gyroGain;}
+   if(s.game&&!s.suspended&&!s.artifactHeld){s.lookX+=rate.x*57.2957795*dt*v->_gyroGain;s.lookY+=rate.y*57.2957795*dt*v->_gyroGain;}
   }];
  }
  NSMutableArray *elements=[NSMutableArray new];
@@ -129,9 +134,20 @@ constexpr NSInteger tag=0x57524335;
   UIAccessibilityElement *e=_accessibleButtons[@(i)];if(!e){e=[[UIAccessibilityElement alloc]initWithAccessibilityContainer:self];_accessibleButtons[@(i)]=e;}e.accessibilityLabel=[NSString stringWithUTF8String:wrathios::touch::Actions[i].label];e.accessibilityIdentifier=[@"WrathAction_" stringByAppendingString:e.accessibilityLabel];e.accessibilityTraits=UIAccessibilityTraitButton;e.accessibilityFrameInContainerSpace=rect;[elements addObject:e];
  }
  if(!game){if(!_accessibleKeyboard)_accessibleKeyboard=[[UIAccessibilityElement alloc]initWithAccessibilityContainer:self];UIAccessibilityElement *e=_accessibleKeyboard;e.accessibilityLabel=@"Keyboard";e.accessibilityIdentifier=@"WrathKeyboardButton";e.accessibilityTraits=UIAccessibilityTraitButton;e.accessibilityFrameInContainerSpace=CGRectMake(self.bounds.size.width*.5-62,10,125,42);[elements addObject:e];}
- if(_editingLayout&&_layoutToolbar)[elements addObject:_layoutToolbar];
+  if(_artifactHolding){
+   if(!_accessibleArtifactStick)_accessibleArtifactStick=[[UIAccessibilityElement alloc]initWithAccessibilityContainer:self];
+   CGPoint center=[self artifactStickCenter];auto &s=S();std::scoped_lock lock(s.mutex);
+   _accessibleArtifactStick.accessibilityLabel=@"Artifact selection stick";_accessibleArtifactStick.accessibilityIdentifier=@"WrathArtifactRightStick";
+   _accessibleArtifactStick.accessibilityTraits=UIAccessibilityTraitAdjustable;_accessibleArtifactStick.accessibilityFrameInContainerSpace=CGRectMake(center.x-62,center.y-62,124,124);
+   _accessibleArtifactStick.accessibilityValue=[NSString stringWithFormat:@"%.2f,%.2f",s.artifactX,s.artifactY];[elements addObject:_accessibleArtifactStick];
+  }
+  if(_editingLayout&&_layoutToolbar)[elements addObject:_layoutToolbar];
  self.accessibilityElements=(_settingsPanel&&!_settingsPanel.hidden)?@[_settingsPanel]:elements;
- if([_owners.allValues containsObject:@201]&&!_artifactHolding&&NSProcessInfo.processInfo.systemUptime-_artifactStart>.3){_artifactHolding=YES;auto &s=S();std::scoped_lock lock(s.mutex);s.keys.push_back(12);}
+  if([_owners.allValues containsObject:@201]&&!_artifactHolding&&NSProcessInfo.processInfo.systemUptime-_artifactStart>.3){
+   _artifactHolding=YES;{auto &s=S();std::scoped_lock lock(s.mutex);s.artifactHeld=s.artifactPad=true;s.artifactX=s.artifactY=s.lookX=s.lookY=0;s.keys.push_back(12);}
+   // A right-look finger already held when Artifact opens becomes the selector.
+   for(NSValue *key in _owners.allKeys)if(_owners[key].intValue==101){_owners[key]=@106;[self artifactPoint:[_last[key] CGPointValue] relativeTo:[self artifactStickCenter]];break;}
+  }
  [self setNeedsDisplay];
 }
 - (void)settingChanged:(UISlider *)slider {
@@ -141,31 +157,51 @@ constexpr NSInteger tag=0x57524335;
  [self refresh];
 }
 - (void)resolutionChanged:(UISegmentedControl *)sender {
- const double scales[]={1.0,.67,.5};NSInteger i=sender.selectedSegmentIndex;
- if(i>=0&&i<3)[NSUserDefaults.standardUserDefaults setDouble:scales[i] forKey:@"WrathRenderScaleV1"];
+ const double scales[]={1.0,.67,.5,.33};NSInteger i=sender.selectedSegmentIndex;
+ if(i>=0&&i<4)[NSUserDefaults.standardUserDefaults setDouble:scales[i] forKey:@"WrathRenderScaleV1"];
 }
 - (void)closeSettings { _settingsPanel.hidden=YES;[self refresh]; }
+#ifdef WRATH_IOS_GLES3
+- (void)msaaChanged:(UISegmentedControl *)sender {
+ const int samples[]={1,2,4};NSInteger i=sender.selectedSegmentIndex;
+ if(i>=0&&i<3){[NSUserDefaults.standardUserDefaults setInteger:samples[i] forKey:@"WrathMSAASamplesV1"];WrathIOSGraphicsSetSamples(samples[i]);}
+}
+- (void)fxaaChanged:(UISwitch *)sender {
+ [NSUserDefaults.standardUserDefaults setBool:sender.on forKey:@"WrathFXAAV1"];WrathIOSGraphicsSetFXAA(sender.on);
+}
+#endif
 - (void)showSettings {
  [self reset];
- if(!_settingsPanel){
-  _settingsPanel=[[UIView alloc]initWithFrame:CGRectMake(0,0,320,350)];_settingsPanel.backgroundColor=[UIColor colorWithWhite:.08 alpha:.96];_settingsPanel.layer.cornerRadius=16;
-  NSArray *labels=@[@"Swipe sensitivity",@"Gyro strength (0 = off)",@"Button size",@"Button opacity"];
-  float low[]={.04,0,.7,.15},high[]={(float)wrathios::touch::SwipeMaximum,(float)wrathios::touch::GyroMaximum,1.3,.9};
-  float values[]={(float)_swipeGain,(float)_gyroGain,(float)_controlScale,(float)_opacity};
-  for(int i=0;i<4;i++){
-   UILabel *label=[[UILabel alloc]initWithFrame:CGRectMake(15,12+i*52,290,20)];label.text=labels[i];label.textColor=UIColor.whiteColor;label.font=[UIFont systemFontOfSize:13];[_settingsPanel addSubview:label];
-   UISlider *slider=[[UISlider alloc]initWithFrame:CGRectMake(15,31+i*52,290,25)];slider.minimumValue=low[i];slider.maximumValue=high[i];slider.value=values[i];slider.tag=i;[slider addTarget:self action:@selector(settingChanged:) forControlEvents:UIControlEventValueChanged];[_settingsPanel addSubview:slider];
-  }
-#ifdef WRATH_IOS_GLES3
-  UILabel *resolutionLabel=[[UILabel alloc]initWithFrame:CGRectMake(15,220,290,20)];resolutionLabel.text=@"Resolution (restart to apply)";resolutionLabel.textColor=UIColor.whiteColor;resolutionLabel.font=[UIFont systemFontOfSize:13];[_settingsPanel addSubview:resolutionLabel];
-  UISegmentedControl *resolution=[[UISegmentedControl alloc]initWithItems:@[@"Native",@"67%",@"50%"]];resolution.frame=CGRectMake(15,246,290,32);resolution.accessibilityIdentifier=@"WrathRenderResolution";
-  NSNumber *saved=[NSUserDefaults.standardUserDefaults objectForKey:@"WrathRenderScaleV1"];double value=saved?saved.doubleValue:1.0;
-  resolution.selectedSegmentIndex=fabs(value-.67)<.001?1:(fabs(value-.5)<.001?2:0);[resolution addTarget:self action:@selector(resolutionChanged:) forControlEvents:UIControlEventValueChanged];[_settingsPanel addSubview:resolution];
-#endif
-  UIButton *done=[UIButton buttonWithType:UIButtonTypeSystem];done.frame=CGRectMake(210,298,100,40);[done setTitle:@"Done" forState:UIControlStateNormal];[done addTarget:self action:@selector(closeSettings) forControlEvents:UIControlEventTouchUpInside];[_settingsPanel addSubview:done];[self addSubview:_settingsPanel];
-  UIButton *edit=[UIButton buttonWithType:UIButtonTypeSystem];edit.frame=CGRectMake(15,298,180,40);[edit setTitle:@"Edit button positions" forState:UIControlStateNormal];[edit addTarget:self action:@selector(editLayout) forControlEvents:UIControlEventTouchUpInside];[_settingsPanel addSubview:edit];
+ // Rebuild from current preferences/cvars; opening Settings never writes them.
+ [_settingsPanel removeFromSuperview];
+ CGFloat panelHeight=MIN(350.,self.bounds.size.height-24.);
+ _settingsPanel=[[UIView alloc]initWithFrame:CGRectMake(0,0,320,panelHeight)];_settingsPanel.backgroundColor=[UIColor colorWithWhite:.08 alpha:.96];_settingsPanel.layer.cornerRadius=16;
+ UIScrollView *scroll=[[UIScrollView alloc]initWithFrame:CGRectMake(0,0,320,panelHeight-54)];scroll.accessibilityIdentifier=@"WrathSettingsScroll";[_settingsPanel addSubview:scroll];
+ UIView *body=[[UIView alloc]initWithFrame:CGRectMake(0,0,320,430)];[scroll addSubview:body];scroll.contentSize=body.bounds.size;
+ NSArray *labels=@[@"Swipe sensitivity",@"Gyro strength (0 = off)",@"Button size",@"Button opacity"];
+ float low[]={.04,0,.7,.15},high[]={(float)wrathios::touch::SwipeMaximum,(float)wrathios::touch::GyroMaximum,1.3,.9};
+ float values[]={(float)_swipeGain,(float)_gyroGain,(float)_controlScale,(float)_opacity};
+ for(int i=0;i<4;i++){
+  UILabel *label=[[UILabel alloc]initWithFrame:CGRectMake(15,12+i*52,290,20)];label.text=labels[i];label.textColor=UIColor.whiteColor;label.font=[UIFont systemFontOfSize:13];[body addSubview:label];
+  UISlider *slider=[[UISlider alloc]initWithFrame:CGRectMake(15,31+i*52,290,25)];slider.minimumValue=low[i];slider.maximumValue=high[i];slider.value=values[i];slider.tag=i;[slider addTarget:self action:@selector(settingChanged:) forControlEvents:UIControlEventValueChanged];[body addSubview:slider];
  }
- _settingsPanel.center=CGPointMake(self.bounds.size.width*.5,self.bounds.size.height*.5);_settingsPanel.hidden=NO;[self bringSubviewToFront:_settingsPanel];[self refresh];
+#ifdef WRATH_IOS_GLES3
+ UILabel *resolutionLabel=[[UILabel alloc]initWithFrame:CGRectMake(15,220,290,20)];resolutionLabel.text=@"Resolution (restart to apply)";resolutionLabel.textColor=UIColor.whiteColor;resolutionLabel.font=[UIFont systemFontOfSize:13];[body addSubview:resolutionLabel];
+ UISegmentedControl *resolution=[[UISegmentedControl alloc]initWithItems:@[@"1x",@"0.67x",@"0.5x",@"0.33x"]];resolution.frame=CGRectMake(15,244,290,32);resolution.accessibilityIdentifier=@"WrathRenderResolution";
+ NSNumber *saved=[NSUserDefaults.standardUserDefaults objectForKey:@"WrathRenderScaleV1"];double value=WrathMobileRenderScale(saved!=nil,saved.doubleValue);
+ resolution.selectedSegmentIndex=WrathMobileRenderScaleIndex(value);[resolution addTarget:self action:@selector(resolutionChanged:) forControlEvents:UIControlEventValueChanged];[body addSubview:resolution];
+ UILabel *msaaLabel=[[UILabel alloc]initWithFrame:CGRectMake(15,284,290,20)];msaaLabel.text=@"MSAA (restart to apply)";msaaLabel.textColor=UIColor.whiteColor;msaaLabel.font=[UIFont systemFontOfSize:13];[body addSubview:msaaLabel];
+ UISegmentedControl *msaa=[[UISegmentedControl alloc]initWithItems:@[@"Off",@"2x",@"4x"]];msaa.frame=CGRectMake(15,308,290,32);msaa.accessibilityIdentifier=@"WrathMSAA";
+ int requested=WrathIOSPreferredMSAASamples(WrathIOSGraphicsRequestedSamples());if(requested>1&&requested!=2&&requested!=4){[msaa insertSegmentWithTitle:[NSString stringWithFormat:@"%dx",requested] atIndex:3 animated:NO];msaa.selectedSegmentIndex=3;}else msaa.selectedSegmentIndex=requested==2?1:requested==4?2:0;[msaa addTarget:self action:@selector(msaaChanged:) forControlEvents:UIControlEventValueChanged];[body addSubview:msaa];
+ UILabel *active=[[UILabel alloc]initWithFrame:CGRectMake(15,344,290,18)];int actual=WrathIOSGraphicsActiveSamples();active.text=actual>1?[NSString stringWithFormat:@"Active MSAA: %dx",actual]:@"Active MSAA: Off";active.accessibilityIdentifier=@"WrathMSAAActive";active.textColor=UIColor.lightGrayColor;active.font=[UIFont systemFontOfSize:12];[body addSubview:active];
+ UILabel *fxaaLabel=[[UILabel alloc]initWithFrame:CGRectMake(15,377,220,24)];fxaaLabel.text=@"FXAA";fxaaLabel.textColor=UIColor.whiteColor;[body addSubview:fxaaLabel];
+ UISwitch *fxaa=[[UISwitch alloc]initWithFrame:CGRectMake(250,374,55,32)];fxaa.accessibilityIdentifier=@"WrathFXAA";fxaa.on=WrathIOSGraphicsFXAA()!=0;[fxaa addTarget:self action:@selector(fxaaChanged:) forControlEvents:UIControlEventValueChanged];[body addSubview:fxaa];
+#else
+ scroll.contentSize=CGSizeMake(320,215);
+#endif
+ UIButton *done=[UIButton buttonWithType:UIButtonTypeSystem];done.frame=CGRectMake(210,panelHeight-47,100,40);[done setTitle:@"Done" forState:UIControlStateNormal];[done addTarget:self action:@selector(closeSettings) forControlEvents:UIControlEventTouchUpInside];[_settingsPanel addSubview:done];
+ UIButton *edit=[UIButton buttonWithType:UIButtonTypeSystem];edit.frame=CGRectMake(15,panelHeight-47,180,40);[edit setTitle:@"Edit button positions" forState:UIControlStateNormal];[edit addTarget:self action:@selector(editLayout) forControlEvents:UIControlEventTouchUpInside];[_settingsPanel addSubview:edit];
+ [self addSubview:_settingsPanel];_settingsPanel.center=CGPointMake(self.bounds.size.width*.5,self.bounds.size.height*.5);[self bringSubviewToFront:_settingsPanel];[self refresh];
 }
 - (void)editLayout {
  [self reset];_editingLayout=YES;_layoutPinch.enabled=YES;_layoutSelection=-1;
@@ -299,6 +335,12 @@ constexpr NSInteger tag=0x57524335;
  for(int i=0;i<count;i++)if(CGRectContainsPoint([self buttonRect:items[i]],p))return items[i];
  return -1;
 }
+- (CGPoint)artifactStickCenter {return CGPointMake(MIN(self.bounds.size.width-self.safeAreaInsets.right-68,MAX(self.safeAreaInsets.left+68,self.bounds.size.width*.73)),self.bounds.size.height*.52);}
+- (void)artifactPoint:(CGPoint)p relativeTo:(CGPoint)origin {
+ auto stick=wrathios::touch::Stick({p.x-origin.x,p.y-origin.y});
+ auto &s=S();std::scoped_lock lock(s.mutex);s.artifactX=stick.x;s.artifactY=stick.y;
+ [self setNeedsDisplay];
+}
 - (void)drawRect:(CGRect)rect {
  (void)rect;
  if(!_wasGame){
@@ -319,7 +361,14 @@ constexpr NSInteger tag=0x57524335;
   else {NSString *label=[NSString stringWithUTF8String:wrathios::touch::Actions[i].label];NSMutableParagraphStyle *style=[NSMutableParagraphStyle new];style.alignment=NSTextAlignmentCenter;CGFloat fontSize=11;while(fontSize>7&&[label sizeWithAttributes:@{NSFontAttributeName:[UIFont systemFontOfSize:fontSize]}].width>r.size.width-6)fontSize-=.5;
    [label drawInRect:CGRectInset(r,3,(r.size.height-fontSize-3)/2) withAttributes:@{NSFontAttributeName:[UIFont systemFontOfSize:fontSize weight:UIFontWeightMedium],NSForegroundColorAttributeName:UIColor.whiteColor,NSParagraphStyleAttributeName:style}];}
  }
- // Movement is floating: show its origin only while touched, never a fixed MOVE target.
+  if(_artifactHolding){
+   CGPoint center=[self artifactStickCenter];float x,y;{auto &s=S();std::scoped_lock lock(s.mutex);x=s.artifactX;y=s.artifactY;}
+   [[UIColor colorWithWhite:0 alpha:.5]setFill];UIBezierPath *pad=[UIBezierPath bezierPathWithOvalInRect:CGRectMake(center.x-58,center.y-58,116,116)];[pad fill];
+   [[UIColor colorWithWhite:1 alpha:.85]setStroke];pad.lineWidth=2;[pad stroke];
+   [[UIColor colorWithRed:1 green:.55 blue:.2 alpha:.95]setFill];[[UIBezierPath bezierPathWithOvalInRect:CGRectMake(center.x+x*40-13,center.y-y*40-13,26,26)]fill];
+   [@"ARTIFACT" drawAtPoint:CGPointMake(center.x-30,center.y+64) withAttributes:@{NSFontAttributeName:[UIFont boldSystemFontOfSize:11],NSForegroundColorAttributeName:UIColor.whiteColor}];
+  }
+  // Movement is floating: show its origin only while touched, never a fixed MOVE target.
  if([_owners.allValues containsObject:@100]){
   CGPoint center=_moveOrigin;[[UIColor colorWithWhite:1 alpha:.3]setStroke];UIBezierPath *ring=[UIBezierPath bezierPathWithOvalInRect:CGRectMake(center.x-44,center.y-44,88,88)];ring.lineWidth=1.5;[ring stroke];
   [[UIColor colorWithWhite:1 alpha:.45]setFill];[[UIBezierPath bezierPathWithOvalInRect:CGRectMake(center.x-8,center.y-8,16,16)]fill];
@@ -356,11 +405,15 @@ constexpr NSInteger tag=0x57524335;
    }
   }
   else {
+   if(_artifactHolding&&p.x>=self.bounds.size.width*.42&&!CGRectContainsPoint([self buttonRect:26],p)&&!CGRectContainsPoint([self buttonRect:3],p)&&!CGRectContainsPoint([self buttonRect:31],p)){
+    if([_owners.allValues containsObject:@106])continue;
+    _owners[key]=@106;_last[key]=[NSValue valueWithCGPoint:p];[self artifactPoint:p relativeTo:[self artifactStickCenter]];continue;
+   }
    for(int b=wrathios::touch::ActionCount-1;b>=0;b--)if(CGRectContainsPoint([self buttonRect:b],p)){owner=b;break;}
    if((owner==6||owner==21)&&([_owners.allValues containsObject:@200]||[_owners.allValues containsObject:@202]))continue;
    if(owner==6||owner==21){_tray=owner==6?1:2;_radialSelection=-1;owner=200;}
    else if(owner==31){[self showSettings];continue;}
-   else if(owner==26&&_tray!=3){_artifactStart=t.timestamp;_artifactHolding=NO;owner=201;}
+   else if(owner==26&&_tray!=3){if([_owners.allValues containsObject:@201])continue;_artifactStart=t.timestamp;_artifactOrigin=p;_artifactHolding=NO;owner=201;}
    else if(_tray){int selected=[self radialAt:p];if(selected>=0){owner=202;_radialSelection=selected;}else{_tray=0;[self setNeedsDisplay];continue;}}
    if(owner<0)owner=p.x<self.bounds.size.width*.42?100:101;
    if((owner==100||owner==101)&&[_owners.allValues containsObject:@(owner)])continue;
@@ -380,8 +433,9 @@ constexpr NSInteger tag=0x57524335;
    int held=(_radialSelection>=0&&wrathios::touch::Actions[_radialSelection].down[0]=='+')?(int)_radialSelection+1:0;
    if(held!=_radialHeld){auto &s=S();std::scoped_lock lock(s.mutex);if(_radialHeld)s.keys.push_back(-_radialHeld);if(held)s.keys.push_back(held);_radialHeld=held;}
    [self setNeedsDisplay];continue;}
-  if(owner==201){
-   if(_artifactHolding){auto &s=S();std::scoped_lock lock(s.mutex);s.lookX+=(p.x-last.x)*_swipeGain;s.lookY+=(p.y-last.y)*_swipeGain;}
+   if(owner==106){if(_artifactHolding)[self artifactPoint:p relativeTo:[self artifactStickCenter]];_last[key]=[NSValue valueWithCGPoint:p];continue;}
+   if(owner==201){
+    if(_artifactHolding&&![_owners.allValues containsObject:@106])[self artifactPoint:p relativeTo:_artifactOrigin];
    _last[key]=[NSValue valueWithCGPoint:p];continue;
   }
   if(owner==102)[self menuPoint:p button:0];
@@ -396,8 +450,16 @@ constexpr NSInteger tag=0x57524335;
 - (void)finish:(NSSet<UITouch *> *)touches cancelled:(BOOL)cancelled {
  if(_editingLayout){[self editTouches:touches phase:2];return;}
  for(UITouch *t in touches){NSValue *key=[NSValue valueWithNonretainedObject:t];NSNumber *n=_owners[key];if(!n)continue;int owner=n.intValue;
-  if(owner==200||owner==202||owner==201){
-   if(owner==201&&_artifactHolding){auto &s=S();std::scoped_lock lock(s.mutex);s.keys.push_back(-12);_artifactHolding=NO;}
+   if(owner==106){
+    {auto &s=S();std::scoped_lock lock(s.mutex);s.artifactX=s.artifactY=0;}
+    [_owners removeObjectForKey:key];[_last removeObjectForKey:key];[self setNeedsDisplay];continue;
+   }
+   if(owner==200||owner==202||owner==201){
+   if(owner==201&&_artifactHolding){
+     {auto &s=S();std::scoped_lock lock(s.mutex);s.keys.push_back(-12);s.artifactHeld=false;if(cancelled)s.artifactX=s.artifactY=0;}
+     _artifactHolding=NO;
+     for(NSValue *other in _owners.allKeys)if(_owners[other].intValue==106){[_owners removeObjectForKey:other];[_last removeObjectForKey:other];}
+    }
    else if(!cancelled&&owner==201)[self sendAction:26];
    else if(!cancelled&&_radialSelection>=0&&!_radialHeld)[self sendAction:(int)_radialSelection];
    if(_radialHeld){auto &s=S();std::scoped_lock lock(s.mutex);s.keys.push_back(-_radialHeld);_radialHeld=0;}
@@ -453,8 +515,14 @@ const char *WrathIOSTouchActionCommand(int action,int down){if(action<0||action>
 int WrathIOSTouchMenuPad(float *x,float *y){auto &s=S();std::scoped_lock lock(s.mutex);*x=s.navX;*y=s.navY;return s.menu&&s.menuPad;}
 int WrathIOSTouchNextPadButton(void){auto &s=S();std::scoped_lock lock(s.mutex);return s.pad.next();}
 
-void WrathIOSTouchSetCapture(int captured){auto &s=S();std::scoped_lock lock(s.mutex);s.captured=captured!=0;}
+void WrathIOSTouchSetCapture(int captured){auto &s=S();std::scoped_lock lock(s.mutex);s.captured=captured!=0;if(!s.captured&&!s.artifactHeld){s.artifactPad=false;s.artifactX=s.artifactY=0;}}
+int WrathIOSTouchArtifactStick(float *x,float *y){auto &s=S();std::scoped_lock lock(s.mutex);*x=s.artifactX;*y=s.artifactY;return s.artifactPad;}
 
 void WrathIOSTouchBeginControllerFrame(void){auto &s=S();std::scoped_lock lock(s.mutex);s.consumed=0;}
 
 void WrathIOSLogicalWindowSize(int *width,int *height){SDL_Window *window=SDL_GetKeyboardFocus();if(window)SDL_GetWindowSize(window,width,height);else{if(width)*width=0;if(height)*height=0;}}
+
+#ifdef WRATH_IOS_GLES3
+int WrathIOSPreferredMSAASamples(int configured){NSNumber *saved=[NSUserDefaults.standardUserDefaults objectForKey:@"WrathMSAASamplesV1"];return WrathMobileMSAASamples(saved!=nil,saved.intValue,configured);}
+int WrathIOSPreferredFXAA(int configured){NSNumber *saved=[NSUserDefaults.standardUserDefaults objectForKey:@"WrathFXAAV1"];return saved?saved.boolValue:configured;}
+#endif

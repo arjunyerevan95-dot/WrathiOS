@@ -53,6 +53,8 @@ int WrathIOSTouchNextKey(){if(edges.empty())return 0;int e=edges.front();auto b=
 static float look=0,move=0,nav=0;static bool menu=false;
 void WrathIOSTouchFrame(float*y,float*p,float*s,float*f,unsigned*b){*y=look;*p=0;*s=move;*f=move;*b=0;look=0;}
 int WrathIOSTouchMenuPad(float*x,float*y){*x=nav;*y=0;return menu;}
+static bool artifact=false;static float artifactX=0,artifactY=0;
+int WrathIOSTouchArtifactStick(float*x,float*y){*x=artifactX;*y=artifactY;return artifact;}
 static std::string binds[1000];
 const char *Key_GetBind(int key,int){return binds[key].c_str();}
 void Key_FindKeysForCommand(const char*c,int*k,int n,int){std::fill(k,k+n,-1);for(int i=0,j=0;i<1000&&j<n;i++)if(binds[i]==c)k[j++]=i;}
@@ -115,6 +117,12 @@ p+='''int main(){
  assert(vid_joystate.axis[2]>.99);float pending=wrath_ios_look_yaw;
  tick();assert(vid_joystate.axis[2]>.99);assert(wrath_ios_look_yaw==pending);
  look=-16;tick();assert(vid_joystate.axis[2]<-.99);
+ // The visible stick supplies an absolute direction; gyro/relative look
+ // must not accumulate into it, and neutral cancellation must clear it.
+ artifact=true;artifactX=.4;artifactY=-.8;look=400;tick();
+ assert(std::abs(vid_joystate.axis[2]-.4)<.001&&std::abs(vid_joystate.axis[3]-.8)<.001);
+ tick();assert(std::abs(vid_joystate.axis[2]-.4)<.001);
+ artifactX=artifactY=0;tick();assert(vid_joystate.axis[2]==0&&vid_joystate.axis[3]==0);artifact=false;
  cl.csqc_wantsmousemove=false;look=1;tick();assert(vid_joystate.axis[2]==0);assert(wrath_ios_look_yaw==pending);
  look=4;tick();assert(wrath_ios_look_yaw==pending+4);
  float yaw,pitch;WrathIOSControllerTakeRelativeLook(&yaw,&pitch);assert(yaw==pending+4);assert(wrath_ios_look_yaw==0);

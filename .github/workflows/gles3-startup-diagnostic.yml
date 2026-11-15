@@ -1,4 +1,4 @@
-name: GLES3 font atlas startup recovery
+name: GLES3 mobile controls and graphics
 on:
   push:
     branches: [review/gles3-startup-memory]
@@ -28,36 +28,36 @@ jobs:
         run: bash scripts/check_repository.sh
       - name: Fetch pinned public engine and dependencies
         run: bash scripts/fetch_upstream.sh
-      - name: Verify preserved GLES2 source
+      - name: Check changed mobile graphics policy and GLES2 preservation
         run: |
-          git fetch --no-tags --depth=1 origin c3703223b311632dc059ff3b239aa0050f78a3f7
-          mkdir -p Artifacts/startup-memory
-          python3 Tests/Gate5C/test_startup_memory_diagnostics.py --source-only
-      - name: Test changed font registration and size selection
-        run: python3 Tests/Gate5C/test_font_atlas_demand.py
+          git fetch --no-tags --depth=1 origin b7321f7d702103a552bd45c070766f5ac2984aae
+          python3 Tests/Gate5C/test_mobile_graphics_contract.py
+      - name: Smoke changed settings, Artifact input and MSAA-FXAA GPU path
+        run: bash scripts/test_mobile_controls_smoke.sh
       - name: Build arm64 dependencies
         run: |
           bash scripts/build_gate2_audio_deps.sh
           bash scripts/build_gate2_sdl.sh
           bash scripts/build_gate2_freetype.sh
       - name: Install project generator
-        run: brew install xcodegen
-      - name: Build and audit GLES3 font atlas recovery only
+        run: command -v xcodegen >/dev/null || brew install xcodegen
+      - name: Build and audit one GLES3 mobile controls candidate
         run: |
           WRATH_RENDERER=gles3 bash scripts/build_gate5c_device_semantic_menu.sh
           grep -Eq ' _WrathIOSStartupMemoryCheckpoint$' Artifacts/gate5c-semantic-menu/global-symbols.txt
           grep -Fq 'gles3-startup-memory.ring' Artifacts/gate5c-semantic-menu/strings.txt
-          mv Artifacts/gate5c-semantic-menu/WrathiOSGate5C-v23-gles3-unsigned.ipa Artifacts/gate5c-semantic-menu/WrathiOSGate5C-v23-gles3-font-atlas-recovery-unsigned.ipa
-          printf '%s\n' "$GITHUB_SHA" > Artifacts/gate5c-semantic-menu/recovery-source-commit.txt
-          printf '%s\n' 'Targeted font-atlas startup recovery candidate. Phone startup and measured peak memory remain unverified.' > Artifacts/gate5c-semantic-menu/recovery-scope.txt
-      - name: Preserve recovery IPA and evidence
+          grep -Eq ' _WrathGLES3CopyTexSubImage2D$' Artifacts/gate5c-semantic-menu/global-symbols.txt
+          grep -Eq ' _WrathIOSTouchArtifactStick$' Artifacts/gate5c-semantic-menu/global-symbols.txt
+          mv Artifacts/gate5c-semantic-menu/WrathiOSGate5C-v23-gles3-unsigned.ipa Artifacts/gate5c-semantic-menu/WrathiOSGate5C-v23-gles3-mobile-controls-unsigned.ipa
+          printf '%s\n' "$GITHUB_SHA" > Artifacts/gate5c-semantic-menu/mobile-source-commit.txt
+          printf '%s\n' 'Mobile scale options, Artifact stick and AA controls. Candidate phone behavior and frame rate remain unmeasured.' > Artifacts/gate5c-semantic-menu/mobile-scope.txt
+      - name: Preserve mobile candidate IPA and evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: wrath-gles3-font-atlas-recovery
+          name: wrath-gles3-mobile-controls
           path: |
-            Artifacts/startup-memory
-            Artifacts/font-atlas-demand
+            Artifacts/mobile-controls
             Artifacts/gate5c-semantic-menu
             Artifacts/engine-patches/report.json
           if-no-files-found: error

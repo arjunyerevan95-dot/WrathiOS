@@ -123,7 +123,10 @@ static void WrathIOSControllerFrame(vid_joystate_t *joy) {
     * Hold the accumulated direction between events so the native radial can
     * converge. Both swipe and gyro arrive in angular units here. */
    if(!wrath_ios_captured)wrath_ios_radial_x=wrath_ios_radial_y=0;
-   wrath_ios_radial_x+=yaw/8.0f;wrath_ios_radial_y+=pitch/8.0f;
+   {float x,y;
+    if(WrathIOSTouchArtifactStick(&x,&y)){wrath_ios_radial_x=x;wrath_ios_radial_y=-y;}
+    else {wrath_ios_radial_x+=yaw/8.0f;wrath_ios_radial_y+=pitch/8.0f;}
+   }
    {float length=sqrtf(wrath_ios_radial_x*wrath_ios_radial_x+wrath_ios_radial_y*wrath_ios_radial_y);
     if(length>1){wrath_ios_radial_x/=length;wrath_ios_radial_y/=length;}}
    axes[2]=wrath_ios_radial_x;axes[3]=wrath_ios_radial_y;

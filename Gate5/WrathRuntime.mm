@@ -19,6 +19,74 @@
 #include <string>
 #include <vector>
 
+#ifdef WRATH_IOS_GLES3
+#include "WrathStartupMemoryLog.h"
+#include <atomic>
+#include <mach/mach.h>
+#include <os/proc.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <errno.h>
+#include <pthread.h>
+
+// Evidence only: no memory cutoff, renderer changes, worker or sampling timer.
+static std::atomic<bool> gStartupMemoryActive{false};
+static std::atomic_flag gStartupMemoryBusy = ATOMIC_FLAG_INIT;
+static int gStartupMemoryFD = -1;
+static uint64_t gStartupMemorySequence;
+static CFTimeInterval gStartupMemoryStart;
+
+extern "C" void WrathIOSStartupMemoryCheckpoint(const char *event, const char *detail,
+                                                long long a, long long b, long long c, long long d) {
+    if (!gStartupMemoryActive.load() || gStartupMemoryBusy.test_and_set()) return;
+    if (gStartupMemoryFD >= 0) {
+        task_vm_info_data_t info = {};
+        mach_msg_type_number_t count = TASK_VM_INFO_COUNT;
+        bool valid = task_info(mach_task_self(), TASK_VM_INFO, (task_info_t)&info, &count) == KERN_SUCCESS;
+        uint64_t thread = 0;
+        pthread_threadid_np(nullptr, &thread);
+        WrathStartupMemorySample sample = {gStartupMemorySequence++,
+            (uint64_t)((CACurrentMediaTime() - gStartupMemoryStart) * 1000.0),
+            valid ? info.phys_footprint : 0, os_proc_available_memory(), thread, valid, a, b, c, d};
+        char record[WrathStartupRecordBytes];
+        if (WrathStartupEncodeRecord(record, sample, event, detail)) {
+            size_t written = 0;
+            for (unsigned attempt = 0; written < sizeof(record) && attempt < 4; ++attempt) {
+                ssize_t n = pwrite(gStartupMemoryFD, record + written, sizeof(record) - written,
+                    (off_t)(WrathStartupRecordOffset(sample.sequence) + written));
+                if (n < 0 && errno == EINTR) continue;
+                if (n <= 0) { gStartupMemoryActive = false; break; }
+                written += (size_t)n;
+            }
+            if (written != sizeof(record)) gStartupMemoryActive = false;
+        }
+        if (!gStartupMemoryActive.load()) { close(gStartupMemoryFD); gStartupMemoryFD = -1; }
+    }
+    gStartupMemoryBusy.clear();
+}
+
+extern "C" void WrathIOSStartupMemoryFinish(void) {
+    if (!gStartupMemoryActive.load()) return;
+    WrathIOSStartupMemoryCheckpoint("log-closed", "", 0, 0, 0, 0);
+    gStartupMemoryActive = false;
+    // If a worker is recording, it closes the descriptor before releasing it.
+    if (!gStartupMemoryBusy.test_and_set()) {
+        if (gStartupMemoryFD >= 0) { close(gStartupMemoryFD); gStartupMemoryFD = -1; }
+        gStartupMemoryBusy.clear();
+    }
+}
+
+static void WrathStartStartupMemoryLog(NSURL *root) {
+    gStartupMemoryFD = open([[root URLByAppendingPathComponent:@"gles3-startup-memory.ring"] fileSystemRepresentation],
+                           O_CREAT | O_TRUNC | O_WRONLY | O_CLOEXEC, 0600);
+    if (gStartupMemoryFD < 0) return;
+    gStartupMemorySequence = 0;
+    gStartupMemoryStart = CACurrentMediaTime();
+    gStartupMemoryActive = true;
+    WrathIOSStartupMemoryCheckpoint("runtime-ready", "", 0, 0, 0, 0);
+}
+#endif
+
 NSNotificationName const WrathRuntimeStageDidChangeNotification = @"WrathRuntimeStageDidChangeNotification";
 NSString * const WrathRuntimeStageNameKey = @"stage";
 NSString * const WrathRuntimeStageDetailKey = @"detail";
@@ -236,6 +304,9 @@ static int WrathRunHostMain(void) {
         }
         [self recordStage:WrathStagePathsPrepared
                    detail:@"Read-only GameData/kp1 and separate Runtime/UserData roots prepared."];
+#ifdef WRATH_IOS_GLES3
+        WrathStartStartupMemoryLog(WrathRuntime.runtimeRootURL);
+#endif
         [self recordStage:WrathStageSDLMainReady
                    detail:@"UIKit owns each frame; SDL nested iOS event pumping is disabled."];
 
@@ -298,6 +369,9 @@ static int WrathRunHostMain(void) {
     // while inside engine code; no setjmp target survives across UIKit callbacks.
     int hostResult = WrathRunHostMain();
     if (hostResult == 0) return;
+#ifdef WRATH_IOS_GLES3
+    WrathIOSStartupMemoryFinish();
+#endif
     [self.frameLink invalidate]; self.frameLink = nil;
     SDL_Quit(); gActiveRuntime = nil; self.startingOrActive = NO;
     NSString *failure = self.entries.lastObject[@"detail"] ?: @"Engine stopped.";
@@ -316,12 +390,18 @@ static int WrathRunHostMain(void) {
 @end
 
 extern "C" void WrathIOSRuntimeStage(const char *stage, const char *detail) {
+#ifdef WRATH_IOS_GLES3
+    WrathIOSStartupMemoryCheckpoint("runtime-stage", stage, 0, 0, 0, 0);
+#endif
     @autoreleasepool {
         NSString *stageText = stage != nullptr ? [NSString stringWithUTF8String:stage] : @"Unknown runtime stage";
         NSString *detailText = detail != nullptr ? [NSString stringWithUTF8String:detail] : @"";
         [[WrathRuntime sharedRuntime] recordStage:stageText ?: @"Unknown runtime stage"
                                            detail:detailText ?: @""];
     }
+#ifdef WRATH_IOS_GLES3
+    if (stage && strcmp(stage, "Main menu reached") == 0) WrathIOSStartupMemoryFinish();
+#endif
 }
 
 extern "C" __attribute__((noreturn)) void WrathIOSRuntimeAbort(const char *message) {

@@ -1,0 +1,62 @@
+name: GLES3 startup memory diagnostic
+on:
+  push:
+    branches: [review/gles3-startup-memory]
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: wrath-gles3-startup-diagnostic
+  cancel-in-progress: false
+jobs:
+  diagnostic-ipa:
+    runs-on: macos-15-intel
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Refuse overlapping WRATH runs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for status in in_progress queued waiting pending requested; do
+            count=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs?status=$status&per_page=100" --jq "[.workflow_runs[] | select(.id != $GITHUB_RUN_ID)] | length")
+            if [[ "$count" != 0 ]]; then echo "Another WRATH run is $status; no diagnostic build started."; exit 1; fi
+          done
+      - name: Validate repository policy
+        run: bash scripts/check_repository.sh
+      - name: Fetch pinned public engine and dependencies
+        run: bash scripts/fetch_upstream.sh
+      - name: Test startup evidence and preserved GLES2 source
+        run: |
+          mkdir -p Artifacts/startup-memory
+          c++ -std=c++17 -Wall -Wextra -Werror Tests/Gate5C/WrathStartupMemoryLogTests.cpp -o Artifacts/startup-memory/ring-test
+          Artifacts/startup-memory/ring-test Artifacts/startup-memory/test.ring
+          python3 Tests/Gate5C/test_startup_memory_diagnostics.py
+      - name: Build arm64 dependencies
+        run: |
+          bash scripts/build_gate2_audio_deps.sh
+          bash scripts/build_gate2_sdl.sh
+          bash scripts/build_gate2_freetype.sh
+      - name: Install project generator
+        run: brew install xcodegen
+      - name: Build and audit GLES3 startup diagnostic only
+        run: |
+          WRATH_RENDERER=gles3 bash scripts/build_gate5c_device_semantic_menu.sh
+          grep -Eq ' _WrathIOSStartupMemoryCheckpoint$' Artifacts/gate5c-semantic-menu/global-symbols.txt
+          grep -Fq 'gles3-startup-memory.ring' Artifacts/gate5c-semantic-menu/strings.txt
+          mv Artifacts/gate5c-semantic-menu/WrathiOSGate5C-v23-gles3-unsigned.ipa Artifacts/gate5c-semantic-menu/WrathiOSGate5C-v23-gles3-startup-diagnostic-unsigned.ipa
+          printf '%s\n' "$GITHUB_SHA" > Artifacts/gate5c-semantic-menu/diagnostic-source-commit.txt
+          printf '%s\n' 'Memory evidence only; not a crash fix. Full engine startup and phone behavior unverified.' > Artifacts/gate5c-semantic-menu/diagnostic-scope.txt
+      - name: Preserve diagnostic IPA and evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wrath-gles3-startup-diagnostic
+          path: |
+            Artifacts/startup-memory
+            Artifacts/gate5c-semantic-menu
+            Artifacts/engine-patches/report.json
+          if-no-files-found: error
+          retention-days: 30

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Execute production iOS route and pinned VID_ApplyJoyState with transport stubs."""
 from pathlib import Path
-import re, subprocess, tempfile, os, shlex
+import re, subprocess, tempfile, os, shlex, hashlib, json
 r=Path(__file__).resolve().parents[2]
 source=(r/'Vendor/wrath-darkplaces/vid_shared.c').read_text()
 def function(name):
@@ -39,7 +39,8 @@ static struct {struct{float forwardmove=0,sidemove=0,upmove=0;}cmd;float viewang
 static float in_mouse_x,in_mouse_y;
 struct Event{int key;bool down;};static std::vector<Event> events;
 void Key_Event(int key,int,bool down){events.push_back({key,down});}
-void CL_VM_InputEvent(int,float,float){}
+void QCInputAxis(int,float,float);
+void CL_VM_InputEvent(int type,float axis,float value){QCInputAxis(type,axis,value);}
 void MR_InputEvent(int,float,float){}
 static cvar joy_active;
 void Cvar_SetValueQuick(cvar *c,float x){c->value=x;c->integer=x;}
@@ -60,6 +61,43 @@ const char *Key_GetBind(int key,int){return binds[key].c_str();}
 void Key_FindKeysForCommand(const char*c,int*k,int n,int){std::fill(k,k+n,-1);for(int i=0,j=0;i<1000&&j<n;i++)if(binds[i]==c)k[j++]=i;}
 '''
 preamble+='#include "WrathTouchActions.hpp"\nconst char *WrathIOSTouchActionCommand(int a,int){return wrathios::touch::Actions[a].down;}\n'
+
+# Run the pinned game's real axis-consumer branch and radial motion/selection
+# arithmetic. The prior fixture stopped at VID_ApplyJoyState with an empty VM
+# callback, so it could not detect the modern HUD's capture-free input path.
+def block(text,signature):
+ a=text.index(signature);b=text.index('{',a);depth=1;i=b+1
+ while depth:depth+=(text[i]=='{')-(text[i]=='}');i+=1
+ return text[a:i]
+manager=(r/'Vendor/wrath-qc/input_manager.qc').read_text()
+hud=(r/'Vendor/wrath-qc/csqc/hud.qc').read_text()
+axisbody=block(manager[manager.index('void input_thumbsticks('):],'if (EventType == IE_JOYAXIS)')
+radialbody=block(hud[hud.index('radial_prerender ='):],'if (input_mode == IN_MODE_GAMEPAD)')
+angles=hud[hud.index('float ang_sep = (360) / 10;'):hud.index('if (radial_selected > 0 && radial_selected <= artifact_icons.length)')]
+order=re.search(r'float radial_artifact_order\[\] = \{(.*?)\};',hud,re.S).group(1)
+assert 'const float IE_JOYAXIS = 6;' in (r/'Vendor/wrath-qc/dp_keycodes.qc').read_text()
+preamble+=r"""
+struct QCVector {float a[3]={0,0,0};float &operator[](int i){return a[i];}float operator[](int i)const{return a[i];}};
+using vector=QCVector;
+static vector operator+(vector a,vector b){return {{a[0]+b[0],a[1]+b[1],a[2]+b[2]}};}
+static vector operator-(vector a,vector b){return {{a[0]-b[0],a[1]-b[1],a[2]-b[2]}};}
+static vector operator*(vector a,float b){return {{a[0]*b,a[1]*b,a[2]*b}};}
+static vector &operator+=(vector &a,vector b){a=a+b;return a;}
+static float vlen(vector a){return std::sqrt(a[0]*a[0]+a[1]*a[1]+a[2]*a[2]);}
+static vector normalize(vector a){float n=vlen(a);return n>0?a*(1/n):vector{};}
+static vector vectoangles(vector a){float yaw=std::atan2(a[1],a[0])*180.f/3.14159265359f;if(yaw<0)yaw+=360;return {{0,yaw,0}};}
+enum {IE_JOYAXIS=6,IN_MODE_GAMEPAD=1};
+static int input_mode=IN_MODE_GAMEPAD;
+static float rmenu=1,clframetime=1.f/60;
+static vector thumbstick_look,thumbstick_right,radial_thumbstick,radial_pos;
+void QCInputAxis(int EventType,float charx,float scany){
+ float autocvar_joy_axisyaw=joy_axisyaw.integer,autocvar_joy_axispitch=joy_axispitch.integer;
+ float autocvar_joy_x360_axisyaw=joy_x360_axisyaw.integer,autocvar_joy_x360_axispitch=joy_x360_axispitch.integer;
+"""+axisbody+'\n}\n'
+preamble+='void QCRadialStep(){\n'+radialbody+'\n}\n'
+preamble+='static float radial_artifact_order[]={'+order+'};\n'
+preamble+='int QCArtifactChoice(){float radial_dist=vlen(radial_pos),radial_selected=0;\n#define RADIAL_SELECT_THRESHOLD 16\n'+angles+'\nreturn radial_selected>0?(int)radial_artifact_order[(int)radial_selected-1]+1:0;\n}\n'
+
 p='#include <SDL.h>\n'+preamble
 p+='''\n#define SDL_ALLOW_XINPUT 0
 static cvar joy_enable,joy_index,joy_detected;
@@ -120,8 +158,8 @@ p+='''int main(){
  // The visible stick supplies an absolute direction; gyro/relative look
  // must not accumulate into it, and neutral cancellation must clear it.
  artifact=true;artifactX=.4;artifactY=-.8;look=400;tick();
- assert(std::abs(vid_joystate.axis[2]-.4)<.001&&std::abs(vid_joystate.axis[3]-.8)<.001);
- tick();assert(std::abs(vid_joystate.axis[2]-.4)<.001);
+ assert(std::abs(vid_joystate.axis[2]-.4472136)<.001&&std::abs(vid_joystate.axis[3]+.8944272)<.001);
+ tick();assert(std::abs(vid_joystate.axis[2]-.4472136)<.001);
  artifactX=artifactY=0;tick();assert(vid_joystate.axis[2]==0&&vid_joystate.axis[3]==0);artifact=false;
  cl.csqc_wantsmousemove=false;look=1;tick();assert(vid_joystate.axis[2]==0);assert(wrath_ios_look_yaw==pending);
  look=4;tick();assert(wrath_ios_look_yaw==pending+4);
@@ -130,6 +168,29 @@ p+='''int main(){
  wrath_ios_look_yaw=30;ApplyTouchLook();assert(cl.viewangles[YAW]==beforeYaw-45); // doubling slider doubles actual look
  cl.csqc_wantsmousemove=true;wrath_ios_look_yaw=20;ApplyTouchLook();assert(cl.viewangles[YAW]==beforeYaw-45);assert(wrath_ios_look_yaw==0);cl.csqc_wantsmousemove=false;
  SDL_JoystickDetachVirtual(dummy);tick();assert(joy_index.integer==0);assert(VID_ControllerType(joy_index.integer)==CONTROLLER_XBOX);
+ // Actual modern Artifact HUD: rmenu is open but cursor capture is false.
+ // Exercise native SDL sampling -> engine IE_JOYAXIS -> pinned QC look stick
+ // -> pinned HUD motion and sector arithmetic, including the 16/20 threshold.
+ cl.csqc_wantsmousemove=false;artifact=true;move=.6;look=400;binds[K_X360_RIGHT_TRIGGER]="+attack";edges={1};
+ float pendingBeforeArtifact=wrath_ios_look_yaw;
+ auto choose=[&](float x,float y,int expected){
+  artifactX=x;artifactY=y;radial_pos={};radial_thumbstick={};float oldForward=cl.cmd.forwardmove,oldSide=cl.cmd.sidemove;tick();
+  for(int frame=0;frame<20;frame++)QCRadialStep();
+  assert(vlen(radial_pos)>19.9f);assert(QCArtifactChoice()==expected);
+  assert(wrath_ios_look_yaw==pendingBeforeArtifact);
+  assert(cl.cmd.forwardmove-oldForward>.59&&cl.cmd.sidemove-oldSide>.59);assert(vid_joystate.button[15]);
+ };
+ choose(.2f,0,3); // Modest intentional motion must reach the stock selection radius.
+ choose(0,.2f,1);choose(-.2f,0,8);choose(0,-.2f,6);
+ // A left-handed/custom profile can put look on 0/1; do not overwrite it.
+ joy_x360_axisyaw.integer=0;joy_x360_axispitch.integer=1;
+ joy_x360_axisside.integer=2;joy_x360_axisforward.integer=3;
+ choose(.2f,0,3);choose(0,.2f,1);
+ artifactX=artifactY=0;tick();assert(thumbstick_look[0]==0&&thumbstick_look[1]==0);
+ artifact=false;edges={-1};tick();assert(wrath_ios_look_yaw==pendingBeforeArtifact);
+ joy_x360_axisyaw.integer=2;joy_x360_axispitch.integer=3;
+ joy_x360_axisside.integer=0;joy_x360_axisforward.integer=1;
+ puts("PASS: capture-free Artifact hold reaches stock QC radial: Right=3 Up=1 Left=8 Down=6; swapped look axes, neutral cancel, no gyro leakage and simultaneous movement preserved");
  puts("PASS: production route, enumerated SDL Xbox, native sampler/query/apply, device-index shift, A press/release, held-fire mouse look");
  WrathIOSControllerShutdown();VID_EnableJoystick(false);assert(SDL_NumJoysticks()==0);
  tick();assert(SDL_NumJoysticks()==1);assert(VID_ControllerType(joy_index.integer)==CONTROLLER_XBOX);
@@ -143,3 +204,10 @@ with tempfile.TemporaryDirectory() as d:
   flags=shlex.split(subprocess.check_output(['sdl2-config','--cflags','--libs'],text=True))
  subprocess.run(['c++','-std=c++20','-Wno-narrowing','-DWRATH_IOS_GATE5C','-I'+str(r/'Gate5C'),str(src),*flags,'-o',d+'/test'],check=True)
  subprocess.run([d+'/test'],check=True)
+out=r/'Artifacts/artifact-route';out.mkdir(parents=True,exist_ok=True)
+(out/'validation.json').write_text(json.dumps({
+ 'passed':True,'cursor_capture':False,'default_look_axes':[2,3],'swapped_look_axes':[0,1],
+ 'stock_qc_slots':{'right':3,'up':1,'left':8,'down':6},
+ 'actual_qc_axis_body_sha256':hashlib.sha256(axisbody.encode()).hexdigest(),
+ 'actual_qc_radial_body_sha256':hashlib.sha256(radialbody.encode()).hexdigest(),
+ 'scope':'Production SDL route/sampler and VID_ApplyJoyState into pinned QC consumer/radial source. No retail VM, phone or performance claim.'},indent=2)+'\n')

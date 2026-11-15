@@ -36,6 +36,10 @@ void VID_BuildJoyState(vid_joystate_t *joystate);
 
 /* Defined by vid_shared.c, not exported by upstream vid.h. */
 extern cvar_t joy_axiskeyevents;
+extern cvar_t joy_x360_axisside,joy_x360_axisforward,joy_x360_axisyaw,joy_x360_axispitch;
+static void WrathIOSVirtualLogicalAxis(float *axes,int index,float value) {
+ if(index>=0&&index<4)axes[index]=(index==1||index==3)?-value:value;
+}
 static const int wrath_ios_padkeys[] = {
  K_X360_DPAD_UP,K_X360_DPAD_DOWN,K_X360_DPAD_LEFT,K_X360_DPAD_RIGHT,
  K_X360_START,K_X360_BACK,K_X360_LEFT_THUMB,K_X360_RIGHT_THUMB,
@@ -83,7 +87,7 @@ static int WrathIOSActionKey(int action) {
  return 0;
 }
 static void WrathIOSControllerFrame(vid_joystate_t *joy) {
- int edge,i;float yaw,pitch,side,forward,nx,ny;unsigned buttons;
+ int edge,i,artifactSelecting=0;float yaw,pitch,side,forward,nx,ny,artifactX,artifactY;unsigned buttons;
  WrathIOSTouchBeginControllerFrame();
  while((edge=WrathIOSTouchNextKey())!=0){
   int action=(edge<0?-edge:edge)-1,key;
@@ -116,19 +120,24 @@ static void WrathIOSControllerFrame(vid_joystate_t *joy) {
   SDL_Joystick *physical_joystick=vid_sdljoystick;
   for(i=0;i<34;i++){int index=WrathIOSPadIndex(wrath_ios_actionkey[i]);if(index>=0)held[index]=1;}
   WrathIOSTouchFrame(&yaw,&pitch,&side,&forward,&buttons);
+  artifactSelecting=WrathIOSTouchArtifactStick(&artifactX,&artifactY);
   axes[0]=side;axes[1]=-forward;
   if(WrathIOSTouchMenuPad(&nx,&ny)){axes[2]=nx;axes[3]=-ny;}
-  if(cl.csqc_wantsmousemove){
+  if(artifactSelecting||cl.csqc_wantsmousemove){
+   /* The modern stock Artifact HUD consumes look-stick axis events without
+    * setcursormode(1). Cursor capture is not an Inventory-open signal. */
    /* WRATH radial selects by absolute right-stick direction, not velocity.
     * Hold the accumulated direction between events so the native radial can
     * converge. Both swipe and gyro arrive in angular units here. */
    if(!wrath_ios_captured)wrath_ios_radial_x=wrath_ios_radial_y=0;
    {float x,y;
-    if(WrathIOSTouchArtifactStick(&x,&y)){wrath_ios_radial_x=x;wrath_ios_radial_y=-y;}
+    if(artifactSelecting){x=artifactX;y=artifactY;wrath_ios_radial_x=x;wrath_ios_radial_y=-y;}
     else {wrath_ios_radial_x+=yaw/8.0f;wrath_ios_radial_y+=pitch/8.0f;}
    }
    {float length=sqrtf(wrath_ios_radial_x*wrath_ios_radial_x+wrath_ios_radial_y*wrath_ios_radial_y);
-    if(length>1){wrath_ios_radial_x/=length;wrath_ios_radial_y/=length;}}
+    /* Artifact selection is a direction, not camera speed. Once outside the
+     * UI deadzone, reach the stock HUD's 16/20 selection radius reliably. */
+    if(length>1||(artifactSelecting&&length>0)){wrath_ios_radial_x/=length;wrath_ios_radial_y/=length;}}
    axes[2]=wrath_ios_radial_x;axes[3]=wrath_ios_radial_y;
   }else wrath_ios_radial_x=wrath_ios_radial_y=0;
   for(i=0;i<14;i++)SDL_JoystickSetVirtualButton(wrath_ios_joystick,padbuttons[i],held[i]);
@@ -141,6 +150,15 @@ static void WrathIOSControllerFrame(vid_joystate_t *joy) {
   if(held[21])axes[3]=-1;
   if(held[22])axes[2]=-1;
   if(held[23])axes[2]=1;
+  if(artifactSelecting){
+   /* QC reads the configured look axes, which can be swapped by a profile.
+    * Send logical roles through SDL, preserving its native Y inversion. */
+   for(i=0;i<4;i++)axes[i]=0;
+   WrathIOSVirtualLogicalAxis(axes,joy_x360_axisside.integer,side);
+   WrathIOSVirtualLogicalAxis(axes,joy_x360_axisforward.integer,forward);
+   WrathIOSVirtualLogicalAxis(axes,joy_x360_axisyaw.integer,wrath_ios_radial_x);
+   WrathIOSVirtualLogicalAxis(axes,joy_x360_axispitch.integer,-wrath_ios_radial_y);
+  }
   for(i=0;i<6;i++)SDL_JoystickSetVirtualAxis(wrath_ios_joystick,i,(Sint16)(bound(-1,axes[i],1)*32767));
   SDL_JoystickUpdate();
   /* Read through the actual native engine controller sampler, preserving
@@ -159,8 +177,8 @@ static void WrathIOSControllerFrame(vid_joystate_t *joy) {
  /* Touch/gyro are relative angles, not an emulated gamepad for aiming.
   * CL_Input applies them at the mouse-look stage before native angle clamps,
   * independent of physical-mouse sensitivity/acceleration/filter settings. */
- if(!cl.csqc_wantsmousemove&&!wrath_ios_captured){
+ if(!artifactSelecting&&!cl.csqc_wantsmousemove&&!wrath_ios_captured){
   wrath_ios_look_yaw+=yaw;wrath_ios_look_pitch+=pitch;
  }
- wrath_ios_captured=cl.csqc_wantsmousemove;
+ wrath_ios_captured=cl.csqc_wantsmousemove||artifactSelecting;
 }

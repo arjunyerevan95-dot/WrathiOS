@@ -1,4 +1,4 @@
-name: GLES3 mobile controls and graphics
+name: GLES3 Artifact selection correction
 on:
   push:
     branches: [review/gles3-startup-memory]
@@ -28,12 +28,10 @@ jobs:
         run: bash scripts/check_repository.sh
       - name: Fetch pinned public engine and dependencies
         run: bash scripts/fetch_upstream.sh
-      - name: Reuse passed changed-path checks after metadata-only repair
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Test Artifact route through native sampler and stock QC handlers
         run: |
-          git fetch --no-tags --depth=1 origin 5781e0c971b3bbb2d0820c5c7157db1d249b23a6
-          python3 scripts/reuse_mobile_smoke.py
+          command -v sdl2-config >/dev/null || brew install sdl2
+          python3 Tests/Gate5C/test_controller_route.py
       - name: Build arm64 dependencies
         run: |
           bash scripts/build_gate2_audio_deps.sh
@@ -41,23 +39,23 @@ jobs:
           bash scripts/build_gate2_freetype.sh
       - name: Install project generator
         run: command -v xcodegen >/dev/null || brew install xcodegen
-      - name: Build and audit one GLES3 mobile controls candidate
+      - name: Build and audit one GLES3 Artifact selection candidate
         run: |
           WRATH_RENDERER=gles3 bash scripts/build_gate5c_device_semantic_menu.sh
           grep -Eq ' _WrathIOSStartupMemoryCheckpoint$' Artifacts/gate5c-semantic-menu/global-symbols.txt
           grep -Fq 'gles3-startup-memory.ring' Artifacts/gate5c-semantic-menu/strings.txt
           grep -Eq ' _WrathGLES3CopyTexSubImage2D$' Artifacts/gate5c-semantic-menu/global-symbols.txt
           grep -Eq ' _WrathIOSTouchArtifactStick$' Artifacts/gate5c-semantic-menu/global-symbols.txt
-          mv Artifacts/gate5c-semantic-menu/WrathiOSGate5C-v23-gles3-unsigned.ipa Artifacts/gate5c-semantic-menu/WrathiOSGate5C-v23-gles3-mobile-controls-unsigned.ipa
-          printf '%s\n' "$GITHUB_SHA" > Artifacts/gate5c-semantic-menu/mobile-source-commit.txt
-          printf '%s\n' 'Mobile scale options, Artifact stick and AA controls. Candidate phone behavior and frame rate remain unmeasured.' > Artifacts/gate5c-semantic-menu/mobile-scope.txt
-      - name: Preserve mobile candidate IPA and evidence
+          mv Artifacts/gate5c-semantic-menu/WrathiOSGate5C-v23-gles3-unsigned.ipa Artifacts/gate5c-semantic-menu/WrathiOSGate5C-v23-gles3-artifact-selection-unsigned.ipa
+          printf '%s\n' "$GITHUB_SHA" > Artifacts/gate5c-semantic-menu/artifact-source-commit.txt
+          printf '%s\n' 'Capture-free Artifact selection follows configured look axes. Phone confirmation remains pending.' > Artifacts/gate5c-semantic-menu/artifact-scope.txt
+      - name: Preserve Artifact candidate IPA and evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: wrath-gles3-mobile-controls
+          name: wrath-gles3-artifact-selection
           path: |
-            Artifacts/mobile-controls
+            Artifacts/artifact-route
             Artifacts/gate5c-semantic-menu
             Artifacts/engine-patches/report.json
           if-no-files-found: error

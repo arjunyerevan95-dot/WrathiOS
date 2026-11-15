@@ -30,6 +30,7 @@ jobs:
         run: bash scripts/fetch_upstream.sh
       - name: Verify preserved GLES2 source
         run: |
+          git fetch --no-tags --depth=1 origin c3703223b311632dc059ff3b239aa0050f78a3f7
           mkdir -p Artifacts/startup-memory
           python3 Tests/Gate5C/test_startup_memory_diagnostics.py --source-only
       - name: Test changed font registration and size selection

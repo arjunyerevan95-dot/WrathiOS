@@ -29,9 +29,7 @@ jobs:
       - name: Fetch pinned public engine and dependencies
         run: bash scripts/fetch_upstream.sh
       - name: Test Artifact route through native sampler and stock QC handlers
-        run: |
-          command -v sdl2-config >/dev/null || brew install sdl2
-          python3 Tests/Gate5C/test_controller_route.py
+        run: bash scripts/test_artifact_route.sh
       - name: Build arm64 dependencies
         run: |
           bash scripts/build_gate2_audio_deps.sh

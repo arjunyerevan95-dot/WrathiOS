@@ -164,6 +164,8 @@ p+='''int main(){
  cl.csqc_wantsmousemove=false;look=1;tick();assert(vid_joystate.axis[2]==0);assert(wrath_ios_look_yaw==pending);
  look=4;tick();assert(wrath_ios_look_yaw==pending+4);
  float yaw,pitch;WrathIOSControllerTakeRelativeLook(&yaw,&pitch);assert(yaw==pending+4);assert(wrath_ios_look_yaw==0);
+ // Isolate the relative-look case from the preceding real vertical stick input.
+ cl.viewangles[PITCH]=0;
  wrath_ios_look_yaw=15;wrath_ios_look_pitch=6;float beforeYaw=cl.viewangles[YAW];ApplyTouchLook();assert(cl.viewangles[YAW]==beforeYaw-15);assert(cl.viewangles[PITCH]==6);
  wrath_ios_look_yaw=30;ApplyTouchLook();assert(cl.viewangles[YAW]==beforeYaw-45); // doubling slider doubles actual look
  cl.csqc_wantsmousemove=true;wrath_ios_look_yaw=20;ApplyTouchLook();assert(cl.viewangles[YAW]==beforeYaw-45);assert(wrath_ios_look_yaw==0);cl.csqc_wantsmousemove=false;

@@ -435,7 +435,8 @@
           "old": "\n\tsuccess = VID_Mode(vid_fullscreen.integer, vid_width.integer, vid_height.integer, vid_bitsperpixel.integer, vid_refreshrate.value, vid_stereobuffer.integer, vid_samples.integer);",
           "new": "\n#ifdef WRATH_IOS_GLES3\n {extern int WrathIOSPreferredMSAASamples(int configured);Cvar_SetValueQuick(&vid_samples,WrathIOSPreferredMSAASamples(vid_samples.integer));}\n#endif\n\tsuccess = VID_Mode(vid_fullscreen.integer, vid_width.integer, vid_height.integer, vid_bitsperpixel.integer, vid_refreshrate.value, vid_stereobuffer.integer, vid_samples.integer);"
         }
-      ]
+      ],
+      "reason": "GLES3-only fresh-config MSAA default and one-time native preference before the existing driver fallback loop."
     },
     {
       "path": "model_brush.c",
@@ -444,7 +445,8 @@
           "old": "cvar_t r_fxaa = {CVAR_SAVE, \"r_fxaa\", \"0\", \"fast approximate anti aliasing\"};",
           "new": "#ifdef WRATH_IOS_GLES3\ncvar_t r_fxaa = {CVAR_SAVE, \"r_fxaa\", \"1\", \"fast approximate anti aliasing\"};\n#else\ncvar_t r_fxaa = {CVAR_SAVE, \"r_fxaa\", \"0\", \"fast approximate anti aliasing\"};\n#endif"
         }
-      ]
+      ],
+      "reason": "GLES3-only fresh-config FXAA default; existing engine configuration still overrides it."
     }
   ]
 }

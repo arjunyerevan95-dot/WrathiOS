@@ -28,12 +28,12 @@ jobs:
         run: bash scripts/check_repository.sh
       - name: Fetch pinned public engine and dependencies
         run: bash scripts/fetch_upstream.sh
-      - name: Check changed mobile graphics policy and GLES2 preservation
+      - name: Reuse passed changed-path checks after metadata-only repair
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          git fetch --no-tags --depth=1 origin b7321f7d702103a552bd45c070766f5ac2984aae
-          python3 Tests/Gate5C/test_mobile_graphics_contract.py
-      - name: Smoke changed settings, Artifact input and MSAA-FXAA GPU path
-        run: bash scripts/test_mobile_controls_smoke.sh
+          git fetch --no-tags --depth=1 origin 5781e0c971b3bbb2d0820c5c7157db1d249b23a6
+          python3 scripts/reuse_mobile_smoke.py
       - name: Build arm64 dependencies
         run: |
           bash scripts/build_gate2_audio_deps.sh

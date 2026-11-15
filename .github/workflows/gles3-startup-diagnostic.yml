@@ -1,4 +1,4 @@
-name: GLES3 startup memory diagnostic
+name: GLES3 font atlas startup recovery
 on:
   push:
     branches: [review/gles3-startup-memory]
@@ -28,12 +28,12 @@ jobs:
         run: bash scripts/check_repository.sh
       - name: Fetch pinned public engine and dependencies
         run: bash scripts/fetch_upstream.sh
-      - name: Test startup evidence and preserved GLES2 source
+      - name: Verify preserved GLES2 source
         run: |
           mkdir -p Artifacts/startup-memory
-          c++ -std=c++17 -Wall -Wextra -Werror Tests/Gate5C/WrathStartupMemoryLogTests.cpp -o Artifacts/startup-memory/ring-test
-          Artifacts/startup-memory/ring-test Artifacts/startup-memory/test.ring
-          python3 Tests/Gate5C/test_startup_memory_diagnostics.py
+          python3 Tests/Gate5C/test_startup_memory_diagnostics.py --source-only
+      - name: Test changed font registration and size selection
+        run: python3 Tests/Gate5C/test_font_atlas_demand.py
       - name: Build arm64 dependencies
         run: |
           bash scripts/build_gate2_audio_deps.sh
@@ -41,21 +41,22 @@ jobs:
           bash scripts/build_gate2_freetype.sh
       - name: Install project generator
         run: brew install xcodegen
-      - name: Build and audit GLES3 startup diagnostic only
+      - name: Build and audit GLES3 font atlas recovery only
         run: |
           WRATH_RENDERER=gles3 bash scripts/build_gate5c_device_semantic_menu.sh
           grep -Eq ' _WrathIOSStartupMemoryCheckpoint$' Artifacts/gate5c-semantic-menu/global-symbols.txt
           grep -Fq 'gles3-startup-memory.ring' Artifacts/gate5c-semantic-menu/strings.txt
-          mv Artifacts/gate5c-semantic-menu/WrathiOSGate5C-v23-gles3-unsigned.ipa Artifacts/gate5c-semantic-menu/WrathiOSGate5C-v23-gles3-startup-diagnostic-unsigned.ipa
-          printf '%s\n' "$GITHUB_SHA" > Artifacts/gate5c-semantic-menu/diagnostic-source-commit.txt
-          printf '%s\n' 'Memory evidence only; not a crash fix. Full engine startup and phone behavior unverified.' > Artifacts/gate5c-semantic-menu/diagnostic-scope.txt
-      - name: Preserve diagnostic IPA and evidence
+          mv Artifacts/gate5c-semantic-menu/WrathiOSGate5C-v23-gles3-unsigned.ipa Artifacts/gate5c-semantic-menu/WrathiOSGate5C-v23-gles3-font-atlas-recovery-unsigned.ipa
+          printf '%s\n' "$GITHUB_SHA" > Artifacts/gate5c-semantic-menu/recovery-source-commit.txt
+          printf '%s\n' 'Targeted font-atlas startup recovery candidate. Phone startup and measured peak memory remain unverified.' > Artifacts/gate5c-semantic-menu/recovery-scope.txt
+      - name: Preserve recovery IPA and evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: wrath-gles3-startup-diagnostic
+          name: wrath-gles3-font-atlas-recovery
           path: |
             Artifacts/startup-memory
+            Artifacts/font-atlas-demand
             Artifacts/gate5c-semantic-menu
             Artifacts/engine-patches/report.json
           if-no-files-found: error

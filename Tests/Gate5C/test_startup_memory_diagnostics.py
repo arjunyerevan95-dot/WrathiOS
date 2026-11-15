@@ -42,26 +42,47 @@ def without_gles3_blocks(text):
 def tokens(text):
     return re.sub(r'\s+','',text)
 
+def without_demand_blocks(text):
+    marker='#else /* demand font atlases */\n'
+    def choose_fallback(match):
+        body=match.group(1)
+        return body.split(marker,1)[1] if marker in body else ''
+    return re.sub(r'#ifdef WRATH_IOS_GLES3 /\* demand font atlases \*/\n(.*?)#endif /\* demand font atlases \*/\n',choose_fallback,text,flags=re.S)
+
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--baseline-ref',default=BASE)
     parser.add_argument('--engine-source',type=Path,default=ROOT/'Vendor/wrath-darkplaces')
     parser.add_argument('--artifacts',type=Path,default=ART)
+    parser.add_argument('--source-only',action='store_true')
     args=parser.parse_args()
     baseline=json.loads(baseline_file('config/engine/ios_source_patches.json',args.baseline_ref))
     current=json.loads((ROOT/'config/engine/ios_source_patches.json').read_text(encoding='utf-8'))
     checks=[]
-    for file in ['menu.c','gl_backend.c','gl_rmain.c','gl_textures.c','zone.c']:
+    for file in ['menu.c','gl_backend.c','gl_rmain.c','gl_textures.c','zone.c','ft2.h','ft2.c','gl_draw.c']:
         before=materialize(baseline,file,args.engine_source)
         after=materialize(current,file,args.engine_source)
         stripped,count=re.subn(r'\n#ifdef WRATH_IOS_GLES3 /\* startup memory evidence \*/\n.*?\n#endif /\* startup memory evidence \*/\n','',after,flags=re.S)
-        assert count>0 and tokens(stripped)==tokens(before),file
+        if file in ['ft2.h','ft2.c','gl_draw.c']:
+            assert '#ifdef WRATH_IOS_GLES3 /* demand font atlases */' in after,file
+        else:
+            assert count>0,file
+        stripped=without_demand_blocks(stripped)
+        assert tokens(stripped)==tokens(before),file
         checks.append({'file':file,'GLES3_boundaries':count,'GLES2_original_tokens_preserved':True})
     for file in ['Gate5/WrathRuntime.mm','Gate5/WrathRuntimeHooks.h']:
         before=baseline_file(file,args.baseline_ref)
         after=without_gles3_blocks((ROOT/file).read_text(encoding='utf-8'))
         assert tokens(before)==tokens(after),file
         checks.append({'file':file,'GLES2_original_tokens_preserved':True})
+
+    if args.source_only:
+        args.artifacts.mkdir(parents=True,exist_ok=True)
+        receipt={'baseline':args.baseline_ref,'source_checks':checks,
+            'scope':'GLES2 source preservation for the changed font path. Unchanged ring tests not rerun.'}
+        (args.artifacts/'validation.json').write_text(json.dumps(receipt,indent=2)+'\n',encoding='utf-8')
+        print(json.dumps(receipt,indent=2))
+        return 0
 
     module=importlib.util.spec_from_file_location('ring',ROOT/'scripts/read_startup_memory_ring.py')
     decoder=importlib.util.module_from_spec(module)

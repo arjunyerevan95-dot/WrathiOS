@@ -369,6 +369,48 @@
           "new": "\tmemset((void *)((unsigned char *) mem + sizeof(memheader_t) + sharedsize), 0, remainsize);\n#ifdef WRATH_IOS_GLES3 /* startup memory evidence */\n\tif (size >= 1024*1024)\n\tWrathIOSStartupMemoryCheckpoint(\"engine-alloc-return\", filename, (long long)size, fileline, (long long)pool->totalsize, (long long)pool->realsize);\n#endif /* startup memory evidence */\n\treturn (void *)((unsigned char *) mem + sizeof(memheader_t));"
         }
       ]
+    },
+    {
+      "path": "ft2.h",
+      "reason": "GLES3: load requested font atlas sizes on demand instead of eagerly allocating unused localized-font atlases at startup. Preserve glyph rasterization and the GLES2 path.",
+      "replacements": [
+        {
+          "old": "\tint             num_sizes;\n",
+          "new": "\tint             num_sizes;\n\n#ifdef WRATH_IOS_GLES3 /* demand font atlases */\n\tfloat ios_requested_sizes[MAX_FONT_SIZES];\n\tint ios_requested_count;\n\tqboolean ios_demand_failed;\n\tfloat ios_image_widths[256];\n#endif /* demand font atlases */\n"
+        }
+      ]
+    },
+    {
+      "path": "ft2.c",
+      "reason": "GLES3: load requested font atlas sizes on demand instead of eagerly allocating unused localized-font atlases at startup. Preserve glyph rasterization and the GLES2 path.",
+      "replacements": [
+        {
+          "old": "qboolean Font_LoadFont(const char *name, dp_font_t *dpfnt)\n",
+          "new": "#ifdef WRATH_IOS_GLES3 /* demand font atlases */\n// Registration validates every requested size, but builds one small atlas.\n// All other sizes retain the original pixel size and are created on first use.\nstatic qboolean Font_PrepareDemandSizes(ft2_font_t *font, const float *requested)\n{\n\tint s, i, smallest = -1;\n\tfor (s = 0; s < MAX_FONT_SIZES && requested[s] >= 0; ++s)\n\t{\n\t\tfloat size = Font_VirtualToRealSize(requested[s]);\n\t\t// Keep Font_LoadSize's existing normalization, including default size 16.\n\t\tif (!(size > 0.001f && size < 1000.0f)) size = 16;\n\t\tif (size < 2 || !Font_LoadSize(font, size, true)) continue;\n\t\tfor (i = 0; i < font->ios_requested_count; ++i)\n\t\t\tif (font->ios_requested_sizes[i] == size) break;\n\t\tif (i < font->ios_requested_count) continue;\n\t\tfont->ios_requested_sizes[i] = size;\n\t\t++font->ios_requested_count;\n\t\tif (smallest < 0 || size < font->ios_requested_sizes[smallest]) smallest = i;\n\t}\n\treturn smallest >= 0 && Font_LoadSize(font, font->ios_requested_sizes[smallest], false);\n}\n\nstatic qboolean Font_EnsureDemandSize(ft2_font_t *font, float width, float height)\n{\n\tint i, best = -1;\n\tfloat value = 0;\n\tif (font->ios_demand_failed) return false;\n\tfor (i = 0; i < font->ios_requested_count; ++i)\n\t{\n\t\tfloat size = font->ios_requested_sizes[i];\n\t\tfloat distance = 0.5 * (fabs(size - width) + fabs(size - height));\n\t\tif (best < 0 || distance < value || (distance == value && size > font->ios_requested_sizes[best]))\n\t\t{\n\t\t\tbest = i;\n\t\t\tvalue = distance;\n\t\t}\n\t}\n\tif (best < 0) return true; // Non-registered/internal font: existing map lookup.\n\tif (Font_LoadSize(font, font->ios_requested_sizes[best], false)) return true;\n\t// Font_LoadSize already reports the failure and unloads the font. Do not\n\t// dereference its old maps or retry a freed face on the next draw.\n\tfont->ios_demand_failed = true;\n\treturn false;\n}\n#endif /* demand font atlases */\n\nqboolean Font_LoadFont(const char *name, dp_font_t *dpfnt)\n"
+        },
+        {
+          "old": "\tcount = 0;\n\tfor (s = 0; s < MAX_FONT_SIZES && dpfnt->req_sizes[s] >= 0; ++s)\n\t{\n\t\tif (Font_LoadSize(ft2, Font_VirtualToRealSize(dpfnt->req_sizes[s]), false))\n\t\t\t++count;\n\t}",
+          "new": "#ifdef WRATH_IOS_GLES3 /* demand font atlases */\n\tcount = Font_PrepareDemandSizes(ft2, dpfnt->req_sizes) ? 1 : 0;\n#else /* demand font atlases */\n\tcount = 0;\n\tfor (s = 0; s < MAX_FONT_SIZES && dpfnt->req_sizes[s] >= 0; ++s)\n\t{\n\t\tif (Font_LoadSize(ft2, Font_VirtualToRealSize(dpfnt->req_sizes[s]), false))\n\t\t\t++count;\n\t}\n#endif /* demand font atlases */"
+        },
+        {
+          "old": "\tfont->font_maps[map_index] = temp.next;\n",
+          "new": "\tfont->font_maps[map_index] = temp.next;\n\n#ifdef WRATH_IOS_GLES3 /* demand font atlases */\n\t// LoadFont supplies unsnapped image-font widths after registration. New\n\t// maps need the same per-size snapping as eagerly initialized maps.\n\t{\n\t\tint ch;\n\t\tfor (ch = 0; ch < 256; ++ch)\n\t\t\tfmap->width_of[ch] = Font_SnapTo(font->ios_image_widths[ch], 1 / fmap->size);\n\t}\n#endif /* demand font atlases */\n"
+        },
+        {
+          "old": "\tfor (m = 0; m < MAX_FONT_SIZES; ++m)\n\t{\n\t\tif (!maps[m])",
+          "new": "#ifdef WRATH_IOS_GLES3 /* demand font atlases */\n\tif (!Font_EnsureDemandSize(font, fsize_x, fsize_y)) return -1;\n#endif /* demand font atlases */\n\n\tfor (m = 0; m < MAX_FONT_SIZES; ++m)\n\t{\n\t\tif (!maps[m])"
+        }
+      ]
+    },
+    {
+      "path": "gl_draw.c",
+      "reason": "GLES3: load requested font atlas sizes on demand instead of eagerly allocating unused localized-font atlases at startup. Preserve glyph rasterization and the GLES2 path.",
+      "replacements": [
+        {
+          "old": "\tif(fnt->ft2)\n\t{\n\t\tfor (i = 0; i < MAX_FONT_SIZES; ++i)",
+          "new": "\tif(fnt->ft2)\n\t{\n#ifdef WRATH_IOS_GLES3 /* demand font atlases */\n\t\tmemcpy(fnt->ft2->ios_image_widths, fnt->width_of, sizeof(fnt->ft2->ios_image_widths));\n#endif /* demand font atlases */\n\t\tfor (i = 0; i < MAX_FONT_SIZES; ++i)"
+        }
+      ]
     }
   ]
 }

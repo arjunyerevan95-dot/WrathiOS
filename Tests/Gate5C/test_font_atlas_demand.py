@@ -92,7 +92,8 @@ static int errors;
 static void Con_Printf(const char *,...) { ++errors; }
 static void Mem_Free(void *p) { std::free(p); }
 static ft2_font_t *Font_Alloc() { return (ft2_font_t *)std::calloc(1,sizeof(ft2_font_t)); }
-static size_t strlcpy(char *out,const char *in,size_t cap) { size_t n=std::strlen(in); if(cap){std::memcpy(out,in,std::min(n,cap-1));out[std::min(n,cap-1)]=0;}return n; }
+static size_t fixture_strlcpy(char *out,const char *in,size_t cap) { size_t n=std::strlen(in); if(cap){std::memcpy(out,in,std::min(n,cap-1));out[std::min(n,cap-1)]=0;}return n; }
+#define strlcpy fixture_strlcpy
 static char *va(char *out,size_t cap,const char *fmt,...) { va_list a;va_start(a,fmt);std::vsnprintf(out,cap,fmt,a);va_end(a);return out; }
 static bool FS_FileExists(const char *) { return false; }
 static bool Font_LoadFile(const char *name,int,ft2_settings_t *settings,ft2_font_t *font) {

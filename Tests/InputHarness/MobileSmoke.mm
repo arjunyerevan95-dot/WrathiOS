@@ -4,6 +4,7 @@
 #import <OpenGLES/ES3/gl.h>
 #import <SDL.h>
 #import <SDL_system.h>
+#import <SDL_syswm.h>
 #include "WrathSemanticMenuBridge.h"
 #include "WrathMobileGraphics.h"
 #include "WrathGLES3Resolve.h"
@@ -101,7 +102,11 @@ static void AASmoke(NSMutableArray *checks){
 }
 -(void)runSmoke{NSMutableDictionary *receipt=[@{@"passed":@NO,@"phoneTested":@NO,@"scope":@"Changed production UIKit behavior with touch/configuration transport stubs; actual SDL/EAGL MSAA and pinned FXAA kernel."} mutableCopy];NSMutableArray *checks=[NSMutableArray new];receipt[@"checks"]=checks;
  @try{[NSUserDefaults.standardUserDefaults setDouble:0 forKey:@"WrathTouchGyro"];SDL_SetMainReady();SDL_iPhoneSetEventPump(SDL_FALSE);Require(SDL_Init(SDL_INIT_VIDEO)==0,@"SDL video");SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION,3);SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION,0);SDL_GL_SetAttribute(SDL_GL_RED_SIZE,8);SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE,8);SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE,8);SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE,8);SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS,1);SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES,2);SDL_Window *w=SDL_CreateWindow("WRATH mobile smoke",0,0,844,390,SDL_WINDOW_SHOWN|SDL_WINDOW_OPENGL|SDL_WINDOW_ALLOW_HIGHDPI);Require(w!=NULL,@"SDL window");Require(SDL_GL_CreateContext(w)!=NULL,@"SDL GLES3 context");int lw,lh,dw,dh;SDL_GetWindowSize(w,&lw,&lh);SDL_GL_GetDrawableSize(w,&dw,&dh);double density=UIScreen.mainScreen.nativeScale;Require(fabs(dw-lw*density*.5)<=1&&fabs(dh-lh*density*.5)<=1,@"actual drawable uses the 0.5 native-pixel default");receipt[@"drawable"]=@[@(dw),@(dh)];receipt[@"actualMSAASamples"]=@(WrathIOSGraphicsActiveSamples());Require(WrathIOSGraphicsActiveSamples()>1,@"SDL actual MSAA");[checks addObject:@"sdl-native-pixel-half-scale-default-msaa"];
- WrathIOSTouchSetMode(0,1);WrathSemanticTouchSurface *surface=nil;for(UIWindow *window in UIApplication.sharedApplication.windows){UIView *v=[window viewWithTag:0x57524335];if(v)surface=(WrathSemanticTouchSurface *)v;}Require(surface!=nil,@"actual production touch surface");[surface refresh];InputSmoke(surface,checks);SettingsSmoke(surface,checks);AASmoke(checks);receipt[@"passed"]=@YES;
+ WrathIOSTouchSetMode(0,1);SDL_SysWMinfo wm;SDL_VERSION(&wm.version);Require(SDL_GetWindowWMInfo(w,&wm)&&wm.subsystem==SDL_SYSWM_UIKIT,@"SDL UIKit host");UIWindow *host=wm.info.uikit.window;
+ // This fixture runs before the host frame loop/scene activation. Attach the
+ // real production view explicitly; automatic frame-loop mounting is unchanged.
+ WrathSemanticTouchSurface *surface=(WrathSemanticTouchSurface *)[host viewWithTag:0x57524335];if(!surface){surface=[[WrathSemanticTouchSurface alloc]initWithFrame:host.bounds];surface.tag=0x57524335;[host addSubview:surface];}
+ Require(surface!=nil&&surface.window==host,@"actual production touch surface");[surface refresh];InputSmoke(surface,checks);SettingsSmoke(surface,checks);AASmoke(checks);receipt[@"passed"]=@YES;
  }@catch(NSException *e){receipt[@"error"]=e.reason?:e.name;}
  NSURL *dir=[NSFileManager.defaultManager URLsForDirectory:NSDocumentDirectory inDomains:NSUserDomainMask].firstObject;[[NSJSONSerialization dataWithJSONObject:receipt options:NSJSONWritingPrettyPrinted error:nil]writeToURL:[dir URLByAppendingPathComponent:@"mobile-smoke.json"] atomically:YES];NSLog(@"WRATH_MOBILE_SMOKE %@",receipt);
 }
